@@ -16,23 +16,18 @@
 
 package io.awspring.cloud.s3.sample;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.Scanner;
+import java.util.UUID;
 
+import io.awspring.cloud.s3.S3Operations;
+import io.awspring.cloud.s3.S3Template;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3Client;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.ResourceLoader;
-import org.springframework.core.io.WritableResource;
 
 @SpringBootApplication
 public class SpringCloudAwsS3Sample {
@@ -44,36 +39,14 @@ public class SpringCloudAwsS3Sample {
 	}
 
 	// load resource using @Value
-	@Value("s3://spring-cloud-aws-sample-bucket1/test-file.txt")
-	private Resource file;
+	// @Value("s3://spring-cloud-aws-sample-bucket1/test-file.txt")
+	// private Resource file;
 
 	@Bean
-	ApplicationRunner applicationRunner(S3Client s3Client, ResourceLoader resourceLoader) {
+	ApplicationRunner applicationRunner(S3Template s3Template, S3Client s3Client) {
 		return args -> {
-			// use auto-configured cross-region client
-			s3Client.listObjects(request -> request.bucket("spring-cloud-aws-sample-bucket1")).contents()
-					.forEach(s3Object -> LOGGER.info("Object in bucket: {}", s3Object.key()));
-
-			// load resource using ResourceLoader
-			WritableResource resource = (WritableResource) resourceLoader
-					.getResource("s3://spring-cloud-aws-sample-bucket1/my-file.txt");
-			String content = readContent(resource);
-			LOGGER.info("File content: {}", content);
-
-			// load content of file retrieved with @Value
-			LOGGER.info("File content: {}", readContent(file));
-
-			// write to resource
-			try (OutputStream outputStream = resource.getOutputStream()) {
-				outputStream.write("overwritten".getBytes(StandardCharsets.UTF_8));
-			}
-			LOGGER.info("Overwritten content: {}", readContent(resource));
+			System.out.println(s3Template.createBucket("mwa-bucket" + UUID.randomUUID()));
 		};
-	}
-
-	private String readContent(Resource resource) throws IOException {
-		Scanner s = new Scanner(resource.getInputStream()).useDelimiter("\\A");
-		return s.hasNext() ? s.next() : "";
 	}
 
 }
