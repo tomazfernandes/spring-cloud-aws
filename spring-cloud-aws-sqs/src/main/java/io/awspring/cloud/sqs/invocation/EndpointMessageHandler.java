@@ -105,18 +105,17 @@ public class EndpointMessageHandler extends AbstractMethodMessageHandler<Endpoin
 
 	@Override
 	protected List<? extends HandlerMethodArgumentResolver> initArgumentResolvers() {
-
-		List<HandlerMethodArgumentResolver> resolvers = new ArrayList<>(getCustomArgumentResolvers());
-
-		resolvers.add(new SqsHeadersMethodArgumentResolver());
-		resolvers.add(new AsyncAcknowledgmentHandlerMethodArgumentResolver(MessageHeaders.ACKNOWLEDGMENT_HEADER));
-		resolvers.add(new VisibilityHandlerMethodArgumentResolver(SqsMessageHeaders.VISIBILITY));
-		resolvers.add(new SqsMessageMethodArgumentResolver());
-		resolvers.add(new HeaderMethodArgumentResolver(new GenericConversionService(), null));
-		resolvers.add(new MessageMethodArgumentResolver(this.messageConverters.isEmpty() ? new StringMessageConverter()
-				: new CompositeMessageConverter(this.messageConverters)));
-		CompositeMessageConverter compositeMessageConverter = createPayloadArgumentCompositeConverter();
-		resolvers.add(new PayloadMethodArgumentResolver(compositeMessageConverter));
+		List<HandlerMethodArgumentResolver> resolvers = getCustomArgumentResolvers();
+		resolvers.addAll(Arrays.asList(
+			new SqsHeadersMethodArgumentResolver(),
+			new AsyncAcknowledgmentHandlerMethodArgumentResolver(MessageHeaders.ACKNOWLEDGMENT_HEADER),
+			new VisibilityHandlerMethodArgumentResolver(SqsMessageHeaders.VISIBILITY),
+			new SqsMessageMethodArgumentResolver(),
+			new HeaderMethodArgumentResolver(new GenericConversionService(), null),
+			new MessageMethodArgumentResolver(this.messageConverters.isEmpty() ? new StringMessageConverter()
+				: new CompositeMessageConverter(this.messageConverters)),
+			new PayloadMethodArgumentResolver(createPayloadArgumentCompositeConverter())
+		));
 		return resolvers;
 	}
 
@@ -131,9 +130,8 @@ public class EndpointMessageHandler extends AbstractMethodMessageHandler<Endpoin
 		MappingJackson2MessageConverter jacksonMessageConverter = new MappingJackson2MessageConverter();
 		jacksonMessageConverter.setSerializedPayloadClass(String.class);
 		jacksonMessageConverter.setStrictContentTypeMatch(false);
-
 		if (this.objectMapper != null) {
-			jacksonMessageConverter.setObjectMapper(objectMapper);
+			jacksonMessageConverter.setObjectMapper(this.objectMapper);
 		}
 		return jacksonMessageConverter;
 	}
@@ -163,7 +161,6 @@ public class EndpointMessageHandler extends AbstractMethodMessageHandler<Endpoin
 							.collect(Collectors.toMap(name -> name, this::getQueueAttributes)))
 					.build();
 		}
-
 		return null;
 	}
 
@@ -179,12 +176,10 @@ public class EndpointMessageHandler extends AbstractMethodMessageHandler<Endpoin
 		for (String destinationName : destinationNames) {
 			result.addAll(Arrays.asList(resolveName(destinationName)));
 		}
-
 		return result;
 	}
 
 	private String[] resolveName(String name) {
-
 		if (!(getApplicationContext() instanceof ConfigurableApplicationContext)) {
 			return wrapInStringArray(name);
 		}

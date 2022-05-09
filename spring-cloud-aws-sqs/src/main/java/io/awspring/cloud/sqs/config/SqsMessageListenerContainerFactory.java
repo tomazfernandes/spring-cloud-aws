@@ -53,7 +53,7 @@ public class SqsMessageListenerContainerFactory
 	protected SqsMessageListenerContainer createContainerInstance(SqsEndpoint endpoint) {
 		SqsContainerOptions containerOptions = createContainerOptions(endpoint);
 		SqsMessageListenerContainer container = new SqsMessageListenerContainer(containerOptions, this.sqsAsyncClient,
-				getMessageListener(endpoint), super.createTaskExecutor());
+				getMessageListener(endpoint), createTaskExecutor());
 		MessagingUtils.INSTANCE.acceptBothIfNoneNull(containerOptions.getMinTimeToProcess(), container,
 				this::addVisibilityExtender);
 		return container;
@@ -61,9 +61,9 @@ public class SqsMessageListenerContainerFactory
 
 	@SuppressWarnings("unchecked")
 	private AsyncMessageListener<String> getMessageListener(SqsEndpoint endpoint) {
-		return endpoint.isAsync() && super.getBeanFactory().containsBean(SqsConfigUtils.SQS_ASYNC_CLIENT_BEAN_NAME)
+		return endpoint.isAsync() && getBeanFactory().containsBean(SqsConfigUtils.SQS_ASYNC_CLIENT_BEAN_NAME)
 				? getBeanFactory().getBean(SqsConfigUtils.SQS_ASYNC_LISTENER_BEAN_NAME, AsyncMessageListener.class)
-				: super.getMessageListener();
+				: getMessageListener();
 	}
 
 	private void addVisibilityExtender(Integer minTimeToProcess, SqsMessageListenerContainer container) {
