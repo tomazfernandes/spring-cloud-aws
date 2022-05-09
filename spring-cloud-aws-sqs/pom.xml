@@ -13,11 +13,6 @@
 	<name>Spring Cloud AWS SQS</name>
 	<description>Spring Cloud AWS Simple Queue Service</description>
 
-	<properties>
-		<maven.compiler.source>8</maven.compiler.source>
-		<maven.compiler.target>8</maven.compiler.target>
-	</properties>
-
 	<dependencies>
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>

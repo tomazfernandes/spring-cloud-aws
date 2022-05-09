@@ -40,7 +40,7 @@ public class SqsMessageListenerContainer extends AbstractMessageListenerContaine
 
 	private static List<AsyncMessageProducer<String>> createMessageProducers(SqsContainerOptions options,
 			SqsAsyncClient sqsClient) {
-		return options.getEndpoint().getQueueAttributes().entrySet().stream()
+		return options.getEndpoint().getQueuesAttributes().entrySet().stream()
 				.map(entry -> createMessageProducer(sqsClient, entry.getKey(), entry.getValue()))
 				.collect(Collectors.toList());
 	}

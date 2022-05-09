@@ -37,7 +37,7 @@ public class SqsEndpoint implements Endpoint {
 
 	private final Integer minTimeToProcess;
 
-	private final Map<String, QueueAttributes> queueAttributesMap;
+	private final Map<String, QueueAttributes> queuesAttributes;
 
 	private final boolean isAsync;
 
@@ -45,7 +45,7 @@ public class SqsEndpoint implements Endpoint {
 			Integer simultaneousPollsPerQueue, Integer pollTimeoutSeconds, Integer minTimeToProcess,
 			Map<String, QueueAttributes> queueAttributesMap, boolean isAsync) {
 		Assert.notEmpty(logicalEndpointNames, "logicalEndpointNames cannot be null.");
-		this.queueAttributesMap = queueAttributesMap;
+		this.queuesAttributes = queueAttributesMap;
 		this.logicalEndpointNames = logicalEndpointNames;
 		this.listenerContainerFactoryName = listenerContainerFactoryName;
 		this.simultaneousPollsPerQueue = simultaneousPollsPerQueue;
@@ -60,7 +60,7 @@ public class SqsEndpoint implements Endpoint {
 
 	@Override
 	public Collection<String> getLogicalEndpointNames() {
-		return logicalEndpointNames;
+		return this.logicalEndpointNames;
 	}
 
 	@Override
@@ -81,15 +81,15 @@ public class SqsEndpoint implements Endpoint {
 	}
 
 	public QueueAttributes getAttributesFor(String queueName) {
-		return this.queueAttributesMap.get(queueName);
+		return this.queuesAttributes.get(queueName);
 	}
 
-	public Map<String, QueueAttributes> getQueueAttributes() {
-		return queueAttributesMap;
+	public Map<String, QueueAttributes> getQueuesAttributes() {
+		return this.queuesAttributes;
 	}
 
 	public boolean isAsync() {
-		return isAsync;
+		return this.isAsync;
 	}
 
 	public static class SqsEndpointBuilder {
@@ -104,7 +104,7 @@ public class SqsEndpoint implements Endpoint {
 
 		private Integer minTimeToProcess;
 
-		private Map<String, QueueAttributes> queueAttributesMap;
+		private Map<String, QueueAttributes> queuesAttributes;
 
 		private boolean async;
 
@@ -133,7 +133,7 @@ public class SqsEndpoint implements Endpoint {
 		}
 
 		public SqsEndpointBuilder queuesAttributes(Map<String, QueueAttributes> queueAttributesMap) {
-			this.queueAttributesMap = queueAttributesMap;
+			this.queuesAttributes = queueAttributesMap;
 			return this;
 		}
 
@@ -144,7 +144,7 @@ public class SqsEndpoint implements Endpoint {
 
 		public SqsEndpoint build() {
 			return new SqsEndpoint(this.logicalEndpointNames, this.factoryName, this.simultaneousPollsPerQueue,
-					this.pollTimeoutSeconds, this.minTimeToProcess, this.queueAttributesMap, this.async);
+					this.pollTimeoutSeconds, this.minTimeToProcess, this.queuesAttributes, this.async);
 		}
 	}
 

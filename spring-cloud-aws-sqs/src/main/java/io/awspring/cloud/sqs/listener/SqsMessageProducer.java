@@ -86,7 +86,7 @@ public class SqsMessageProducer implements AsyncMessageProducer<String>, SmartLi
 		return messages.stream().map(this::getMessageForExecution).collect(Collectors.toList());
 	}
 
-	protected org.springframework.messaging.Message<String> getMessageForExecution(
+	protected Message<String> getMessageForExecution(
 			final software.amazon.awssdk.services.sqs.model.Message message) {
 		HashMap<String, Object> additionalHeaders = new HashMap<>();
 		additionalHeaders.put(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID, this.logicalEndpointName);
@@ -94,10 +94,10 @@ public class SqsMessageProducer implements AsyncMessageProducer<String>, SmartLi
 		additionalHeaders.put(SqsMessageHeaders.QUEUE_VISIBILITY, this.queueAttributes.getVisibilityTimeout());
 		additionalHeaders.put(SqsMessageHeaders.VISIBILITY,
 				new QueueMessageVisibility(this.sqsAsyncClient, this.queueUrl, message.receiptHandle()));
-		return createMessage(message, additionalHeaders);
+		return createMessage(message, Collections.unmodifiableMap(additionalHeaders));
 	}
 
-	protected org.springframework.messaging.Message<String> createMessage(
+	protected Message<String> createMessage(
 			software.amazon.awssdk.services.sqs.model.Message message, Map<String, Object> additionalHeaders) {
 
 		HashMap<String, Object> messageHeaders = new HashMap<>();
@@ -129,7 +129,7 @@ public class SqsMessageProducer implements AsyncMessageProducer<String>, SmartLi
 				messageHeaders.put(messageAttribute.getKey().name(), messageAttribute.getValue());
 			}
 		}
-		return messageHeaders;
+		return Collections.unmodifiableMap(messageHeaders);
 	}
 
 	private static Map<String, Object> getAttributesAsMessageHeaders(
