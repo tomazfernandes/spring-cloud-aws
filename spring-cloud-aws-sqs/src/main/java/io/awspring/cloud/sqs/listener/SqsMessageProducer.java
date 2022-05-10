@@ -65,6 +65,10 @@ public class SqsMessageProducer implements AsyncMessageProducer<String>, SmartLi
 
 	@Override
 	public CompletableFuture<Collection<Message<String>>> produce(int numberOfMessages, Duration timeout) {
+		if (!this.isRunning()) {
+			logger.debug("Producer not running, returning.");
+			return CompletableFuture.completedFuture(null);
+		}
 		logger.trace("Polling for messages at {}", this.queueUrl);
 		return sqsAsyncClient
 				.receiveMessage(req -> req.queueUrl(this.queueUrl).maxNumberOfMessages(numberOfMessages)
@@ -88,6 +92,7 @@ public class SqsMessageProducer implements AsyncMessageProducer<String>, SmartLi
 
 	protected Message<String> getMessageForExecution(
 			final software.amazon.awssdk.services.sqs.model.Message message) {
+		logger.trace("Preparing message {} for execution", message);
 		HashMap<String, Object> additionalHeaders = new HashMap<>();
 		additionalHeaders.put(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID, this.logicalEndpointName);
 		additionalHeaders.put(SqsMessageHeaders.RECEIVED_AT, Instant.now());

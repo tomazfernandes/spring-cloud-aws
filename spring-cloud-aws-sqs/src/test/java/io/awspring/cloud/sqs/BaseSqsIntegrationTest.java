@@ -32,18 +32,18 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 @Testcontainers
 abstract class BaseSqsIntegrationTest {
 
-	protected static final String RECEIVES_MESSAGE_QUEUE_NAME = "receives.message.test.queue";
-	protected static final String DOES_NOT_ACK_ON_ERROR_QUEUE_NAME = "does.not.ack.test.queue";
-	protected static final String RESOLVES_PARAMETER_TYPES_QUEUE_NAME = "resolves.parameter.test.queue";
-	protected static final String RESOLVES_POJO_TYPES_QUEUE_NAME = "resolves.pojo.test.queue";
-	protected static final String RECEIVE_FROM_MANY_1_QUEUE_NAME = "receive.many.test.queue.1";
-	protected static final String RECEIVE_FROM_MANY_2_QUEUE_NAME = "receive.many.test.queue.2";
-	protected static final String ASYNC_RECEIVE_FROM_MANY_1_QUEUE_NAME = "async.receive.many.test.queue.1";
-	protected static final String ASYNC_RECEIVE_FROM_MANY_2_QUEUE_NAME = "async.receive.many.test.queue.2";
+	protected static final String RECEIVES_MESSAGE_QUEUE_NAME = "receives_message_test_queue";
+	protected static final String DOES_NOT_ACK_ON_ERROR_QUEUE_NAME = "does_not_ack_test_queue";
+	protected static final String RESOLVES_PARAMETER_TYPES_QUEUE_NAME = "resolves_parameter_test_queue";
+	protected static final String RESOLVES_POJO_TYPES_QUEUE_NAME = "resolves_pojo_test_queue";
+	protected static final String RECEIVE_FROM_MANY_1_QUEUE_NAME = "receive_many_test_queue_1";
+	protected static final String RECEIVE_FROM_MANY_2_QUEUE_NAME = "receive_many_test_queue_2";
+	protected static final String ASYNC_RECEIVE_FROM_MANY_1_QUEUE_NAME = "async_receive_many_test_queue_1";
+	protected static final String ASYNC_RECEIVE_FROM_MANY_2_QUEUE_NAME = "async_receive_many_test_queue_2";
 
 	@Container
 	static LocalStackContainer localstack = new LocalStackContainer(
-			DockerImageName.parse("localstack/localstack:0.14.0")).withServices(SQS).withReuse(true);
+			DockerImageName.parse("localstack/localstack:0.14.0")).withServices(SQS).withReuse(false);
 
 	static StaticCredentialsProvider credentialsProvider;
 
