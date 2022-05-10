@@ -15,6 +15,7 @@
  */
 package io.awspring.cloud.messaging.support.listener.acknowledgement;
 
+import io.awspring.cloud.messaging.support.MessageHeaderUtils;
 import io.awspring.cloud.messaging.support.listener.MessageHeaders;
 import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
@@ -33,12 +34,14 @@ public class OnSuccessAckHandler<T> implements AsyncAckHandler<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public CompletableFuture<Void> onSuccess(Message<T> message) {
-		logger.trace("Acknowledging message {}", message);
-		Object ackObject = message.getHeaders().get(MessageHeaders.ACKNOWLEDGMENT_HEADER);
-		Assert.notNull(ackObject, () -> "No acknowledgment found for {}" + message);
-		Assert.isInstanceOf(AsyncAcknowledgement.class, ackObject, () -> "Wrong ack type for message:  " + ackObject);
-		return ((AsyncAcknowledgement) ackObject).acknowledge().exceptionally(t -> {
-			logger.error("Error acknowledging message {}", message, t);
+		logger.trace("Acknowledging message {}", MessageHeaderUtils.getId(message));
+		return MessageHeaderUtils.getAcknowledgement(message).acknowledge().handle((value, t) -> {
+			if (t != null) {
+				logger.error("Error acknowledging message {}", message, t);
+			}
+			else {
+				logger.trace("Message {} acknowledged.", MessageHeaderUtils.getId(message));
+			}
 			return null;
 		});
 	}

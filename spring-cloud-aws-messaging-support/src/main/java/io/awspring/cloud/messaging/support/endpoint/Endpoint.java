@@ -23,8 +23,10 @@ import java.util.Collection;
  */
 public interface Endpoint {
 
-	Collection<String> getLogicalEndpointNames();
+	Collection<String> getLogicalNames();
 
 	String getListenerContainerFactoryName();
+
+	String getId();
 
 }

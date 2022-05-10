@@ -17,6 +17,7 @@ package io.awspring.cloud.messaging.support.listener;
 
 import java.util.Collection;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.lang.Nullable;
 
 /**
  * @author Tomaz Fernandes
@@ -26,6 +27,9 @@ public interface MessageListenerContainerRegistry extends SmartLifecycle {
 
 	void registerListenerContainer(MessageListenerContainer listenerContainer);
 
-	Collection<MessageListenerContainer> retrieveListenerContainers();
+	Collection<MessageListenerContainer> getListenerContainers();
+
+	@Nullable
+	MessageListenerContainer getContainerById(String id);
 
 }

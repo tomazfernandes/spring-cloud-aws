@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 the original author or authors.
+ * Copyright 2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,17 +15,16 @@
  */
 package io.awspring.cloud.sqs.endpoint;
 
-import io.awspring.cloud.messaging.support.endpoint.Endpoint;
+import io.awspring.cloud.messaging.support.endpoint.AbstractEndpoint;
 import io.awspring.cloud.sqs.listener.QueueAttributes;
 import java.util.Collection;
 import java.util.Map;
-import org.springframework.util.Assert;
 
 /**
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SqsEndpoint implements Endpoint {
+public class SqsEndpoint extends AbstractEndpoint {
 
 	private final Collection<String> logicalEndpointNames;
 
@@ -42,9 +41,9 @@ public class SqsEndpoint implements Endpoint {
 	private final boolean isAsync;
 
 	private SqsEndpoint(Collection<String> logicalEndpointNames, String listenerContainerFactoryName,
-			Integer simultaneousPollsPerQueue, Integer pollTimeoutSeconds, Integer minTimeToProcess,
-			Map<String, QueueAttributes> queueAttributesMap, boolean isAsync) {
-		Assert.notEmpty(logicalEndpointNames, "logicalEndpointNames cannot be null.");
+						Integer simultaneousPollsPerQueue, Integer pollTimeoutSeconds, Integer minTimeToProcess,
+						Map<String, QueueAttributes> queueAttributesMap, boolean isAsync, String id) {
+		super(logicalEndpointNames, listenerContainerFactoryName, id);
 		this.queuesAttributes = queueAttributesMap;
 		this.logicalEndpointNames = logicalEndpointNames;
 		this.listenerContainerFactoryName = listenerContainerFactoryName;
@@ -59,7 +58,7 @@ public class SqsEndpoint implements Endpoint {
 	}
 
 	@Override
-	public Collection<String> getLogicalEndpointNames() {
+	public Collection<String> getLogicalNames() {
 		return this.logicalEndpointNames;
 	}
 
@@ -108,6 +107,8 @@ public class SqsEndpoint implements Endpoint {
 
 		private boolean async;
 
+		private String id;
+
 		public SqsEndpointBuilder(Collection<String> logicalEndpointNames) {
 			this.logicalEndpointNames = logicalEndpointNames;
 		}
@@ -142,9 +143,14 @@ public class SqsEndpoint implements Endpoint {
 			return this;
 		}
 
+		public SqsEndpointBuilder id(String id) {
+			this.id = id;
+			return this;
+		}
+
 		public SqsEndpoint build() {
 			return new SqsEndpoint(this.logicalEndpointNames, this.factoryName, this.simultaneousPollsPerQueue,
-					this.pollTimeoutSeconds, this.minTimeToProcess, this.queuesAttributes, this.async);
+					this.pollTimeoutSeconds, this.minTimeToProcess, this.queuesAttributes, this.async, this.id);
 		}
 	}
 
