@@ -94,6 +94,7 @@ public class SqsMessageProducer implements AsyncMessageProducer<String>, SmartLi
 			final software.amazon.awssdk.services.sqs.model.Message message) {
 		logger.trace("Preparing message {} for execution", message);
 		HashMap<String, Object> additionalHeaders = new HashMap<>();
+		additionalHeaders.put(MessageHeaders.MESSAGE_ID_HEADER, message.messageId());
 		additionalHeaders.put(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID, this.logicalEndpointName);
 		additionalHeaders.put(SqsMessageHeaders.RECEIVED_AT, Instant.now());
 		additionalHeaders.put(SqsMessageHeaders.QUEUE_VISIBILITY, this.queueAttributes.getVisibilityTimeout());

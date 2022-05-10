@@ -18,10 +18,11 @@ package io.awspring.cloud.messaging.support.listener;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
 
 /**
  * @author Tomaz Fernandes
@@ -31,7 +32,7 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 
 	private static final Logger logger = LoggerFactory.getLogger(DefaultListenerContainerRegistry.class);
 
-	private final List<MessageListenerContainer> listenerContainers = new ArrayList<>();
+	private final Collection<MessageListenerContainer> listenerContainers = new ArrayList<>();
 
 	private final Object lifecycleMonitor = new Object();
 
@@ -40,12 +41,22 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 	@Override
 	public void registerListenerContainer(MessageListenerContainer listenerContainer) {
 		logger.debug("Registering listener container {}", listenerContainer);
+		Assert.state(getContainerById(listenerContainer.getId()) == null,
+			() -> "Already registered container with id " + listenerContainer.getId());
 		this.listenerContainers.add(listenerContainer);
 	}
 
 	@Override
-	public Collection<MessageListenerContainer> retrieveListenerContainers() {
-		return Collections.unmodifiableList(this.listenerContainers);
+	public Collection<MessageListenerContainer> getListenerContainers() {
+		return Collections.unmodifiableCollection(this.listenerContainers);
+	}
+
+	@Nullable
+	@Override
+	public MessageListenerContainer getContainerById(String id) {
+		Assert.notNull(id, "id cannot be null.");
+		return this.listenerContainers.stream()
+			.filter(container -> container.getId().equals(id)).findFirst().orElse(null);
 	}
 
 	@Override

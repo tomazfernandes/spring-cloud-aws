@@ -76,6 +76,8 @@ public @interface SqsListener {
 
 	String factory() default "";
 
+	String id() default "";
+
 	String concurrentPollsPerContainer() default "";
 
 	String pollTimeoutSeconds() default "";

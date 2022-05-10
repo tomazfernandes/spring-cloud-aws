@@ -17,7 +17,7 @@ package io.awspring.cloud.sqs.config;
 
 import io.awspring.cloud.messaging.support.config.MessagingConfigUtils;
 import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
-import io.awspring.cloud.sqs.invocation.EndpointMessageHandler;
+import io.awspring.cloud.sqs.invocation.SqsEndpointMessageHandler;
 import io.awspring.cloud.sqs.listener.MessageHandlerMessageListener;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -38,7 +38,7 @@ public class SqsConfigurationSupport {
 	@Bean(name = MessagingConfigUtils.ENDPOINT_REGISTRY_BEAN_NAME)
 	public MessageHandler endpointMessageHandler(
 			@Qualifier(SqsConfigUtils.SQS_ASYNC_CLIENT_BEAN_NAME) SqsAsyncClient sqsAsyncClient) {
-		return new EndpointMessageHandler(sqsAsyncClient);
+		return new SqsEndpointMessageHandler(sqsAsyncClient);
 	}
 
 }

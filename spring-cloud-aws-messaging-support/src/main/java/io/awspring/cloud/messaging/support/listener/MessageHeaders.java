@@ -26,4 +26,6 @@ public class MessageHeaders {
 
 	public static final String ACKNOWLEDGMENT_HEADER = "acknowledgement";
 
+	public static final String MESSAGE_ID_HEADER = "message_id";
+
 }

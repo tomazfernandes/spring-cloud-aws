@@ -52,13 +52,13 @@ public class SqsMessageListenerContainer extends AbstractMessageListenerContaine
 
 	@Override
 	protected void doStart() {
-		logger.debug("Starting SqsMessageListenerContainer {}", this);
+		logger.debug("Starting SqsMessageListenerContainer {}", getId());
 		super.getMessageProducers().stream().map(SqsMessageProducer.class::cast).forEach(SqsMessageProducer::start);
 	}
 
 	@Override
 	protected void doStop() {
-		logger.debug("Stopping SqsMessageListenerContainer {}", this);
+		logger.debug("Stopping SqsMessageListenerContainer {}", getId());
 		super.getMessageProducers().stream().map(SqsMessageProducer.class::cast).forEach(SqsMessageProducer::stop);
 	}
 }

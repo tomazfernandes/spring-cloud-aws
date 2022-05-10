@@ -221,7 +221,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Autowired
 		LatchContainer latchContainer;
 
-		@SqsListener(queueNames = RECEIVES_MESSAGE_QUEUE_NAME)
+		@SqsListener(queueNames = RECEIVES_MESSAGE_QUEUE_NAME, id = "receivesMessageContainer")
 		void listen(String message) {
 			logger.debug("Received message in Listener Method: " + message);
 			latchContainer.receivesMessageLatch.countDown();

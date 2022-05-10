@@ -39,8 +39,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import org.springframework.beans.factory.DisposableBean;
+
 import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
@@ -77,8 +78,10 @@ import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
  * @author Tomaz Fernandes
  * @since 1.0
  */
-public class EndpointMessageHandler extends AbstractMethodMessageHandler<Endpoint>
+public class SqsEndpointMessageHandler extends AbstractMethodMessageHandler<Endpoint>
 		implements EndpointRegistry {
+
+	private static final String GENERATED_ID_PREFIX = "io.awspring.cloud.sqs.sqsListenerEndpointContainer#";
 
 	private final List<MessageConverter> messageConverters;
 
@@ -86,12 +89,14 @@ public class EndpointMessageHandler extends AbstractMethodMessageHandler<Endpoin
 
 	private final SqsAsyncClient sqsAsyncClient;
 
-	public EndpointMessageHandler(SqsAsyncClient sqsAsyncClient, List<MessageConverter> messageConverters) {
+	private final AtomicInteger counter = new AtomicInteger();
+
+	public SqsEndpointMessageHandler(SqsAsyncClient sqsAsyncClient, List<MessageConverter> messageConverters) {
 		this.sqsAsyncClient = sqsAsyncClient;
 		this.messageConverters = messageConverters;
 	}
 
-	public EndpointMessageHandler(SqsAsyncClient sqsAsyncClient) {
+	public SqsEndpointMessageHandler(SqsAsyncClient sqsAsyncClient) {
 		this(sqsAsyncClient, Collections.emptyList());
 	}
 
@@ -153,6 +158,7 @@ public class EndpointMessageHandler extends AbstractMethodMessageHandler<Endpoin
 			Set<String> logicalEndpointNames = resolveDestinationNames(sqsListenerAnnotation.value());
 			return SqsEndpoint.from(logicalEndpointNames)
 					.factoryBeanName(resolveName(sqsListenerAnnotation.factory())[0])
+					.id(getEndpointId(sqsListenerAnnotation))
 					.pollTimeoutSeconds(resolveInteger(sqsListenerAnnotation.pollTimeoutSeconds()))
 					.simultaneousPollsPerQueue(resolveInteger(sqsListenerAnnotation.concurrentPollsPerContainer()))
 					.minTimeToProcess(resolveInteger(sqsListenerAnnotation.minSecondsToProcess()))
@@ -163,6 +169,16 @@ public class EndpointMessageHandler extends AbstractMethodMessageHandler<Endpoin
 		}
 		return null;
 	}
+
+	private String getEndpointId(SqsListener kafkaListener) {
+		if (StringUtils.hasText(kafkaListener.id())) {
+			return resolveName(kafkaListener.id())[0];
+		}
+		else {
+			return GENERATED_ID_PREFIX + this.counter.getAndIncrement();
+		}
+	}
+
 
 	private Integer resolveInteger(String pollingTimeoutSeconds) {
 		String[] pollingStrings = resolveName(pollingTimeoutSeconds);
@@ -231,7 +247,7 @@ public class EndpointMessageHandler extends AbstractMethodMessageHandler<Endpoin
 
 	@Override
 	protected Set<String> getDirectLookupDestinations(Endpoint mapping) {
-		return new HashSet<>(mapping.getLogicalEndpointNames());
+		return new HashSet<>(mapping.getLogicalNames());
 	}
 
 	@Override
@@ -241,7 +257,7 @@ public class EndpointMessageHandler extends AbstractMethodMessageHandler<Endpoin
 
 	@Override
 	protected Endpoint getMatchingMapping(Endpoint endpoint, Message<?> message) {
-		return endpoint.getLogicalEndpointNames().contains(getDestination(message)) ? endpoint : null;
+		return endpoint.getLogicalNames().contains(getDestination(message)) ? endpoint : null;
 	}
 
 	@Override

@@ -33,7 +33,7 @@ import org.springframework.util.Assert;
 public abstract class AbstractMessageListenerContainerFactory<T, C extends AbstractMessageListenerContainer<T>, E extends Endpoint>
 		implements MessageListenerContainerFactory<C, E>, SmartInitializingSingleton, BeanFactoryAware {
 
-	private static final Integer DEFAULT_THREADPOOL_SIZE = 11;
+	private static final Integer DEFAULT_THREAD_POOL_SIZE = 11;
 	private final AbstractFactoryOptions<T, ?> factoryOptions;
 	private BeanFactory beanFactory;
 	private AsyncMessageListener<T> messageListener;
@@ -45,6 +45,7 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	@Override
 	public C create(E endpoint) {
 		C container = createContainerInstance(endpoint);
+		container.setId(endpoint.getId());
 		MessagingUtils.INSTANCE.acceptIfNotNull(this.factoryOptions.getErrorHandler(), container::setErrorHandler)
 				.acceptIfNotNull(this.factoryOptions.getAckHandler(), container::setAckHandler)
 				.acceptIfNotNull(this.factoryOptions.getMessageInterceptor(), container::setMessageInterceptor);
@@ -61,7 +62,7 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 		ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
 		int poolSize = this.factoryOptions.getMaxWorkersPerContainer() != null
 				? this.factoryOptions.getMaxWorkersPerContainer() + 1
-				: DEFAULT_THREADPOOL_SIZE;
+				: DEFAULT_THREAD_POOL_SIZE;
 		taskExecutor.setMaxPoolSize(poolSize);
 		taskExecutor.setCorePoolSize(poolSize);
 		return taskExecutor;

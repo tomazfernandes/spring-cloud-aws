@@ -23,4 +23,6 @@ import org.springframework.context.SmartLifecycle;
  */
 public interface MessageListenerContainer extends SmartLifecycle {
 
+    String getId();
+
 }
