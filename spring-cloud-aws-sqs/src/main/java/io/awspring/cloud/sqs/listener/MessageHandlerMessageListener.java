@@ -17,10 +17,8 @@ package io.awspring.cloud.sqs.listener;
 
 import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHandler;
 
@@ -34,8 +32,6 @@ public class MessageHandlerMessageListener<T> implements AsyncMessageListener<T>
 
 	private final MessageHandler messageHandler;
 
-	private TaskExecutor taskExecutor;
-
 	public MessageHandlerMessageListener(MessageHandler messageHandler) {
 		this.messageHandler = messageHandler;
 	}
@@ -43,18 +39,13 @@ public class MessageHandlerMessageListener<T> implements AsyncMessageListener<T>
 	@Override
 	public CompletableFuture<Void> onMessage(Message<T> message) {
 		logger.trace("Handling message {} in thread {}", message.getPayload(), Thread.currentThread().getName());
-		return this.taskExecutor != null ? CompletableFuture.supplyAsync(handleMessage(message), this.taskExecutor)
-				: CompletableFuture.supplyAsync(handleMessage(message));
-	}
-
-	private Supplier<Void> handleMessage(Message<T> message) {
-		return () -> {
+		CompletableFuture<Void> result = new CompletableFuture<>();
+		try {
 			this.messageHandler.handleMessage(message);
-			return null;
-		};
-	}
-
-	public void setTaskExecutor(TaskExecutor taskExecutor) {
-		this.taskExecutor = taskExecutor;
+			result.complete(null);
+		} catch (Exception e) {
+			result.completeExceptionally(e);
+		}
+		return result;
 	}
 }

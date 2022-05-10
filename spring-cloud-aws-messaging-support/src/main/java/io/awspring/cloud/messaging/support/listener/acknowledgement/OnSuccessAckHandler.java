@@ -33,10 +33,13 @@ public class OnSuccessAckHandler<T> implements AsyncAckHandler<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public CompletableFuture<Void> onSuccess(Message<T> message) {
-		logger.trace("Acknowledging message " + message);
+		logger.trace("Acknowledging message {}", message);
 		Object ackObject = message.getHeaders().get(MessageHeaders.ACKNOWLEDGMENT_HEADER);
-		Assert.notNull(ackObject, () -> "No acknowledgment found for " + message);
+		Assert.notNull(ackObject, () -> "No acknowledgment found for {}" + message);
 		Assert.isInstanceOf(AsyncAcknowledgement.class, ackObject, () -> "Wrong ack type for message:  " + ackObject);
-		return ((AsyncAcknowledgement) ackObject).acknowledge();
+		return ((AsyncAcknowledgement) ackObject).acknowledge().exceptionally(t -> {
+			logger.error("Error acknowledging message {}", message, t);
+			return null;
+		});
 	}
 }

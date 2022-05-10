@@ -56,6 +56,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	private AsyncAckHandler<T> ackHandler = new OnSuccessAckHandler<>();
 
+	// TODO: Make this a Collection
 	private AsyncMessageInterceptor<T> messageInterceptor = null;
 
 	protected AbstractMessageListenerContainer(AbstractContainerOptions<?> options, TaskExecutor taskExecutor,
@@ -90,7 +91,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	public AsyncMessageInterceptor<T> getMessageInterceptor() {
-		return messageInterceptor;
+		return this.messageInterceptor;
 	}
 
 	@Override
@@ -112,13 +113,19 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 			this.messageProducers.forEach(producer -> {
 				try {
 					acquireSemaphore();
+					if (!this.isRunning) {
+						logger.debug("Container not running, returning.");
+						this.producersSemaphore.release();
+						return;
+					}
 					producer.produce(options.getMessagesPerProduce(), options.getProduceTimeout())
-							.thenComposeAsync(this::splitAndProcessMessages).handle(handleProcessingResult())
+							.thenComposeAsync(this::splitAndProcessMessages, this.taskExecutor)
+							.handle(handleProcessingResult())
 							.thenRun(releaseSemaphore());
 				}
 				catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
-					logger.debug("Thread interrupted", e);
+					logger.trace("Thread interrupted", e);
 				}
 				catch (Exception e) {
 					logger.error("Error in ListenerContainer", e);
@@ -128,23 +135,26 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	protected CompletableFuture<?> splitAndProcessMessages(Collection<Message<T>> messages) {
-		logger.trace("Received {} messages in Thread {}", messages.size(), Thread.currentThread().getName());
+		logger.trace("Received {} messages", messages.size());
 		return CompletableFuture
 				.allOf(messages.stream().map(this::processMessageAsync).toArray(CompletableFuture[]::new));
 	}
 
-	protected CompletableFuture<?> processMessageAsync(Message<T> msg) {
-		return CompletableFuture.supplyAsync(() -> processMessage(msg), this.taskExecutor).thenCompose(x -> x);
+	protected CompletableFuture<?> processMessageAsync(Message<T> message) {
+		logger.trace("Received message {}", message);
+		return CompletableFuture.supplyAsync(() -> doProcessMessage(message), this.taskExecutor)
+			.thenCompose(x -> x);
 	}
 
-	protected CompletableFuture<?> processMessage(Message<T> message) {
-		logger.debug("Processing message {} in thread {}", message, Thread.currentThread().getName());
+	protected CompletableFuture<?> doProcessMessage(Message<T> message) {
+		logger.trace("Processing message {}", message);
 		CompletableFuture<Void> messageListenerResult = maybeIntercept(message, this.messageListener::onMessage);
 		return this.messageListener instanceof CallbackMessageListener ? CompletableFuture.completedFuture(null)
-				: messageListenerResult.handle((val, t) -> handleResult(message, t));
+				: messageListenerResult.handle((val, t) -> handleResult(message, t)).thenCompose(x -> x);
 	}
 
 	protected CompletableFuture<?> handleResult(Message<T> message, Throwable throwable) {
+		logger.trace("Handling result for message {}", message);
 		return throwable == null ? this.ackHandler.onSuccess(message)
 				: this.errorHandler.handleError(message, throwable)
 						.thenCompose(val -> this.ackHandler.onError(message, throwable));
@@ -152,26 +162,27 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	private CompletableFuture<Void> maybeIntercept(Message<T> message,
 			Function<Message<T>, CompletableFuture<Void>> listener) {
-		return this.messageInterceptor != null ? this.messageInterceptor.intercept(message).thenComposeAsync(listener)
+		logger.trace("Evaluating interceptor for message {}", message);
+		return this.messageInterceptor != null ? this.messageInterceptor.intercept(message).thenCompose(listener)
 				: listener.apply(message);
 	}
 
 	private void acquireSemaphore() throws InterruptedException {
 		producersSemaphore.acquire();
-		logger.trace("Semaphore acquired for producer {} in thread {} ", this, Thread.currentThread().getName());
+		logger.trace("Semaphore acquired for producer {} ", this);
 	}
 
 	private Runnable releaseSemaphore() {
 		return () -> {
 			this.producersSemaphore.release();
-			logger.trace("Semaphore released for producer {} in thread {} ", this, Thread.currentThread().getName());
+			logger.trace("Semaphore released for producer {} ", this);
 		};
 	}
 
 	protected BiFunction<Object, Throwable, Void> handleProcessingResult() {
 		return (value, t) -> {
 			if (t != null) {
-				logger.error("Error handling messages in container {} ", this);
+				logger.error("Error handling messages in container {} ", this, t);
 			}
 			return null;
 		};
