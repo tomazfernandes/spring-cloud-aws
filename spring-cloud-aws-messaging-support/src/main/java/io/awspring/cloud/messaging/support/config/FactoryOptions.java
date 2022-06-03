@@ -16,6 +16,8 @@
 package io.awspring.cloud.messaging.support.config;
 
 /**
+ * Top-level abstraction to hold options for a {@link MessageListenerContainerFactory}.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

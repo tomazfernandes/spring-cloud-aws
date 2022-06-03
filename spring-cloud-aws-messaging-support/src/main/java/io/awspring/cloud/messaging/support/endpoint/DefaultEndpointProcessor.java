@@ -29,6 +29,10 @@ import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
+ * Default {@link EndpointProcessor} implementation to process an {@link Endpoint}.
+ * Uses a {@link MessageListenerContainerFactory} to create a {@link MessageListenerContainer}
+ * and register it in the {@link MessageListenerContainerRegistry}.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

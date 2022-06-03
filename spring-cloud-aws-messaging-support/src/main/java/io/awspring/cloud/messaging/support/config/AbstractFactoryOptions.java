@@ -20,6 +20,7 @@ import io.awspring.cloud.messaging.support.listener.AsyncMessageInterceptor;
 import io.awspring.cloud.messaging.support.listener.acknowledgement.AsyncAckHandler;
 
 /**
+ * {@link FactoryOptions} to be used with a {@link AbstractMessageListenerContainerFactory}.
  * @author Tomaz Fernandes
  * @since 3.0
  */
