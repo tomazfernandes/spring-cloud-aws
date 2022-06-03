@@ -19,6 +19,9 @@ import io.awspring.cloud.messaging.support.endpoint.Endpoint;
 import io.awspring.cloud.messaging.support.listener.MessageListenerContainer;
 
 /**
+ * Creates a {@link MessageListenerContainer} instance for a given
+ * {@link Endpoint}.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

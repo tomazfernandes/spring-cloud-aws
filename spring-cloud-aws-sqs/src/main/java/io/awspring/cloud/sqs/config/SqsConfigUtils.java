@@ -15,7 +15,12 @@
  */
 package io.awspring.cloud.sqs.config;
 
+import io.awspring.cloud.sqs.listener.MessageHandlerMessageListener;
+import software.amazon.awssdk.services.sqs.SqsAsyncClient;
+
 /**
+ * Contains the bean names for the {@link SqsAsyncClient} and {@link MessageHandlerMessageListener}
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

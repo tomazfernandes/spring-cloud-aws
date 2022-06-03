@@ -19,14 +19,22 @@ import io.awspring.cloud.messaging.support.MessagingUtils;
 import io.awspring.cloud.messaging.support.endpoint.Endpoint;
 import io.awspring.cloud.messaging.support.listener.AbstractMessageListenerContainer;
 import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
+import io.awspring.cloud.messaging.support.listener.MessageListenerContainer;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.messaging.Message;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.Assert;
 
 /**
+ * Base implementation for a {@link MessageListenerContainerFactory}.
+ *
+ * @param <T> the {@link Message} type to be consumed by the {@link AbstractMessageListenerContainer}
+ * @param <C> the {@link AbstractMessageListenerContainer} type.
+ * @param <E> the {@link Endpoint} type for which the {@link MessageListenerContainer} will be created.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

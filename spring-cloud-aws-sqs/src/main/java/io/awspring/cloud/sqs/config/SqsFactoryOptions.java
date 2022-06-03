@@ -16,8 +16,11 @@
 package io.awspring.cloud.sqs.config;
 
 import io.awspring.cloud.messaging.support.config.AbstractFactoryOptions;
+import io.awspring.cloud.messaging.support.config.FactoryOptions;
 
 /**
+ * {@link FactoryOptions} to be used with {@link SqsMessageListenerContainerFactory}.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

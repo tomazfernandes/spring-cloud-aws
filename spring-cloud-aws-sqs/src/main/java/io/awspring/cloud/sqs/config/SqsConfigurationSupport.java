@@ -17,6 +17,7 @@ package io.awspring.cloud.sqs.config;
 
 import io.awspring.cloud.messaging.support.config.MessagingConfigUtils;
 import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
+import io.awspring.cloud.sqs.annotation.EnableSqs;
 import io.awspring.cloud.sqs.invocation.SqsEndpointMessageHandler;
 import io.awspring.cloud.sqs.listener.MessageHandlerMessageListener;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -25,6 +26,8 @@ import org.springframework.messaging.MessageHandler;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 /**
+ * Creates the necessary beans.
+ * Imported in the {@link EnableSqs @EnableSqs} annotation.
  * @author Tomaz Fernandes
  * @since 3.0
  */

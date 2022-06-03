@@ -70,6 +70,13 @@ import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
 
 /**
+ *
+ * Processes the {@link SqsListener @SqsListener} annotations.
+ * Creates {@link Endpoint} instances with annotation information
+ * and the methods that will be invoked to handle messages,
+ *
+ * Conforms to the {@link EndpointRegistry} contract.
+ *
  * @author Agim Emruli
  * @author Alain Sahli
  * @author Maciej Walkowiak

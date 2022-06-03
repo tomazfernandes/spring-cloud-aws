@@ -15,7 +15,9 @@
  */
 package io.awspring.cloud.messaging.support.config;
 
-/**
+/***
+ * Utility class containing the bean names used for the framework's configuration.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

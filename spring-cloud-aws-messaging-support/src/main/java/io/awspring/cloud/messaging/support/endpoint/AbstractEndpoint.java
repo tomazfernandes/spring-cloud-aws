@@ -20,6 +20,8 @@ import org.springframework.util.Assert;
 import java.util.Collection;
 
 /**
+ * Base class for implementing an {@link Endpoint}.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

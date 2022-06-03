@@ -17,6 +17,7 @@ package io.awspring.cloud.sqs.config;
 
 import io.awspring.cloud.messaging.support.MessagingUtils;
 import io.awspring.cloud.messaging.support.config.AbstractMessageListenerContainerFactory;
+import io.awspring.cloud.messaging.support.config.MessageListenerContainerFactory;
 import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
 import io.awspring.cloud.sqs.endpoint.SqsEndpoint;
 import io.awspring.cloud.sqs.listener.MessageVisibilityExtenderInterceptor;
@@ -25,9 +26,15 @@ import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
+import software.amazon.awssdk.core.internal.http.AmazonAsyncHttpClient;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 /**
+ * {@link MessageListenerContainerFactory} implementation for creating
+ * {@link SqsMessageListenerContainer} instances.
+ * It is typed as String since {@link AmazonAsyncHttpClient} returns strings
+ * rather than POJOs.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

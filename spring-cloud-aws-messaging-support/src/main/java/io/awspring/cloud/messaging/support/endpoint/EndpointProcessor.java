@@ -15,7 +15,12 @@
  */
 package io.awspring.cloud.messaging.support.endpoint;
 
+import io.awspring.cloud.messaging.support.config.MessageListenerContainerFactory;
+
 /**
+ * Processes a given {@link Endpoint} by using a {@link MessageListenerContainerFactory}
+ * to create
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

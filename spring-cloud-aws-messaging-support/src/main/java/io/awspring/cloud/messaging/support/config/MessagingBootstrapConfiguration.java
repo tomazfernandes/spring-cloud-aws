@@ -23,6 +23,11 @@ import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.type.AnnotationMetadata;
 
 /**
+ *
+ * Registers the {@link DefaultListenerContainerRegistry} and
+ * {@link DefaultEndpointProcessor} that will be used to bootstrap
+ * the framework.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

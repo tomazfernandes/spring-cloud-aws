@@ -18,6 +18,8 @@ package io.awspring.cloud.messaging.support.endpoint;
 import java.util.Collection;
 
 /**
+ * Represents a messaging endpoint from and to which messages can be sent and received.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

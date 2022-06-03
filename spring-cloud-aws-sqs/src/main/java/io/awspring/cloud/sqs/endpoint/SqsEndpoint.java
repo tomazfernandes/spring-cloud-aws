@@ -16,11 +16,14 @@
 package io.awspring.cloud.sqs.endpoint;
 
 import io.awspring.cloud.messaging.support.endpoint.AbstractEndpoint;
+import io.awspring.cloud.messaging.support.endpoint.Endpoint;
 import io.awspring.cloud.sqs.listener.QueueAttributes;
 import java.util.Collection;
 import java.util.Map;
 
 /**
+ * {@link Endpoint} implementation for SQS endpoints.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

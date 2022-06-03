@@ -18,6 +18,9 @@ package io.awspring.cloud.messaging.support.endpoint;
 import java.util.Collection;
 
 /**
+ * A registry abstraction that holds the {@link Endpoint}
+ * instances to be processed by the {@link EndpointProcessor}.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */
