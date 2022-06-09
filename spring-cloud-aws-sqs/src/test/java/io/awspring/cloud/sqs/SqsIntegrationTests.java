@@ -26,6 +26,7 @@ import io.awspring.cloud.messaging.support.listener.AsyncErrorHandler;
 import io.awspring.cloud.messaging.support.listener.AsyncMessageInterceptor;
 import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
 import io.awspring.cloud.messaging.support.listener.MessageHeaders;
+import io.awspring.cloud.messaging.support.listener.MessageListenerContainer;
 import io.awspring.cloud.messaging.support.listener.MessageListenerContainerRegistry;
 import io.awspring.cloud.messaging.support.listener.acknowledgement.AsyncAckHandler;
 import io.awspring.cloud.messaging.support.listener.acknowledgement.AsyncAcknowledgement;
@@ -35,6 +36,7 @@ import io.awspring.cloud.sqs.config.SqsConfigUtils;
 import io.awspring.cloud.sqs.config.SqsMessageListenerContainerFactory;
 import io.awspring.cloud.sqs.listener.AsyncMessageHandlerMessageListener;
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
+import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.Visibility;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -391,6 +393,12 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Bean
 		public MessageListenerContainerFactory<?, ?> defaultListenerContainerFactory() {
 			return new SqsMessageListenerContainerFactory();
+		}
+
+		public MessageListenerContainer messageListenerContainer() {
+			new SqsMessageListenerContainer()
+
+			return null;
 		}
 
 		@Bean

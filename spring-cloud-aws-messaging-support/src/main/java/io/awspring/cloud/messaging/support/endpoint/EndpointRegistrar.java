@@ -25,8 +25,14 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory;
+import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 
 /**
  * Default {@link EndpointProcessor} implementation to process an {@link Endpoint}.
@@ -36,33 +42,75 @@ import org.springframework.util.StringUtils;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class DefaultEndpointProcessor implements EndpointProcessor, BeanFactoryAware, SmartInitializingSingleton {
+public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSingleton {
 
-	private static final Logger logger = LoggerFactory.getLogger(DefaultEndpointProcessor.class);
+	private static final Logger logger = LoggerFactory.getLogger(EndpointRegistrar.class);
 
 	private BeanFactory beanFactory;
 
+	private MessageHandlerMethodFactory messageHandlerMethodFactory = new DefaultMessageHandlerMethodFactory();
+
 	private MessageListenerContainerRegistry listenerContainerRegistry;
 
-	@Override
-	public void afterSingletonsInstantiated() {
-		Assert.isTrue(beanFactory.containsBean(MessagingConfigUtils.ENDPOINT_REGISTRY_BEAN_NAME),
-				() -> "A MessageListenerContainerRegistry implementation must be registered with name "
-						+ MessagingConfigUtils.ENDPOINT_REGISTRY_BEAN_NAME);
-		this.listenerContainerRegistry = beanFactory.getBean(
-				MessagingConfigUtils.MESSAGE_LISTENER_CONTAINER_REGISTRY_BEAN_NAME,
-				MessageListenerContainerRegistry.class);
-		this.beanFactory.getBean(MessagingConfigUtils.ENDPOINT_REGISTRY_BEAN_NAME, EndpointRegistry.class)
-				.retrieveEndpoints().forEach(this::process);
+	private String messageListenerContainerRegistryBeanName =
+		MessagingConfigUtils.MESSAGE_LISTENER_CONTAINER_REGISTRY_BEAN_NAME;
+
+	private String defaultListenerContainerFactoryBeanName =
+		MessagingConfigUtils.DEFAULT_LISTENER_CONTAINER_FACTORY_BEAN_NAME;
+
+	private final Collection<Endpoint> endpoints = new ArrayList<>();
+
+	/**
+	 * Set a custom {@link MessageHandlerMethodFactory} implementation.
+	 * @param messageHandlerMethodFactory the instance.
+	 */
+	public void setMessageHandlerMethodFactory(MessageHandlerMethodFactory messageHandlerMethodFactory) {
+		this.messageHandlerMethodFactory = messageHandlerMethodFactory;
+	}
+
+	/**
+	 * Set a custom {@link MessageListenerContainerRegistry}.
+	 * @param listenerContainerRegistry the instance.
+	 */
+	public void setListenerContainerRegistry(MessageListenerContainerRegistry listenerContainerRegistry) {
+		this.listenerContainerRegistry = listenerContainerRegistry;
+	}
+
+	/**
+	 * Set the bean name for the default {@link MessageListenerContainerFactory}.
+	 * @param defaultListenerContainerFactoryBeanName the bean name.
+	 */
+	public void setDefaultListenerContainerFactoryBeanName(String defaultListenerContainerFactoryBeanName) {
+		this.defaultListenerContainerFactoryBeanName = defaultListenerContainerFactoryBeanName;
+	}
+
+	/**
+	 * Set the bean name for the {@link MessageListenerContainerRegistry}.
+	 * @param messageListenerContainerRegistryBeanName the bean name.
+	 */
+	public void setMessageListenerContainerRegistryBeanName(String messageListenerContainerRegistryBeanName) {
+		this.messageListenerContainerRegistryBeanName = messageListenerContainerRegistryBeanName;
+	}
+
+	public <E extends Endpoint> void registerEndpoint(E e) {
+		this.endpoints.add(e);
 	}
 
 	@Override
-	public void process(Endpoint endpoint) {
+	public void afterSingletonsInstantiated() {
+		if (this.listenerContainerRegistry == null) {
+			this.listenerContainerRegistry = beanFactory.getBean(
+				this.messageListenerContainerRegistryBeanName, MessageListenerContainerRegistry.class);
+		}
+		this.endpoints.forEach(this::process);
+	}
+
+	private void process(Endpoint endpoint) {
 		logger.debug("Processing endpoint {}", endpoint);
 		this.listenerContainerRegistry.registerListenerContainer(createContainerFor(endpoint));
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "rawtype"})
 	private MessageListenerContainer createContainerFor(Endpoint endpoint) {
 		String factoryBeanName = getListenerContainerFactoryName(endpoint);
 		Assert.isTrue(this.beanFactory.containsBean(factoryBeanName),
@@ -73,7 +121,7 @@ public class DefaultEndpointProcessor implements EndpointProcessor, BeanFactoryA
 	private String getListenerContainerFactoryName(Endpoint endpoint) {
 		return StringUtils.hasText(endpoint.getListenerContainerFactoryName())
 				? endpoint.getListenerContainerFactoryName()
-				: MessagingConfigUtils.DEFAULT_LISTENER_CONTAINER_FACTORY_BEAN_NAME;
+				: this.defaultListenerContainerFactoryBeanName;
 	}
 
 	@Override

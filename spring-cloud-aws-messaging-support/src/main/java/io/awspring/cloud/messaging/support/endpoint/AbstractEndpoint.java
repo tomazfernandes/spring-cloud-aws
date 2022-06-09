@@ -15,6 +15,7 @@
  */
 package io.awspring.cloud.messaging.support.endpoint;
 
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 import java.util.Collection;
@@ -33,7 +34,9 @@ public abstract class AbstractEndpoint implements Endpoint {
 
 	private final String id;
 
-	protected AbstractEndpoint(Collection<String> logicalNames, String listenerContainerFactoryName, String id) {
+	protected AbstractEndpoint(Collection<String> logicalNames,
+							   @Nullable String listenerContainerFactoryName,
+							   String id) {
 		Assert.notEmpty(logicalNames, "logicalNames cannot be empty.");
 		Assert.notNull(id, "id cannot be null.");
 		this.logicalNames = logicalNames;

@@ -22,7 +22,7 @@
 		</encoder>
 	</appender>
 
-	<logger name="io.awspring.cloud.messaging" level="INFO"/>
+	<logger name="io.awspring.cloud.messaging" level="TRACE"/>
 	<logger name="io.awspring.cloud.sqs" level="INFO"/>
 	<logger name="io.awspring.cloud.sqs.invocation.EndpointMessageHandler" level="INFO"/>
 

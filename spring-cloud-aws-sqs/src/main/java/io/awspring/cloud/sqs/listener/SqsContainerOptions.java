@@ -16,7 +16,9 @@
 package io.awspring.cloud.sqs.listener;
 
 import io.awspring.cloud.messaging.support.listener.AbstractContainerOptions;
-import io.awspring.cloud.sqs.endpoint.SqsEndpoint;
+import software.amazon.awssdk.services.sqs.SqsAsyncClient;
+
+import java.util.Map;
 
 /**
  * @author Tomaz Fernandes
@@ -24,16 +26,16 @@ import io.awspring.cloud.sqs.endpoint.SqsEndpoint;
  */
 public class SqsContainerOptions extends AbstractContainerOptions<SqsContainerOptions> {
 
-	private final SqsEndpoint endpoint;
+	private final Map<String, QueueAttributes> queuesAttributes;
 
 	private Integer minTimeToProcess;
 
-	private SqsContainerOptions(SqsEndpoint endpoint) {
-		this.endpoint = endpoint;
+	private SqsContainerOptions(Map<String, QueueAttributes> queuesAttributes) {
+		this.queuesAttributes = queuesAttributes;
 	}
 
-	public static SqsContainerOptions optionsFor(SqsEndpoint endpoint) {
-		return new SqsContainerOptions(endpoint);
+	public static SqsContainerOptions create(Map<String, QueueAttributes> queuesAttributes) {
+		return new SqsContainerOptions(queuesAttributes);
 	}
 
 	public SqsContainerOptions minTimeToProcess(Integer minTimeToProcess) {
@@ -41,13 +43,11 @@ public class SqsContainerOptions extends AbstractContainerOptions<SqsContainerOp
 		return this;
 	}
 
-	@Override
-	public SqsEndpoint getEndpoint() {
-		return this.endpoint;
-	}
-
 	public Integer getMinTimeToProcess() {
 		return minTimeToProcess;
 	}
 
+	public Map<String, QueueAttributes> getQueuesAttributes() {
+		return queuesAttributes;
+	}
 }
