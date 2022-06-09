@@ -16,10 +16,9 @@
 package io.awspring.cloud.messaging.support.config;
 
 import io.awspring.cloud.messaging.support.MessagingUtils;
-import io.awspring.cloud.messaging.support.endpoint.Endpoint;
+import io.awspring.cloud.messaging.support.endpoint.AbstractEndpoint;
 import io.awspring.cloud.messaging.support.listener.AbstractMessageListenerContainer;
 import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
-import io.awspring.cloud.messaging.support.listener.MessageListenerContainer;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
@@ -33,12 +32,12 @@ import org.springframework.util.Assert;
  *
  * @param <T> the {@link Message} type to be consumed by the {@link AbstractMessageListenerContainer}
  * @param <C> the {@link AbstractMessageListenerContainer} type.
- * @param <E> the {@link Endpoint} type for which the {@link MessageListenerContainer} will be created.
+ * @param <E> the {@link AbstractEndpoint} type for which the {@link AbstractMessageListenerContainer} will be created.
  *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractMessageListenerContainerFactory<T, C extends AbstractMessageListenerContainer<T>, E extends Endpoint>
+public abstract class AbstractMessageListenerContainerFactory<T, C extends AbstractMessageListenerContainer<T>, E extends AbstractEndpoint>
 		implements MessageListenerContainerFactory<C, E>, SmartInitializingSingleton, BeanFactoryAware {
 
 	private static final Integer DEFAULT_THREAD_POOL_SIZE = 11;

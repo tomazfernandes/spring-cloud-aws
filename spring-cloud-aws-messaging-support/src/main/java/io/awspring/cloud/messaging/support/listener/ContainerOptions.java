@@ -15,14 +15,10 @@
  */
 package io.awspring.cloud.messaging.support.listener;
 
-import io.awspring.cloud.messaging.support.endpoint.Endpoint;
-
 /**
  * @author Tomaz Fernandes
  * @since 3.0
  */
 public interface ContainerOptions {
-
-	Endpoint getEndpoint();
 
 }

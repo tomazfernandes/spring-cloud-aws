@@ -18,6 +18,7 @@ package io.awspring.cloud.sqs.endpoint;
 import io.awspring.cloud.messaging.support.endpoint.AbstractEndpoint;
 import io.awspring.cloud.messaging.support.endpoint.Endpoint;
 import io.awspring.cloud.sqs.listener.QueueAttributes;
+
 import java.util.Collection;
 import java.util.Map;
 
@@ -28,10 +29,6 @@ import java.util.Map;
  * @since 3.0
  */
 public class SqsEndpoint extends AbstractEndpoint {
-
-	private final Collection<String> logicalEndpointNames;
-
-	private final String listenerContainerFactoryName;
 
 	private final Integer simultaneousPollsPerQueue;
 
@@ -48,8 +45,6 @@ public class SqsEndpoint extends AbstractEndpoint {
 						Map<String, QueueAttributes> queueAttributesMap, boolean isAsync, String id) {
 		super(logicalEndpointNames, listenerContainerFactoryName, id);
 		this.queuesAttributes = queueAttributesMap;
-		this.logicalEndpointNames = logicalEndpointNames;
-		this.listenerContainerFactoryName = listenerContainerFactoryName;
 		this.simultaneousPollsPerQueue = simultaneousPollsPerQueue;
 		this.pollTimeoutSeconds = pollTimeoutSeconds;
 		this.minTimeToProcess = minTimeToProcess;
@@ -58,16 +53,6 @@ public class SqsEndpoint extends AbstractEndpoint {
 
 	public static SqsEndpointBuilder from(Collection<String> logicalEndpointNames) {
 		return new SqsEndpointBuilder(logicalEndpointNames);
-	}
-
-	@Override
-	public Collection<String> getLogicalNames() {
-		return this.logicalEndpointNames;
-	}
-
-	@Override
-	public String getListenerContainerFactoryName() {
-		return this.listenerContainerFactoryName;
 	}
 
 	public Integer getSimultaneousPollsPerQueue() {

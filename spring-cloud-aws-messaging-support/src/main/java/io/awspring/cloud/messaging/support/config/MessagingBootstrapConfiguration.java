@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.messaging.support.config;
 
-import io.awspring.cloud.messaging.support.endpoint.DefaultEndpointProcessor;
+import io.awspring.cloud.messaging.support.endpoint.EndpointRegistrar;
 import io.awspring.cloud.messaging.support.listener.DefaultListenerContainerRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.RootBeanDefinition;
@@ -25,7 +25,7 @@ import org.springframework.core.type.AnnotationMetadata;
 /**
  *
  * Registers the {@link DefaultListenerContainerRegistry} and
- * {@link DefaultEndpointProcessor} that will be used to bootstrap
+ * {@link EndpointRegistrar} that will be used to bootstrap
  * the framework.
  *
  * @author Tomaz Fernandes
@@ -43,7 +43,7 @@ public class MessagingBootstrapConfiguration implements ImportBeanDefinitionRegi
 
 		if (!registry.containsBeanDefinition(MessagingConfigUtils.ENDPOINT_PROCESSOR_BEAN_NAME)) {
 			registry.registerBeanDefinition(MessagingConfigUtils.ENDPOINT_PROCESSOR_BEAN_NAME,
-					new RootBeanDefinition(DefaultEndpointProcessor.class));
+					new RootBeanDefinition(EndpointRegistrar.class));
 		}
 	}
 

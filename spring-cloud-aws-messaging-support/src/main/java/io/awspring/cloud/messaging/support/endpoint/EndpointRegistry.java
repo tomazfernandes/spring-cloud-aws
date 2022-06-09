@@ -24,8 +24,8 @@ import java.util.Collection;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public interface EndpointRegistry {
+public interface EndpointRegistry<E extends Endpoint> {
 
-	Collection<Endpoint> retrieveEndpoints();
+	Collection<E> retrieveEndpoints();
 
 }

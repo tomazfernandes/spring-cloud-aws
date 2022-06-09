@@ -31,4 +31,13 @@ public interface Endpoint {
 
 	String getId();
 
+
+	// 	public Object getBean() {
+	//		return bean;
+	//	}
+	//
+	//	public Method getMethod() {
+	//		return method;
+	//	}
+
 }

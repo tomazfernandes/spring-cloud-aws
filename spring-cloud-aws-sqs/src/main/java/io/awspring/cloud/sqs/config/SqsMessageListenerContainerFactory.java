@@ -29,6 +29,8 @@ import org.springframework.util.Assert;
 import software.amazon.awssdk.core.internal.http.AmazonAsyncHttpClient;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
+import java.util.stream.Collectors;
+
 /**
  * {@link MessageListenerContainerFactory} implementation for creating
  * {@link SqsMessageListenerContainer} instances.
@@ -81,7 +83,8 @@ public class SqsMessageListenerContainerFactory
 	}
 
 	protected SqsContainerOptions createContainerOptions(SqsEndpoint endpoint) {
-		SqsContainerOptions options = SqsContainerOptions.optionsFor(endpoint);
+		SqsContainerOptions options = SqsContainerOptions.create(endpoint.getQueuesAttributes());
+
 		MessagingUtils.INSTANCE.acceptFirstNonNull(options::messagesPerProduce, factoryOptions.getMessagesPerPoll())
 				.acceptFirstNonNull(options::minTimeToProcess, endpoint.getMinTimeToProcess(),
 						factoryOptions.getMinTimeToProcess())
