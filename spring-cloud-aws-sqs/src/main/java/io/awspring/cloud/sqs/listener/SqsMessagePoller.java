@@ -72,7 +72,7 @@ public class SqsMessagePoller extends AbstractMessagePoller<String> {
 	//  that receives the target type and the MessageListener.
 
 	@Override
-	protected CompletableFuture<Collection<Message<String>>> doProduceMessages(int numberOfMessages, Duration timeout) {
+	protected CompletableFuture<Collection<Message<String>>> doPollForMessages(int numberOfMessages, Duration timeout) {
 		return sqsAsyncClient
 			.receiveMessage(req -> req.queueUrl(this.queueUrl).maxNumberOfMessages(numberOfMessages)
 				.waitTimeSeconds((int) timeout.getSeconds()))

@@ -15,17 +15,8 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import com.fasterxml.jackson.databind.util.BeanUtil;
 import io.awspring.cloud.messaging.support.listener.AbstractContainerOptions;
-import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
-import org.springframework.beans.BeanUtils;
-import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
-
-import java.beans.PropertyDescriptor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Map;
 
 /**
  * @author Tomaz Fernandes

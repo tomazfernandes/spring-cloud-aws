@@ -23,6 +23,8 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.messaging.Message;
 
 /**
+ * A component capable of polling a resources and return messages.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

@@ -31,18 +31,17 @@ public class OnSuccessAckHandler<T> implements AsyncAckHandler<T> {
 
 	private static final Logger logger = LoggerFactory.getLogger(OnSuccessAckHandler.class);
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public CompletableFuture<Void> onSuccess(Message<T> message) {
 		logger.trace("Acknowledging message {}", MessageHeaderUtils.getId(message));
-		return MessageHeaderUtils.getAcknowledgement(message).acknowledge().handle((value, t) -> {
-			if (t != null) {
-				logger.error("Error acknowledging message {}", message, t);
-			}
-			else {
-				logger.trace("Message {} acknowledged.", MessageHeaderUtils.getId(message));
-			}
-			return null;
-		});
+		return MessageHeaderUtils.getAcknowledgement(message)
+			.acknowledge()
+			.thenRun(() -> logger.trace("Message {} acknowledged.", MessageHeaderUtils.getId(message)))
+			.exceptionally(t -> logError(message, t));
+	}
+
+	private Void logError(Message<T> message, Throwable t) {
+		logger.error("Error acknowledging message {}", message, t);
+		return null;
 	}
 }

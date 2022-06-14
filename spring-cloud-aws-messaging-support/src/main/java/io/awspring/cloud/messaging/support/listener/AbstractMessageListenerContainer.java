@@ -46,23 +46,27 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractMessageListenerContainer.class);
 
+	private final Object lifecycleMonitor = new Object();
+
 	private final AbstractContainerOptions<T, ?> containerOptions;
 
 	private volatile boolean isRunning;
 
+	private String id;
+
 	private TaskExecutor taskExecutor;
 
-	private Semaphore producersSemaphore;
+	private Semaphore pollersSemaphore;
+
+	private Collection<AsyncMessagePoller<T>> messagePollers;
+
+	private AsyncMessageListener<T> messageListener;
 
 	private AsyncErrorHandler<T> errorHandler = new LoggingErrorHandler<>();
 
 	private AsyncAckHandler<T> ackHandler = new OnSuccessAckHandler<>();
 
 	private AsyncMessageInterceptor<T> messageInterceptor;
-
-	private final Object lifecycleMonitor = new Object();
-
-	private String id;
 
 	protected AbstractMessageListenerContainer(AbstractContainerOptions<T, ?> options) {
 		this.containerOptions = options.createCopy();
@@ -107,25 +111,27 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 		if (this.isRunning) {
 			return;
 		}
-		Assert.notEmpty(this.containerOptions.getMessagePollers(), () -> "MessagePollers cannot be empty: "
-			+ this.containerOptions);
-		Assert.notNull(this.containerOptions.getMessageListener(), () -> "MessageListener cannot be empty:  "
-			+ this.containerOptions);
 		synchronized (this.lifecycleMonitor) {
+			Assert.notEmpty(this.containerOptions.getMessagePollers(), () -> "MessagePollers cannot be empty: "
+				+ this.containerOptions);
+			Assert.notNull(this.containerOptions.getMessageListener(), () -> "MessageListener cannot be empty:  "
+				+ this.containerOptions);
 			if (this.id == null) {
 				this.id = resolveContainerId();
 			}
 			logger.debug("Starting container {}", this.id);
 			this.isRunning = true;
 			this.taskExecutor = createTaskExecutor();
-			this.producersSemaphore = new Semaphore(this.containerOptions.getSimultaneousPolls());
+			this.messageListener = this.containerOptions.getMessageListener();
+			this.messagePollers = this.containerOptions.getMessagePollers();
+			this.pollersSemaphore = new Semaphore(this.containerOptions.getSimultaneousPolls());
 			MessagingUtils.INSTANCE
 				.acceptIfNotNull(this.containerOptions.getErrorHandler(), this::setErrorHandler)
 				.acceptIfNotNull(this.containerOptions.getAckHandler(), this::setAckHandler)
 				.acceptIfNotNull(this.containerOptions.getMessageInterceptor(), this::setMessageInterceptor);
-			managePollerLifecycle(Lifecycle::start);
+			managePollersLifecycle(Lifecycle::start);
 			doStart();
-			this.taskExecutor.execute(this::produceAndProcessMessages);
+			this.taskExecutor.execute(this::pollAndProcessMessages);
 		}
 		logger.debug("Container started {}", this.id);
 	}
@@ -142,14 +148,14 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	protected void doStart() {
 	}
 
-	private void produceAndProcessMessages() {
+	private void pollAndProcessMessages() {
 		while (this.isRunning) {
-			this.containerOptions.getMessagePollers().forEach(poller -> {
+			this.messagePollers.forEach(poller -> {
 				try {
 					acquireSemaphore();
 					if (!this.isRunning) {
 						logger.debug("Container not running, returning.");
-						this.producersSemaphore.release();
+						this.pollersSemaphore.release();
 						return;
 					}
 					poller.poll(containerOptions.getMessagesPerPoll(), containerOptions.getPollTimeout())
@@ -182,9 +188,9 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	protected CompletableFuture<?> doProcessMessage(Message<T> message) {
 		logger.trace("Processing message {}", MessageHeaderUtils.getId(message));
-		CompletableFuture<Void> messageListenerResult = maybeIntercept(message, this.containerOptions.getMessageListener()::onMessage);
-		return this.containerOptions.getMessageListener() instanceof CallbackMessageListener ? CompletableFuture.completedFuture(null)
-				: messageListenerResult.handle((val, t) -> handleResult(message, t)).thenCompose(x -> x);
+		return maybeIntercept(message, this.messageListener::onMessage)
+			.handle((val, t) -> handleResult(message, t))
+			.thenCompose(x -> x);
 	}
 
 	protected CompletableFuture<?> handleResult(Message<T> message, Throwable throwable) {
@@ -203,13 +209,13 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	private void acquireSemaphore() throws InterruptedException {
-		producersSemaphore.acquire();
+		this.pollersSemaphore.acquire();
 		logger.trace("Semaphore acquired in container {} ", this.id);
 	}
 
 	private Runnable releaseSemaphore() {
 		return () -> {
-			this.producersSemaphore.release();
+			this.pollersSemaphore.release();
 			logger.trace("Semaphore released in container {} ", this.id);
 		};
 	}
@@ -223,8 +229,8 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 		};
 	}
 
-	private void managePollerLifecycle(Consumer<SmartLifecycle> consumer) {
-		this.containerOptions.getMessagePollers().forEach(poller -> {
+	private void managePollersLifecycle(Consumer<SmartLifecycle> consumer) {
+		this.messagePollers.forEach(poller -> {
 			if (poller instanceof SmartLifecycle) {
 				consumer.accept((SmartLifecycle) poller);
 			}
@@ -248,7 +254,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 		logger.debug("Stopping container {}", this.id);
 		synchronized (this.lifecycleMonitor) {
 			this.isRunning = false;
-			managePollerLifecycle(Lifecycle::stop);
+			managePollersLifecycle(Lifecycle::stop);
 			doStop();
 			if (this.taskExecutor instanceof DisposableBean) {
 				try {
