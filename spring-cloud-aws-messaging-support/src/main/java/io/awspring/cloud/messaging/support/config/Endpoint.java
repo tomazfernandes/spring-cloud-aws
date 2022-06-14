@@ -15,15 +15,10 @@
  */
 package io.awspring.cloud.messaging.support.config;
 
-import io.awspring.cloud.messaging.support.listener.MessageListenerContainer;
-
-import java.lang.reflect.Method;
 import java.util.Collection;
 
 /**
  * Represents a messaging endpoint from and to which messages can be sent and received.
- *
- * Contains high-level methods that are not coupled to endpoint implementation details.
  *
  * @author Tomaz Fernandes
  * @since 3.0

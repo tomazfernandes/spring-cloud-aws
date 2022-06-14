@@ -24,10 +24,9 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 
 /**
- * Base class for implementing an {@link Endpoint}.
- *
- * Contains properties that should be common to all endpoints that will be handled
- * by an {@link AbstractMessageListenerContainerFactory}.
+ * Base class for implementing an {@link Endpoint}. Contains properties that
+ * should be common to all endpoints to be handled by an
+ * {@link AbstractMessageListenerContainerFactory}.
  *
  * @author Tomaz Fernandes
  * @since 3.0
@@ -88,7 +87,7 @@ public abstract class AbstractEndpoint<T> implements Endpoint<T> {
 	}
 
 	public void setupMessageListener(MessageListenerContainer container) {
-		container.setMessageListener(this.messageListenerFactory.createFor(this));
+		container.setMessageListener(this.messageListenerFactory.createMessageListener(this));
 	}
 
 	public Method getMethod() {

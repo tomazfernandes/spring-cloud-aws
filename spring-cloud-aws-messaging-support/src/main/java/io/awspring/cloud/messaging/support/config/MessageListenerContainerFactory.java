@@ -21,7 +21,7 @@ import java.util.Collection;
 
 /**
  * Creates a {@link MessageListenerContainer} instance for a given
- * {@link Endpoint}.
+ * {@link Endpoint} or endpoint names.
  *
  * @author Tomaz Fernandes
  * @since 3.0
