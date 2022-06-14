@@ -15,56 +15,163 @@
  */
 package io.awspring.cloud.messaging.support.listener;
 
+import io.awspring.cloud.messaging.support.listener.acknowledgement.AsyncAckHandler;
+import org.springframework.util.Assert;
+
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 
 /**
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractContainerOptions<O extends AbstractContainerOptions<?>> implements ContainerOptions {
+public abstract class AbstractContainerOptions<T, O extends AbstractContainerOptions<T, ?>> implements ContainerOptions<T> {
 
-	private static final int DEFAULT_SIMULTANEOUS_PRODUCE_CALLS = 2;
+	private static final int DEFAULT_SIMULTANEOUS_POLL_CALLS = 2;
 
-	private static final int DEFAULT_MESSAGES_PER_PRODUCE = 10;
+	private static final int DEFAULT_MESSAGES_PER_POLL = 10;
 
-	private static final int DEFAULT_PRODUCE_TIMEOUT = 10;
+	private static final Duration DEFAULT_POLL_TIMEOUT = Duration.ofSeconds(10);
 
-	private int simultaneousProduceCalls = DEFAULT_SIMULTANEOUS_PRODUCE_CALLS;
+	private int simultaneousPolls = DEFAULT_SIMULTANEOUS_POLL_CALLS;
 
-	private int messagesPerProduce = DEFAULT_MESSAGES_PER_PRODUCE;
+	private int messagesPerPoll = DEFAULT_MESSAGES_PER_POLL;
 
-	private int produceTimeout = DEFAULT_PRODUCE_TIMEOUT;
+	private Duration pollTimeout = DEFAULT_POLL_TIMEOUT;
+
+	private AsyncErrorHandler<T> errorHandler;
+
+	private AsyncAckHandler<T> ackHandler;
+
+	private AsyncMessageInterceptor<T> messageInterceptor;
+
+	private AsyncMessageListener<T> messageListener;
+
+	private Collection<AsyncMessagePoller<T>> messagePollers = new ArrayList<>();
 
 	@SuppressWarnings("unchecked")
 	private O self() {
 		return (O) this;
 	}
 
-	public O simultaneousProduceCalls(int simultaneousProduceCalls) {
-		this.simultaneousProduceCalls = simultaneousProduceCalls;
+	public O errorHandler(AsyncErrorHandler<T> errorHandler) {
+		Assert.notNull(errorHandler, "errorHandler cannot be null");
+		this.errorHandler = errorHandler;
 		return self();
 	}
 
-	public O messagesPerProduce(int messagesPerProduce) {
-		this.messagesPerProduce = messagesPerProduce;
+	public O ackHandler(AsyncAckHandler<T> ackHandler) {
+		Assert.notNull(ackHandler, "ackHandler cannot be null");
+		this.ackHandler = ackHandler;
 		return self();
 	}
 
-	public O produceTimeout(Integer produceTimeout) {
-		this.produceTimeout = produceTimeout;
+	public O messageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
+		Assert.notNull(messageInterceptor, "messageInterceptor cannot be null");
+		this.messageInterceptor = messageInterceptor;
 		return self();
 	}
 
-	public int getSimultaneousProduceCalls() {
-		return this.simultaneousProduceCalls;
+	public O messageListener(AsyncMessageListener<T> messageListener) {
+		Assert.notNull(messageListener, "messageListener cannot be null");
+		this.messageListener = messageListener;
+		return self();
 	}
 
-	public int getMessagesPerProduce() {
-		return this.messagesPerProduce;
+	public O simultaneousPolls(int simultaneousPollCalls) {
+		this.simultaneousPolls = simultaneousPollCalls;
+		return self();
 	}
 
-	public Duration getProduceTimeout() {
-		return Duration.ofSeconds(this.produceTimeout);
+	public O messagesPerPoll(int messagesPerPoll) {
+		this.messagesPerPoll = messagesPerPoll;
+		return self();
 	}
 
+	public O pollTimeout(Duration pollTimeout) {
+		this.pollTimeout = pollTimeout;
+		return self();
+	}
+
+	public O messagePollers(Collection<AsyncMessagePoller<T>> asyncMessagePollers) {
+		this.messagePollers = asyncMessagePollers;
+		return self();
+	}
+
+	public O messagePoller(AsyncMessagePoller<T> asyncMessagePoller) {
+		this.messagePollers = Collections.singletonList(asyncMessagePoller);
+		return self();
+	}
+
+	public int getSimultaneousPolls() {
+		return this.simultaneousPolls;
+	}
+
+	public int getMessagesPerPoll() {
+		return this.messagesPerPoll;
+	}
+
+	public Duration getPollTimeout() {
+		return this.pollTimeout;
+	}
+
+	public AsyncMessageListener<T> getMessageListener() {
+		return this.messageListener;
+	}
+
+	public Collection<AsyncMessagePoller<T>> getMessagePollers() {
+		return this.messagePollers;
+	}
+
+	public AsyncAckHandler<T> getAckHandler() {
+		return this.ackHandler;
+	}
+
+	public AsyncErrorHandler<T> getErrorHandler() {
+		return this.errorHandler;
+	}
+
+	public AsyncMessageInterceptor<T> getMessageInterceptor() {
+		return messageInterceptor;
+	}
+
+	O createCopy() {
+		return doCreateCopy();
+	}
+
+	protected abstract O doCreateCopy();
+
+	public void setSimultaneousPolls(int simultaneousPolls) {
+		this.simultaneousPolls = simultaneousPolls;
+	}
+
+	public void setMessagesPerPoll(int messagesPerPoll) {
+		this.messagesPerPoll = messagesPerPoll;
+	}
+
+	public void setPollTimeout(Duration pollTimeout) {
+		this.pollTimeout = pollTimeout;
+	}
+
+	public void setErrorHandler(AsyncErrorHandler<T> errorHandler) {
+		this.errorHandler = errorHandler;
+	}
+
+	public void setAckHandler(AsyncAckHandler<T> ackHandler) {
+		this.ackHandler = ackHandler;
+	}
+
+	public void setMessageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
+		this.messageInterceptor = messageInterceptor;
+	}
+
+	public void setMessageListener(AsyncMessageListener<T> messageListener) {
+		this.messageListener = messageListener;
+	}
+
+	public void setMessagePollers(Collection<AsyncMessagePoller<T>> messagePollers) {
+		this.messagePollers = messagePollers;
+	}
 }

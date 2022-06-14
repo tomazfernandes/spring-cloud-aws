@@ -13,22 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.endpoint;
+package io.awspring.cloud.sqs.config;
 
-import io.awspring.cloud.messaging.support.endpoint.AbstractEndpoint;
-import io.awspring.cloud.messaging.support.endpoint.Endpoint;
+import io.awspring.cloud.messaging.support.config.AbstractEndpoint;
+import io.awspring.cloud.messaging.support.config.Endpoint;
+import io.awspring.cloud.sqs.annotation.SqsListener;
 import io.awspring.cloud.sqs.listener.QueueAttributes;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
 
 /**
  * {@link Endpoint} implementation for SQS endpoints.
  *
+ * Contains properties that should be mapped from {@link SqsListener @SqsListener}
+ * annotations.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SqsEndpoint extends AbstractEndpoint {
+public class SqsEndpoint extends AbstractEndpoint<String> {
 
 	private final Integer simultaneousPollsPerQueue;
 
@@ -38,11 +43,11 @@ public class SqsEndpoint extends AbstractEndpoint {
 
 	private final Map<String, QueueAttributes> queuesAttributes;
 
-	private final boolean isAsync;
+	private final Boolean isAsync;
 
 	private SqsEndpoint(Collection<String> logicalEndpointNames, String listenerContainerFactoryName,
 						Integer simultaneousPollsPerQueue, Integer pollTimeoutSeconds, Integer minTimeToProcess,
-						Map<String, QueueAttributes> queueAttributesMap, boolean isAsync, String id) {
+						Map<String, QueueAttributes> queueAttributesMap, Boolean isAsync, String id) {
 		super(logicalEndpointNames, listenerContainerFactoryName, id);
 		this.queuesAttributes = queueAttributesMap;
 		this.simultaneousPollsPerQueue = simultaneousPollsPerQueue;
@@ -61,6 +66,10 @@ public class SqsEndpoint extends AbstractEndpoint {
 
 	public Integer getPollTimeoutSeconds() {
 		return this.pollTimeoutSeconds;
+	}
+
+	public Duration getPollTimeout() {
+		return this.pollTimeoutSeconds != null ? Duration.ofSeconds(this.pollTimeoutSeconds) : null;
 	}
 
 	public Integer getMinTimeToProcess() {
@@ -93,7 +102,7 @@ public class SqsEndpoint extends AbstractEndpoint {
 
 		private Map<String, QueueAttributes> queuesAttributes;
 
-		private boolean async;
+		private Boolean async;
 
 		private String id;
 

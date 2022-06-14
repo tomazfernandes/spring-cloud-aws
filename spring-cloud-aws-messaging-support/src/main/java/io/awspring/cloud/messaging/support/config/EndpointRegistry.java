@@ -13,20 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.messaging.support.listener;
+package io.awspring.cloud.messaging.support.config;
 
-import java.time.Duration;
 import java.util.Collection;
-import java.util.concurrent.CompletableFuture;
-import org.springframework.messaging.Message;
 
 /**
+ * A registry abstraction that holds the {@link Endpoint}
+ * instances to be processed by the {@link EndpointRegistrar}.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-@FunctionalInterface
-public interface AsyncMessageProducer<T> {
+public interface EndpointRegistry<E extends Endpoint> {
 
-	CompletableFuture<Collection<Message<T>>> produce(int numberOfMessages, Duration timeout);
+	Collection<E> retrieveEndpoints();
 
 }

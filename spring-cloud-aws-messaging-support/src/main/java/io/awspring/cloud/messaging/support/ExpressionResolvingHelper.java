@@ -7,6 +7,7 @@ import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.expression.StandardBeanExpressionResolver;
+import org.springframework.util.StringUtils;
 
 /**
  * Class with convenient expression resolving methods.
@@ -29,6 +30,9 @@ public class ExpressionResolvingHelper implements BeanFactoryAware {
 	private BeanExpressionContext expressionContext;
 
 	public String asString(String value, String attribute) {
+		if (!StringUtils.hasText(value)) {
+			return null;
+		}
 		Object resolved = resolveExpression(value);
 		if (resolved instanceof String) {
 			return (String) resolved;
@@ -41,9 +45,14 @@ public class ExpressionResolvingHelper implements BeanFactoryAware {
 	}
 
 	public Integer asInteger(String value, String attribute) {
+		if (!StringUtils.hasText(value)) {
+			return null;
+		}
 		Object resolved = resolveExpression(value);
 		if (resolved instanceof Integer) {
 			return (Integer) resolved;
+		} else if (resolved instanceof String) {
+			return Integer.parseInt((String) resolved);
 		}
 		else if (resolved != null) {
 			throw new IllegalStateException(THE_LEFT + attribute + "] must resolve to Integer. "

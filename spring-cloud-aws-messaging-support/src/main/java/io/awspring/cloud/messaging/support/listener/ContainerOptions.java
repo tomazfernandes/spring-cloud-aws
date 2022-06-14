@@ -19,6 +19,8 @@ package io.awspring.cloud.messaging.support.listener;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public interface ContainerOptions {
+public interface ContainerOptions<T> {
+
+
 
 }

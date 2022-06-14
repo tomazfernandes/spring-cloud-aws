@@ -15,8 +15,9 @@
  */
 package io.awspring.cloud.messaging.support.config;
 
-import io.awspring.cloud.messaging.support.endpoint.Endpoint;
 import io.awspring.cloud.messaging.support.listener.MessageListenerContainer;
+
+import java.util.Collection;
 
 /**
  * Creates a {@link MessageListenerContainer} instance for a given
@@ -28,5 +29,7 @@ import io.awspring.cloud.messaging.support.listener.MessageListenerContainer;
 public interface MessageListenerContainerFactory<C extends MessageListenerContainer, E extends Endpoint> {
 
 	C create(E endpoint);
+
+	C create(Collection<String> endpointNames);
 
 }

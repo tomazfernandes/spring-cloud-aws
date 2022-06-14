@@ -16,16 +16,11 @@
 package io.awspring.cloud.messaging.support.config;
 
 import io.awspring.cloud.messaging.support.MessagingUtils;
-import io.awspring.cloud.messaging.support.endpoint.AbstractEndpoint;
+import io.awspring.cloud.messaging.support.listener.AbstractContainerOptions;
 import io.awspring.cloud.messaging.support.listener.AbstractMessageListenerContainer;
-import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
-import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.BeanFactoryAware;
-import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.messaging.Message;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.util.Assert;
+
+import java.util.Collection;
 
 /**
  * Base implementation for a {@link MessageListenerContainerFactory}.
@@ -37,75 +32,52 @@ import org.springframework.util.Assert;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractMessageListenerContainerFactory<T, C extends AbstractMessageListenerContainer<T>, E extends AbstractEndpoint>
-		implements MessageListenerContainerFactory<C, E>, SmartInitializingSingleton, BeanFactoryAware {
+public abstract class AbstractMessageListenerContainerFactory<T, C extends AbstractMessageListenerContainer<T>, E extends AbstractEndpoint<T>>
+		implements MessageListenerContainerFactory<C, E> {
 
-	private static final Integer DEFAULT_THREAD_POOL_SIZE = 11;
-	private final AbstractFactoryOptions<T, ?> factoryOptions;
-	private BeanFactory beanFactory;
-	private AsyncMessageListener<T> messageListener;
+	private final AbstractContainerOptions<T, ?> containerOptions;
+	private final MessagePollerFactory<T> messagePollerFactory;
 
-	protected AbstractMessageListenerContainerFactory(AbstractFactoryOptions<T, ?> factoryOptions) {
-		this.factoryOptions = factoryOptions;
+	protected AbstractMessageListenerContainerFactory(MessagePollerFactory<T> messagePollerFactory,
+													  AbstractContainerOptions<T, ?> containerOptions) {
+
+		this.containerOptions = containerOptions;
+		this.messagePollerFactory = messagePollerFactory;
 	}
 
 	@Override
 	public C create(E endpoint) {
 		C container = createContainerInstance(endpoint);
 		container.setId(endpoint.getId());
-		MessagingUtils.INSTANCE.acceptIfNotNull(this.factoryOptions.getErrorHandler(), container::setErrorHandler)
-				.acceptIfNotNull(this.factoryOptions.getAckHandler(), container::setAckHandler)
-				.acceptIfNotNull(this.factoryOptions.getMessageInterceptor(), container::setMessageInterceptor);
+		container.getContainerOptions().messagePollers(this.messagePollerFactory.create(endpoint.getLogicalNames()));
+		return configureContainer(container);
+	}
+
+	@Override
+	public C create(Collection<String> endpointNames) {
+		C container = createContainerInstance(endpointNames);
+		container.getContainerOptions().messagePollers(this.messagePollerFactory.create(endpointNames));
+		return configureContainer(container);
+	}
+
+	private C configureContainer(C container) {
+		AbstractContainerOptions<T, ?> containerOptions = container.getContainerOptions();
+		MessagingUtils.INSTANCE.acceptIfNotNull(this.containerOptions.getErrorHandler(), containerOptions::errorHandler)
+			.acceptIfNotNull(this.containerOptions.getAckHandler(), containerOptions::ackHandler)
+			.acceptIfNotNull(this.containerOptions.getMessageInterceptor(), containerOptions::messageInterceptor);
 		initializeContainer(container);
 		return container;
 	}
 
 	protected abstract C createContainerInstance(E endpoint);
 
+	protected abstract C createContainerInstance(Collection<String> endpointNames);
+
 	protected void initializeContainer(C container) {
 	}
 
-	protected ThreadPoolTaskExecutor createTaskExecutor() {
-		ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
-		int poolSize = this.factoryOptions.getMaxWorkersPerContainer() != null
-				? this.factoryOptions.getMaxWorkersPerContainer() + 1
-				: DEFAULT_THREAD_POOL_SIZE;
-		taskExecutor.setMaxPoolSize(poolSize);
-		taskExecutor.setCorePoolSize(poolSize);
-		return taskExecutor;
+	protected AbstractContainerOptions<T, ?> getContainerOptions() {
+		return this.containerOptions;
 	}
 
-	public void setMessageListener(AsyncMessageListener<T> messageListener) {
-		Assert.notNull(messageListener, "messageListener cannot be null");
-		this.messageListener = messageListener;
-	}
-
-	@Override
-	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
-		this.beanFactory = beanFactory;
-	}
-
-	protected BeanFactory getBeanFactory() {
-		return this.beanFactory;
-	}
-
-	protected AsyncMessageListener<T> getMessageListener() {
-		return this.messageListener;
-	}
-
-	@SuppressWarnings("unchecked")
-	@Override
-	public void afterSingletonsInstantiated() {
-		if (this.messageListener == null) {
-			Assert.isTrue(this.beanFactory.containsBean(MessagingConfigUtils.MESSAGE_LISTENER_BEAN_NAME),
-					"An AsyncMessageListener must be registered with name "
-							+ MessagingConfigUtils.MESSAGE_LISTENER_BEAN_NAME);
-			this.messageListener = this.beanFactory.getBean(MessagingConfigUtils.MESSAGE_LISTENER_BEAN_NAME,
-					AsyncMessageListener.class);
-		}
-		initializeFactory();
-	}
-
-	protected void initializeFactory() {
-	}
 }
