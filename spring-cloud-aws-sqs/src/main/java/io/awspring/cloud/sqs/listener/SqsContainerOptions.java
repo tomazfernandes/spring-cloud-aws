@@ -15,28 +15,43 @@
  */
 package io.awspring.cloud.sqs.listener;
 
+import com.fasterxml.jackson.databind.util.BeanUtil;
 import io.awspring.cloud.messaging.support.listener.AbstractContainerOptions;
-import software.amazon.awssdk.services.sqs.SqsAsyncClient;
+import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
+import org.springframework.beans.BeanUtils;
+import org.springframework.util.Assert;
+import org.springframework.util.ReflectionUtils;
 
+import java.beans.PropertyDescriptor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
 /**
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SqsContainerOptions extends AbstractContainerOptions<SqsContainerOptions> {
+public class SqsContainerOptions extends AbstractContainerOptions<String, SqsContainerOptions> {
 
-	private final Map<String, QueueAttributes> queuesAttributes;
+//	private final Map<String, QueueAttributes> queuesAttributes;
 
 	private Integer minTimeToProcess;
 
-	private SqsContainerOptions(Map<String, QueueAttributes> queuesAttributes) {
-		this.queuesAttributes = queuesAttributes;
+//	private SqsContainerOptions(Map<String, QueueAttributes> queuesAttributes) {
+//		this.queuesAttributes = queuesAttributes;
+//	}
+//
+
+	private SqsContainerOptions() {
 	}
 
-	public static SqsContainerOptions create(Map<String, QueueAttributes> queuesAttributes) {
-		return new SqsContainerOptions(queuesAttributes);
+	public static SqsContainerOptions create() {
+		return new SqsContainerOptions();
 	}
+//
+//	public static SqsContainerOptions create(Map<String, QueueAttributes> queuesAttributes) {
+//		return new SqsContainerOptions(queuesAttributes);
+//	}
 
 	public SqsContainerOptions minTimeToProcess(Integer minTimeToProcess) {
 		this.minTimeToProcess = minTimeToProcess;
@@ -46,8 +61,15 @@ public class SqsContainerOptions extends AbstractContainerOptions<SqsContainerOp
 	public Integer getMinTimeToProcess() {
 		return minTimeToProcess;
 	}
+//
+//	public Map<String, QueueAttributes> getQueuesAttributes() {
+//		return queuesAttributes;
+//	}
 
-	public Map<String, QueueAttributes> getQueuesAttributes() {
-		return queuesAttributes;
+	@Override
+	protected SqsContainerOptions doCreateCopy() {
+		SqsContainerOptions newCopy = new SqsContainerOptions();
+		ReflectionUtils.shallowCopyFieldState(this, newCopy);
+		return newCopy;
 	}
 }

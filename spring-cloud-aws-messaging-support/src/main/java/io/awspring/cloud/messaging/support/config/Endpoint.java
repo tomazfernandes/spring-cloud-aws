@@ -13,19 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.messaging.support.endpoint;
+package io.awspring.cloud.messaging.support.config;
 
+import io.awspring.cloud.messaging.support.listener.MessageListenerContainer;
+
+import java.lang.reflect.Method;
 import java.util.Collection;
 
 /**
- * A registry abstraction that holds the {@link Endpoint}
- * instances to be processed by the {@link EndpointProcessor}.
+ * Represents a messaging endpoint from and to which messages can be sent and received.
+ *
+ * Contains high-level methods that are not coupled to endpoint implementation details.
  *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public interface EndpointRegistry<E extends Endpoint> {
+public interface Endpoint<T> {
 
-	Collection<E> retrieveEndpoints();
+	Collection<String> getLogicalNames();
+
+	String getListenerContainerFactoryName();
+
+	String getId();
 
 }

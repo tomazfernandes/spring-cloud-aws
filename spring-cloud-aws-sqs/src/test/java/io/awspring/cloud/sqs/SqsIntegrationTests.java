@@ -15,7 +15,6 @@
  */
 package io.awspring.cloud.sqs;
 
-import static io.awspring.cloud.sqs.config.SqsFactoryOptions.withOptions;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
@@ -24,7 +23,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.messaging.support.config.MessageListenerContainerFactory;
 import io.awspring.cloud.messaging.support.listener.AsyncErrorHandler;
 import io.awspring.cloud.messaging.support.listener.AsyncMessageInterceptor;
-import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
 import io.awspring.cloud.messaging.support.listener.MessageHeaders;
 import io.awspring.cloud.messaging.support.listener.MessageListenerContainer;
 import io.awspring.cloud.messaging.support.listener.MessageListenerContainerRegistry;
@@ -32,12 +30,15 @@ import io.awspring.cloud.messaging.support.listener.acknowledgement.AsyncAckHand
 import io.awspring.cloud.messaging.support.listener.acknowledgement.AsyncAcknowledgement;
 import io.awspring.cloud.sqs.annotation.EnableSqs;
 import io.awspring.cloud.sqs.annotation.SqsListener;
-import io.awspring.cloud.sqs.config.SqsConfigUtils;
 import io.awspring.cloud.sqs.config.SqsMessageListenerContainerFactory;
-import io.awspring.cloud.sqs.listener.AsyncMessageHandlerMessageListener;
+import io.awspring.cloud.sqs.config.SqsMessagePollerFactory;
+import io.awspring.cloud.sqs.listener.SqsContainerOptions;
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
 import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
+import io.awspring.cloud.sqs.listener.SqsMessagePoller;
 import io.awspring.cloud.sqs.listener.Visibility;
+
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -58,7 +59,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.messaging.MessageHandler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
@@ -134,6 +134,18 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		sendMessageTo(RESOLVES_POJO_TYPES_QUEUE_NAME,
 				objectMapper.writeValueAsString(new MyPojo("firstValue", "secondValue")));
 		assertThat(latchContainer.resolvesPojoLatch.await(10, TimeUnit.SECONDS)).isTrue();
+	}
+
+	@Test
+	void manuallyCreatesContainer() throws Exception {
+		sendMessageTo(MANUALLY_CREATE_CONTAINER_QUEUE_NAME, "MyTest");
+		assertThat(latchContainer.manuallyCreatedContainerLatch.await(10, TimeUnit.SECONDS)).isTrue();
+	}
+
+	@Test
+	void manuallyCreatesFactory() throws Exception {
+		sendMessageTo(MANUALLY_CREATE_FACTORY_QUEUE_NAME, "MyTest");
+		assertThat(latchContainer.manuallyCreatedFactoryLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	final int outerBatchSize = 1; // 50;
@@ -367,6 +379,9 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		final CountDownLatch interceptorLatch = new CountDownLatch(1);
 		final CountDownLatch manyParameterTypesLatch = new CountDownLatch(1);
 		final CountDownLatch resolvesPojoLatch = new CountDownLatch(1);
+		final CountDownLatch manuallyCreatedContainerLatch = new CountDownLatch(1);
+		final CountDownLatch manuallyCreatedFactoryLatch = new CountDownLatch(1);
+
 		// Lazily initialized
 		CountDownLatch manyMessagesTwoQueuesLatch = new CountDownLatch(1);
 		CountDownLatch asyncManyMessagesTwoQueuesLatch = new CountDownLatch(1);
@@ -379,47 +394,73 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 	@Configuration
 	static class SQSConfiguration {
 
+		@Bean
+		public MessageListenerContainerFactory<?, ?> defaultListenerContainerFactory(SqsMessagePollerFactory pollerFactory) {
+			return new SqsMessageListenerContainerFactory(pollerFactory);
+		}
+
+//		TODO: Container
+//		public MessageListenerContainer messageListenerContainer() {
+//			new SqsMessageListenerContainer()
+//
+//			return null;
+//		}
+
+		@Bean
+		public SqsMessagePollerFactory messagePollerFactory() throws Exception {
+			createQueues(createAsyncClient());
+			return new SqsMessagePollerFactory(this::createAsyncClient);
+		}
+
 		// TODO: Probably move some of this to auto configuration with @ConditionalOnMissingBean
-		@Bean(name = SqsConfigUtils.SQS_ASYNC_CLIENT_BEAN_NAME)
-		SqsAsyncClient sqsAsyncClientConsumer() throws Exception {
-			SqsAsyncClient asyncClient = SqsAsyncClient.builder()
+		SqsAsyncClient createAsyncClient() {
+			return SqsAsyncClient.builder()
 				.credentialsProvider(credentialsProvider)
 				.endpointOverride(localstack.getEndpointOverride(SQS)).region(Region.of(localstack.getRegion()))
 				.build();
-			createQueues(asyncClient);
-			return asyncClient;
 		}
 
 		@Bean
-		public MessageListenerContainerFactory<?, ?> defaultListenerContainerFactory() {
-			return new SqsMessageListenerContainerFactory();
-		}
-
-		public MessageListenerContainer messageListenerContainer() {
-			new SqsMessageListenerContainer()
-
-			return null;
+		public MessageListenerContainerFactory<?, ?> highThroughputFactory(SqsMessagePollerFactory pollerFactory) {
+			return new SqsMessageListenerContainerFactory(pollerFactory,
+					SqsContainerOptions.create().simultaneousPolls(10).pollTimeout(Duration.ofSeconds(2)).messagesPerPoll(10)
+							.ackHandler(testAckHandler()));
 		}
 
 		@Bean
-		public MessageListenerContainerFactory<?, ?> highThroughputFactory() {
-			return new SqsMessageListenerContainerFactory(
-					withOptions().concurrentWorkersPerContainer(50).concurrentPollsPerContainer(10).messagesPerPoll(10)
-							.pollingTimeoutSeconds(2).ackHandler(testAckHandler()));
+		public MessageListenerContainerFactory<?, ?> lowResourceFactory(SqsMessagePollerFactory pollerFactory) {
+			return new SqsMessageListenerContainerFactory(pollerFactory,
+				SqsContainerOptions.create().simultaneousPolls(1).pollTimeout(Duration.ofSeconds(2)).messagesPerPoll(1)
+					.ackHandler(testAckHandler()).errorHandler(testErrorHandler()).messageInterceptor(testInterceptor()));
 		}
 
 		@Bean
-		public MessageListenerContainerFactory<?, ?> lowResourceFactory() {
-			return new SqsMessageListenerContainerFactory(withOptions().concurrentWorkersPerContainer(1)
-					.concurrentPollsPerContainer(1).interceptor(testInterceptor()).messagesPerPoll(1)
-					.ackHandler(testAckHandler()).errorHandler(testErrorHandler()).pollingTimeoutSeconds(2));
+		public MessageListenerContainer manuallyCreatedContainer(SqsAsyncClient sqsAsyncClient) {
+			return new SqsMessageListenerContainer(SqsContainerOptions
+				.create()
+				.messagePoller(new SqsMessagePoller(MANUALLY_CREATE_CONTAINER_QUEUE_NAME, sqsAsyncClient))
+				.messageListener(msg -> {
+					latchContainer.manuallyCreatedContainerLatch.countDown();
+					return CompletableFuture.completedFuture(null);
+				}));
 		}
 
-		@Bean(name = SqsConfigUtils.SQS_ASYNC_LISTENER_BEAN_NAME)
-		AsyncMessageListener<String> asyncMessageListener(MessageHandler messageHandler) {
-			return new AsyncMessageHandlerMessageListener<>(messageHandler);
+		@Bean
+		public MessageListenerContainer manuallyCreatedFactory(SqsAsyncClient sqsAsyncClient) {
+			return new SqsMessageListenerContainerFactory(new SqsMessagePollerFactory(() -> sqsAsyncClient),
+				SqsContainerOptions
+					.create()
+					.messageListener(msg -> {
+						latchContainer.manuallyCreatedFactoryLatch.countDown();
+						return CompletableFuture.completedFuture(null);
+					})).create(Collections.singletonList(MANUALLY_CREATE_FACTORY_QUEUE_NAME));
 		}
 
+//		@Bean(name = SqsConfigUtils.SQS_ASYNC_LISTENER_BEAN_NAME)
+//		AsyncMessageListener<String> asyncMessageListener(MessageHandler messageHandler) {
+//			return new AsyncMessageHandlerMessageListener<>(messageHandler);
+//		}
+//
 		LatchContainer latchContainer = new LatchContainer();
 
 		@Bean
@@ -446,7 +487,8 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		ReceiveManyFromTwoQueuesListener receiveManyFromTwoQueuesListener() {
 			return new ReceiveManyFromTwoQueuesListener();
 		}
-//
+
+
 //		@Bean
 //		AsyncReceiveManyFromTwoQueuesListener asyncReceiveManyFromTwoQueuesListener() {
 //			return new AsyncReceiveManyFromTwoQueuesListener();
@@ -480,7 +522,10 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 					client.createQueue(req -> req.queueName(RESOLVES_PARAMETER_TYPES_QUEUE_NAME).build()),
 					client.createQueue(req -> req.queueName(RESOLVES_POJO_TYPES_QUEUE_NAME).build()),
 					client.createQueue(req -> req.queueName(ASYNC_RECEIVE_FROM_MANY_1_QUEUE_NAME).build()),
-					client.createQueue(req -> req.queueName(ASYNC_RECEIVE_FROM_MANY_2_QUEUE_NAME).build())).get();
+					client.createQueue(req -> req.queueName(ASYNC_RECEIVE_FROM_MANY_2_QUEUE_NAME).build()),
+					client.createQueue(req -> req.queueName(MANUALLY_CREATE_CONTAINER_QUEUE_NAME).build()),
+					client.createQueue(req -> req.queueName(MANUALLY_CREATE_FACTORY_QUEUE_NAME).build()))
+				.join();
 		}
 
 		private AsyncMessageInterceptor<String> testInterceptor() {
@@ -505,21 +550,19 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		}
 
 		private AsyncAckHandler<String> testAckHandler() {
-			return msg -> {
-				return Objects
-						.requireNonNull(
-								(AsyncAcknowledgement) msg.getHeaders().get(MessageHeaders.ACKNOWLEDGMENT_HEADER))
-						.acknowledge().handle((val, t) -> {
-							if (t != null) {
-								logger.error("Error acknowledging", t);
-							} else {
-								logger.trace("Acknowledged message {}", msg.getPayload());
-								latchContainer.messageAckLatch.countDown();
-								latchContainer.messageAckLatchAsync.countDown();
-							}
-							return null;
-					});
-			};
+			return msg -> Objects
+				.requireNonNull(
+					(AsyncAcknowledgement) msg.getHeaders().get(MessageHeaders.ACKNOWLEDGMENT_HEADER))
+				.acknowledge().handle((val, t) -> {
+					if (t != null) {
+						logger.error("Error acknowledging", t);
+					} else {
+						logger.trace("Acknowledged message {}", msg.getPayload());
+						latchContainer.messageAckLatch.countDown();
+						latchContainer.messageAckLatchAsync.countDown();
+					}
+					return null;
+				});
 		}
 	}
 

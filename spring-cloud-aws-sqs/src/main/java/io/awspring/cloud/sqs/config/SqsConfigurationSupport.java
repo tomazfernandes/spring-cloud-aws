@@ -15,15 +15,7 @@
  */
 package io.awspring.cloud.sqs.config;
 
-import io.awspring.cloud.messaging.support.config.MessagingConfigUtils;
-import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
 import io.awspring.cloud.sqs.annotation.EnableSqs;
-import io.awspring.cloud.sqs.invocation.SqsEndpointMessageHandler;
-import io.awspring.cloud.sqs.listener.MessageHandlerMessageListener;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Bean;
-import org.springframework.messaging.MessageHandler;
-import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 /**
  * Creates the necessary beans.
@@ -33,15 +25,15 @@ import software.amazon.awssdk.services.sqs.SqsAsyncClient;
  */
 public class SqsConfigurationSupport {
 
-	@Bean(name = MessagingConfigUtils.MESSAGE_LISTENER_BEAN_NAME)
-	public AsyncMessageListener<String> messageListener(MessageHandler messageHandler) {
-		return new MessageHandlerMessageListener<>(messageHandler);
-	}
-
-	@Bean(name = MessagingConfigUtils.ENDPOINT_REGISTRY_BEAN_NAME)
-	public MessageHandler endpointMessageHandler(
-			@Qualifier(SqsConfigUtils.SQS_ASYNC_CLIENT_BEAN_NAME) SqsAsyncClient sqsAsyncClient) {
-		return new SqsEndpointMessageHandler(sqsAsyncClient);
-	}
+//	@Bean(name = MessagingConfigUtils.MESSAGE_LISTENER_BEAN_NAME)
+//	public AsyncMessageListener<String> messageListener(MessageHandler messageHandler) {
+//		return new MessageHandlerMessageListener<>(messageHandler);
+//	}
+//
+//	@Bean(name = MessagingConfigUtils.ENDPOINT_REGISTRY_BEAN_NAME)
+//	public MessageHandler endpointMessageHandler(
+//			@Qualifier(SqsConfigUtils.SQS_ASYNC_CLIENT_BEAN_NAME) SqsAsyncClient sqsAsyncClient) {
+//		return new SqsEndpointMessageHandler(sqsAsyncClient);
+//	}
 
 }

@@ -18,18 +18,15 @@ package io.awspring.cloud.sqs.config;
 import io.awspring.cloud.messaging.support.MessagingUtils;
 import io.awspring.cloud.messaging.support.config.AbstractMessageListenerContainerFactory;
 import io.awspring.cloud.messaging.support.config.MessageListenerContainerFactory;
-import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
-import io.awspring.cloud.sqs.endpoint.SqsEndpoint;
-import io.awspring.cloud.sqs.listener.MessageVisibilityExtenderInterceptor;
+import io.awspring.cloud.messaging.support.config.MessagePollerFactory;
 import io.awspring.cloud.sqs.listener.SqsContainerOptions;
 import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.util.Assert;
+import org.springframework.util.ReflectionUtils;
 import software.amazon.awssdk.core.internal.http.AmazonAsyncHttpClient;
-import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
-import java.util.stream.Collectors;
+import java.util.Collection;
 
 /**
  * {@link MessageListenerContainerFactory} implementation for creating
@@ -45,75 +42,45 @@ public class SqsMessageListenerContainerFactory
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessageListenerContainerFactory.class);
 
-	private SqsAsyncClient sqsAsyncClient;
+	private final SqsContainerOptions sqsContainerOptions;
 
-	private final SqsFactoryOptions factoryOptions;
-
-	public SqsMessageListenerContainerFactory() {
-		this(SqsFactoryOptions.withOptions());
+	public SqsMessageListenerContainerFactory(SqsMessagePollerFactory pollerFactory) {
+		this(pollerFactory, SqsContainerOptions.create());
 	}
 
-	public SqsMessageListenerContainerFactory(SqsFactoryOptions factoryOptions) {
-		super(factoryOptions);
-		this.factoryOptions = factoryOptions;
+	public SqsMessageListenerContainerFactory(SqsMessagePollerFactory pollerFactory, SqsContainerOptions containerOptions) {
+		super(pollerFactory, containerOptions);
+		this.sqsContainerOptions = containerOptions;
 	}
 
 	@Override
 	protected SqsMessageListenerContainer createContainerInstance(SqsEndpoint endpoint) {
 		SqsContainerOptions containerOptions = createContainerOptions(endpoint);
-		SqsMessageListenerContainer container = new SqsMessageListenerContainer(containerOptions, this.sqsAsyncClient,
-				getMessageListener(endpoint), createTaskExecutor());
-		MessagingUtils.INSTANCE.acceptBothIfNoneNull(containerOptions.getMinTimeToProcess(), container,
-				this::addVisibilityExtender);
+		SqsMessageListenerContainer container = new SqsMessageListenerContainer(containerOptions);
+//		MessagingUtils.INSTANCE.acceptBothIfNoneNull(containerOptions.getMinTimeToProcess(), container,
+//				this::addVisibilityExtender);
 		return container;
 	}
 
-	@SuppressWarnings("unchecked")
-	private AsyncMessageListener<String> getMessageListener(SqsEndpoint endpoint) {
-		return endpoint.isAsync() && getBeanFactory().containsBean(SqsConfigUtils.SQS_ASYNC_CLIENT_BEAN_NAME)
-				? getBeanFactory().getBean(SqsConfigUtils.SQS_ASYNC_LISTENER_BEAN_NAME, AsyncMessageListener.class)
-				: getMessageListener();
+	@Override
+	protected SqsMessageListenerContainer createContainerInstance(Collection<String> endpointNames) {
+		return createContainerInstance(SqsEndpoint.from(endpointNames).build());
 	}
 
-	private void addVisibilityExtender(Integer minTimeToProcess, SqsMessageListenerContainer container) {
-		MessageVisibilityExtenderInterceptor<String> interceptor = new MessageVisibilityExtenderInterceptor<>(
-				this.sqsAsyncClient);
-		interceptor.setMinTimeToProcessMessage(minTimeToProcess);
-		container.setMessageInterceptor(interceptor);
-	}
+//	private void addVisibilityExtender(Integer minTimeToProcess, SqsMessageListenerContainer container) {
+//		MessageVisibilityExtenderInterceptor<String> interceptor = new MessageVisibilityExtenderInterceptor<>(
+//				this.sqsContainerOptions.get);
+//		interceptor.setMinTimeToProcessMessage(minTimeToProcess);
+//		container.getContainerOptions().setMessageInterceptor(interceptor);
+//	}
 
 	protected SqsContainerOptions createContainerOptions(SqsEndpoint endpoint) {
-		SqsContainerOptions options = SqsContainerOptions.create(endpoint.getQueuesAttributes());
-
-		MessagingUtils.INSTANCE.acceptFirstNonNull(options::messagesPerProduce, factoryOptions.getMessagesPerPoll())
-				.acceptFirstNonNull(options::minTimeToProcess, endpoint.getMinTimeToProcess(),
-						factoryOptions.getMinTimeToProcess())
-				.acceptFirstNonNull(options::simultaneousProduceCalls, endpoint.getSimultaneousPollsPerQueue(),
-						factoryOptions.getSimultaneousPollsPerQueue())
-				.acceptFirstNonNull(options::produceTimeout, endpoint.getPollTimeoutSeconds(),
-						factoryOptions.getPollTimeoutSeconds());
+		SqsContainerOptions options = SqsContainerOptions.create();
+		ReflectionUtils.shallowCopyFieldState(this.sqsContainerOptions, options);
+		MessagingUtils.INSTANCE
+				.acceptIfNotNull(endpoint.getMinTimeToProcess(), options::minTimeToProcess)
+				.acceptIfNotNull(endpoint.getSimultaneousPollsPerQueue(), options::simultaneousPolls)
+				.acceptIfNotNull(endpoint.getPollTimeout(), options::pollTimeout);
 		return options;
-	}
-
-	public void setSqsAsyncClient(SqsAsyncClient sqsAsyncClient) {
-		Assert.notNull(sqsAsyncClient, "sqsAsyncClient cannot be null");
-		this.sqsAsyncClient = sqsAsyncClient;
-	}
-
-	@Override
-	protected void initializeContainer(SqsMessageListenerContainer container) {
-		logger.debug("Initializing container {}", container);
-		container.afterPropertiesSet();
-	}
-
-	@Override
-	protected void initializeFactory() {
-		if (this.sqsAsyncClient == null) {
-			Assert.isTrue(getBeanFactory().containsBean(SqsConfigUtils.SQS_ASYNC_CLIENT_BEAN_NAME),
-					"A SqsAsyncClient must be registered with name " + SqsConfigUtils.SQS_ASYNC_CLIENT_BEAN_NAME);
-			this.sqsAsyncClient = getBeanFactory().getBean(SqsConfigUtils.SQS_ASYNC_CLIENT_BEAN_NAME,
-					SqsAsyncClient.class);
-		}
-
 	}
 }

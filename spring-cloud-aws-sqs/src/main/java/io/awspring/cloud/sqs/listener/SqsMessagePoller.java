@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import io.awspring.cloud.messaging.support.listener.AsyncMessageProducer;
+import io.awspring.cloud.messaging.support.listener.AbstractMessagePoller;
 import io.awspring.cloud.messaging.support.listener.MessageHeaders;
 import java.time.Duration;
 import java.time.Instant;
@@ -26,11 +26,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import io.awspring.cloud.sqs.support.QueueAttributesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.SmartLifecycle;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.util.MimeType;
@@ -42,62 +42,55 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SqsMessageProducer implements AsyncMessageProducer<String>, SmartLifecycle {
+public class SqsMessagePoller extends AbstractMessagePoller<String> {
 
-	private static final Logger logger = LoggerFactory.getLogger(SqsMessageProducer.class);
+	private static final Logger logger = LoggerFactory.getLogger(SqsMessagePoller.class);
 
-	private final String logicalEndpointName;
-
-	private final QueueAttributes queueAttributes;
+//	private final QueueAttributes queueAttributes;
 
 	private final SqsAsyncClient sqsAsyncClient;
 
-	private final String queueUrl;
+	private String queueUrl;
 
-	private volatile boolean running;
-
-	public SqsMessageProducer(String logicalEndpointName, QueueAttributes queueAttributes, SqsAsyncClient sqsClient) {
-		this.logicalEndpointName = logicalEndpointName;
-		this.queueUrl = queueAttributes.getDestinationUrl();
-		this.queueAttributes = queueAttributes;
+	public SqsMessagePoller(String logicalEndpointName, SqsAsyncClient sqsClient) {
+		super(logicalEndpointName);
 		this.sqsAsyncClient = sqsClient;
 	}
 
 	@Override
-	public CompletableFuture<Collection<Message<String>>> produce(int numberOfMessages, Duration timeout) {
-		if (!this.isRunning()) {
-			logger.debug("Producer not running, returning.");
-			return CompletableFuture.completedFuture(null);
+	protected void doStart() {
+		if (this.queueUrl == null) {
+			this.queueUrl = QueueAttributesProvider.fetchAttributes(super.getLogicalEndpointName(), this.sqsAsyncClient)
+				.getDestinationUrl();
 		}
-		logger.trace("Polling for messages at {}", this.queueUrl);
+	}
+
+	// TODO: Consider a way of producing a Message<POJO> for SQS, so that the MessageListener gets the converted
+	//  message. We can do that by inferring the type from the target method - perhaps by passing all method argument resolvers
+	//  to exclude useful ones.
+	//  We can also have an PayloadConvertingMessageListenerAdapter that can be added, with a method
+	//  that receives the target type and the MessageListener.
+
+	@Override
+	protected CompletableFuture<Collection<Message<String>>> doProduceMessages(int numberOfMessages, Duration timeout) {
 		return sqsAsyncClient
-				.receiveMessage(req -> req.queueUrl(this.queueUrl).maxNumberOfMessages(numberOfMessages)
-						.waitTimeSeconds((int) timeout.getSeconds()))
-				.thenApply(ReceiveMessageResponse::messages).thenApply(this::getMessagesForExecution)
-				.exceptionally(handleException());
+			.receiveMessage(req -> req.queueUrl(this.queueUrl).maxNumberOfMessages(numberOfMessages)
+				.waitTimeSeconds((int) timeout.getSeconds()))
+			.thenApply(ReceiveMessageResponse::messages)
+			.thenApply(this::convertMessages);
 	}
 
-	protected Function<Throwable, Collection<Message<String>>> handleException() {
-		return t -> {
-			logger.error("Error retrieving messages from SQS", t);
-			return Collections.emptyList();
-		};
+	private Collection<Message<String>> convertMessages(List<software.amazon.awssdk.services.sqs.model.Message> messages) {
+		return messages.stream().map(this::convertMessage).collect(Collectors.toList());
 	}
 
-	private Collection<Message<String>> getMessagesForExecution(
-			List<software.amazon.awssdk.services.sqs.model.Message> messages) {
-		logger.trace("Poll returned {} messages", messages.size());
-		return messages.stream().map(this::getMessageForExecution).collect(Collectors.toList());
-	}
-
-	protected Message<String> getMessageForExecution(
-			final software.amazon.awssdk.services.sqs.model.Message message) {
-		logger.trace("Preparing message {} for execution", message);
+	protected Message<String> convertMessage(final software.amazon.awssdk.services.sqs.model.Message message) {
+		logger.trace("Converting message {}", message);
 		HashMap<String, Object> additionalHeaders = new HashMap<>();
 		additionalHeaders.put(MessageHeaders.MESSAGE_ID_HEADER, message.messageId());
-		additionalHeaders.put(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID, this.logicalEndpointName);
+		additionalHeaders.put(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID, getLogicalEndpointName());
 		additionalHeaders.put(SqsMessageHeaders.RECEIVED_AT, Instant.now());
-		additionalHeaders.put(SqsMessageHeaders.QUEUE_VISIBILITY, this.queueAttributes.getVisibilityTimeout());
+		// additionalHeaders.put(SqsMessageHeaders.QUEUE_VISIBILITY, this.queueAttributes.getVisibilityTimeout());
 		additionalHeaders.put(SqsMessageHeaders.VISIBILITY,
 				new QueueMessageVisibility(this.sqsAsyncClient, this.queueUrl, message.receiptHandle()));
 		return createMessage(message, Collections.unmodifiableMap(additionalHeaders));
@@ -145,22 +138,5 @@ public class SqsMessageProducer implements AsyncMessageProducer<String>, SmartLi
 			messageHeaders.put(attributeKeyValuePair.getKey().name(), attributeKeyValuePair.getValue());
 		}
 		return messageHeaders;
-	}
-
-	@Override
-	public void start() {
-		logger.debug("Starting SqsMessageProducer for {}", this.logicalEndpointName);
-		this.running = true;
-	}
-
-	@Override
-	public void stop() {
-		logger.debug("Stopping SqsMessageProducer for {}", this.logicalEndpointName);
-		this.running = false;
-	}
-
-	@Override
-	public boolean isRunning() {
-		return this.running;
 	}
 }

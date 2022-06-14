@@ -40,6 +40,8 @@ abstract class BaseSqsIntegrationTest {
 	protected static final String RECEIVE_FROM_MANY_2_QUEUE_NAME = "receive_many_test_queue_2";
 	protected static final String ASYNC_RECEIVE_FROM_MANY_1_QUEUE_NAME = "async_receive_many_test_queue_1";
 	protected static final String ASYNC_RECEIVE_FROM_MANY_2_QUEUE_NAME = "async_receive_many_test_queue_2";
+	protected static final String MANUALLY_CREATE_CONTAINER_QUEUE_NAME = "manually_create_container_test_queue";
+	protected static final String MANUALLY_CREATE_FACTORY_QUEUE_NAME = "manually_create_factory_test_queue";
 
 	@Container
 	static LocalStackContainer localstack = new LocalStackContainer(

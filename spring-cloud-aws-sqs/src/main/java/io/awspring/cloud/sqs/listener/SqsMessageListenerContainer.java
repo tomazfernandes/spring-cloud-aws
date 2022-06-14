@@ -16,14 +16,8 @@
 package io.awspring.cloud.sqs.listener;
 
 import io.awspring.cloud.messaging.support.listener.AbstractMessageListenerContainer;
-import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
-import io.awspring.cloud.messaging.support.listener.AsyncMessageProducer;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.task.TaskExecutor;
-import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 /**
  * @author Tomaz Fernandes
@@ -33,32 +27,8 @@ public class SqsMessageListenerContainer extends AbstractMessageListenerContaine
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessageListenerContainer.class);
 
-	public SqsMessageListenerContainer(SqsContainerOptions options, SqsAsyncClient sqsClient,
-			AsyncMessageListener<String> messageListener, TaskExecutor taskExecutor) {
-		super(options, taskExecutor, messageListener, createMessageProducers(options, sqsClient));
+	public SqsMessageListenerContainer(SqsContainerOptions options) {
+		super(options);
 	}
 
-	private static List<AsyncMessageProducer<String>> createMessageProducers(SqsContainerOptions options,
-			SqsAsyncClient sqsClient) {
-		return options.getQueuesAttributes().entrySet().stream()
-				.map(entry -> createMessageProducer(sqsClient, entry.getKey(), entry.getValue()))
-				.collect(Collectors.toList());
-	}
-
-	private static SqsMessageProducer createMessageProducer(SqsAsyncClient sqsClient, String logicalEndpointName,
-			QueueAttributes queueAttributes) {
-		return new SqsMessageProducer(logicalEndpointName, queueAttributes, sqsClient);
-	}
-
-	@Override
-	protected void doStart() {
-		logger.debug("Starting SqsMessageListenerContainer {}", getId());
-		super.getMessageProducers().stream().map(SqsMessageProducer.class::cast).forEach(SqsMessageProducer::start);
-	}
-
-	@Override
-	protected void doStop() {
-		logger.debug("Stopping SqsMessageListenerContainer {}", getId());
-		super.getMessageProducers().stream().map(SqsMessageProducer.class::cast).forEach(SqsMessageProducer::stop);
-	}
 }

@@ -25,4 +25,6 @@ public interface MessageListenerContainer extends SmartLifecycle {
 
     String getId();
 
+	void setMessageListener(AsyncMessageListener<?> tAsyncMessageListener);
+
 }

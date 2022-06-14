@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sqs.annotation;
 
-import io.awspring.cloud.messaging.support.config.MessagingBootstrapConfiguration;
+import io.awspring.cloud.sqs.config.MessagingBootstrapConfiguration;
 import io.awspring.cloud.sqs.config.SqsConfigurationSupport;
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;

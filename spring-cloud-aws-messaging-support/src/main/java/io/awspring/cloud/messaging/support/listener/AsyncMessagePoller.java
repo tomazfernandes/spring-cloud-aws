@@ -13,31 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.messaging.support.endpoint;
+package io.awspring.cloud.messaging.support.listener;
 
+import java.time.Duration;
 import java.util.Collection;
+import java.util.concurrent.CompletableFuture;
+
+import org.springframework.context.SmartLifecycle;
+import org.springframework.messaging.Message;
 
 /**
- * Represents a messaging endpoint from and to which messages can be sent and received.
- *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public interface Endpoint {
+@FunctionalInterface
+public interface AsyncMessagePoller<T> {
 
-	Collection<String> getLogicalNames();
-
-	String getListenerContainerFactoryName();
-
-	String getId();
-
-
-	// 	public Object getBean() {
-	//		return bean;
-	//	}
-	//
-	//	public Method getMethod() {
-	//		return method;
-	//	}
+	CompletableFuture<Collection<Message<T>>> poll(int numberOfMessages, Duration timeout);
 
 }

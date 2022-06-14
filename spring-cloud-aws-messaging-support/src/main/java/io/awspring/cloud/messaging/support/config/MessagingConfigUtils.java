@@ -30,9 +30,7 @@ public class MessagingConfigUtils {
 
 	public static final String ENDPOINT_REGISTRY_BEAN_NAME = "io.awspring.cloud.messaging.internalEndpointRegistryBeanName";
 
-	public static final String MESSAGE_LISTENER_BEAN_NAME = "io.awspring.cloud.messaging.internalMessageListener";
-
-	public static final String MESSAGE_LISTENER_CONTAINER_REGISTRY_BEAN_NAME = "io.awspring.cloud.messaging.internalMessageListenerContainerRegistry";
+	public static final String SQS_LISTENER_ANNOTATION_BEAN_POST_PROCESSOR_BEAN_NAME = "io.awspring.cloud.messaging.internalSqsListenerAnnotationBeanPostProcessor";
 
 	public static final String ENDPOINT_PROCESSOR_BEAN_NAME = "io.awspring.cloud.messaging.internalEndpointProcessor";
 

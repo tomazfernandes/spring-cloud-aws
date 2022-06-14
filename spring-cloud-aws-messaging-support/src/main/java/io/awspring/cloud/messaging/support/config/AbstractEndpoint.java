@@ -13,20 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.messaging.support.endpoint;
+package io.awspring.cloud.messaging.support.config;
 
+import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
+import io.awspring.cloud.messaging.support.listener.MessageListenerContainer;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
+import java.lang.reflect.Method;
 import java.util.Collection;
 
 /**
  * Base class for implementing an {@link Endpoint}.
  *
+ * Contains properties that should be common to all endpoints that will be handled
+ * by an {@link AbstractMessageListenerContainerFactory}.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractEndpoint implements Endpoint {
+public abstract class AbstractEndpoint<T> implements Endpoint<T> {
 
 	private final Collection<String> logicalNames;
 
@@ -34,11 +40,16 @@ public abstract class AbstractEndpoint implements Endpoint {
 
 	private final String id;
 
+	private Object bean;
+
+	private Method method;
+
+	private MessageListenerFactory<T> messageListenerFactory;
+
 	protected AbstractEndpoint(Collection<String> logicalNames,
 							   @Nullable String listenerContainerFactoryName,
 							   String id) {
 		Assert.notEmpty(logicalNames, "logicalNames cannot be empty.");
-		Assert.notNull(id, "id cannot be null.");
 		this.logicalNames = logicalNames;
 		this.listenerContainerFactoryName = listenerContainerFactoryName;
 		this.id = id;
@@ -56,7 +67,35 @@ public abstract class AbstractEndpoint implements Endpoint {
 
 	@Override
 	public String getId() {
-		return id;
+		return this.id;
 	}
 
+	public void setBean(Object bean) {
+		this.bean = bean;
+	}
+
+	public void setMethod(Method method) {
+		this.method = method;
+	}
+
+	/**
+	 * Set the {@link MessageListenerFactory} that will create the
+	 * {@link AsyncMessageListener} to be used with this {@link Endpoint}.
+	 * @param messageListenerFactory the factory instance.
+	 */
+	public void setMessageListenerFactory(MessageListenerFactory<T> messageListenerFactory) {
+		this.messageListenerFactory = messageListenerFactory;
+	}
+
+	public void setupMessageListener(MessageListenerContainer container) {
+		container.setMessageListener(this.messageListenerFactory.createFor(this));
+	}
+
+	public Method getMethod() {
+		return this.method;
+	}
+
+	public Object getBean() {
+		return this.bean;
+	}
 }

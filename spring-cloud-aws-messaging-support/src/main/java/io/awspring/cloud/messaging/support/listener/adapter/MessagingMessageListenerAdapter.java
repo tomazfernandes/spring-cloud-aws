@@ -1,5 +1,6 @@
 package io.awspring.cloud.messaging.support.listener.adapter;
 
+import io.awspring.cloud.messaging.support.listener.ListenerExecutionFailedException;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 
@@ -9,9 +10,20 @@ import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
  */
 public abstract class MessagingMessageListenerAdapter {
 
-	private InvocableHandlerMethod handlerMethod;
+	private final InvocableHandlerMethod handlerMethod;
+
+	protected MessagingMessageListenerAdapter(InvocableHandlerMethod handlerMethod) {
+		this.handlerMethod = handlerMethod;
+	}
 
 	protected final Object invokeHandler(Message<?> message) {
+
+		try {
+			return handlerMethod.invoke(message);
+		} catch (Exception ex) {
+			throw new ListenerExecutionFailedException("Listener failed to process message", ex);
+		}
+
 		// So maybe I could use the other HandlerMethod with a Message that has a List<POJO> payload
 		// Or even a List<SQSMessage>
 		// Still wouldn't be able to return CompletableFuture though, requiring that workaround
@@ -72,15 +84,14 @@ public abstract class MessagingMessageListenerAdapter {
 		// If that's simpler to build and maintain, might be worth it
 
 
-
-		return null;
-	}
-
 	// So my question here is:
 	// At this point, should I pass a Message<?> or an Object?
 	// The difference is that with Object I can later on pass a List<Message>
+
 	//
 
+
+	}
 
 
 

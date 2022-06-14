@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.messaging.support.endpoint;
+package io.awspring.cloud.messaging.support.config;
 
-import io.awspring.cloud.messaging.support.config.MessageListenerContainerFactory;
-import io.awspring.cloud.messaging.support.config.MessagingConfigUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.messaging.support.listener.MessageListenerContainer;
 import io.awspring.cloud.messaging.support.listener.MessageListenerContainerRegistry;
 import org.slf4j.Logger;
@@ -25,6 +24,8 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.messaging.MessageHandler;
+import org.springframework.messaging.converter.MessageConverter;
 import org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.util.Assert;
@@ -32,10 +33,9 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 
 /**
- * Default {@link EndpointProcessor} implementation to process an {@link Endpoint}.
+ * Default {@link EndpointRegistrar} implementation to process an {@link Endpoint}.
  * Uses a {@link MessageListenerContainerFactory} to create a {@link MessageListenerContainer}
  * and register it in the {@link MessageListenerContainerRegistry}.
  *
@@ -53,12 +53,16 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 	private MessageListenerContainerRegistry listenerContainerRegistry;
 
 	private String messageListenerContainerRegistryBeanName =
-		MessagingConfigUtils.MESSAGE_LISTENER_CONTAINER_REGISTRY_BEAN_NAME;
+		MessagingConfigUtils.ENDPOINT_REGISTRY_BEAN_NAME;
 
 	private String defaultListenerContainerFactoryBeanName =
 		MessagingConfigUtils.DEFAULT_LISTENER_CONTAINER_FACTORY_BEAN_NAME;
 
-	private final Collection<Endpoint> endpoints = new ArrayList<>();
+	private final Collection<AbstractEndpoint<?>> endpoints = new ArrayList<>();
+
+	private Collection<MessageConverter> messageConverters = new ArrayList<>();
+
+	private ObjectMapper objectMapper;
 
 	/**
 	 * Set a custom {@link MessageHandlerMethodFactory} implementation.
@@ -66,6 +70,15 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 	 */
 	public void setMessageHandlerMethodFactory(MessageHandlerMethodFactory messageHandlerMethodFactory) {
 		this.messageHandlerMethodFactory = messageHandlerMethodFactory;
+	}
+
+	/**
+	 * Return the {@link MessageHandlerMethodFactory} to be used to create
+	 * {@link MessageHandler} instances for the {@link Endpoint}s.
+	 * @return the factory instance.
+	 */
+	public MessageHandlerMethodFactory getMessageHandlerMethodFactory() {
+		return this.messageHandlerMethodFactory;
 	}
 
 	/**
@@ -92,8 +105,16 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 		this.messageListenerContainerRegistryBeanName = messageListenerContainerRegistryBeanName;
 	}
 
-	public <E extends Endpoint> void registerEndpoint(E e) {
-		this.endpoints.add(e);
+	public void setMessageConverters(Collection<MessageConverter> messageConverters) {
+		this.messageConverters = messageConverters;
+	}
+
+	public void setObjectMapper(ObjectMapper objectMapper) {
+		this.objectMapper = objectMapper;
+	}
+
+	public <E extends AbstractEndpoint<?>> void registerEndpoint(E endpoint) {
+		this.endpoints.add(endpoint);
 	}
 
 	@Override
@@ -105,20 +126,24 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 		this.endpoints.forEach(this::process);
 	}
 
-	private void process(Endpoint endpoint) {
+	private void process(AbstractEndpoint<?> endpoint) {
 		logger.debug("Processing endpoint {}", endpoint);
 		this.listenerContainerRegistry.registerListenerContainer(createContainerFor(endpoint));
 	}
 
 	@SuppressWarnings({"unchecked", "rawtype"})
-	private MessageListenerContainer createContainerFor(Endpoint endpoint) {
+	private <E extends AbstractEndpoint<?>> MessageListenerContainer createContainerFor(E endpoint) {
 		String factoryBeanName = getListenerContainerFactoryName(endpoint);
 		Assert.isTrue(this.beanFactory.containsBean(factoryBeanName),
-				() -> "No bean with name " + factoryBeanName + " found for MessageListenerContainerFactory.");
-		return this.beanFactory.getBean(factoryBeanName, MessageListenerContainerFactory.class).create(endpoint);
+				() -> "No factory bean with name " + factoryBeanName + " found for endpoint " + endpoint.getId());
+		MessageListenerContainerFactory<?, E> factory =
+			this.beanFactory.getBean(factoryBeanName, MessageListenerContainerFactory.class);
+		MessageListenerContainer containerInstance = factory.create(endpoint);
+		endpoint.setupMessageListener(containerInstance);
+		return containerInstance;
 	}
 
-	private String getListenerContainerFactoryName(Endpoint endpoint) {
+	private String getListenerContainerFactoryName(Endpoint<?> endpoint) {
 		return StringUtils.hasText(endpoint.getListenerContainerFactoryName())
 				? endpoint.getListenerContainerFactoryName()
 				: this.defaultListenerContainerFactoryBeanName;
@@ -129,4 +154,11 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 		this.beanFactory = beanFactory;
 	}
 
+	public Collection<MessageConverter> getMessageConverters() {
+		return this.messageConverters;
+	}
+
+	public ObjectMapper getObjectMapper() {
+		return this.objectMapper;
+	}
 }
