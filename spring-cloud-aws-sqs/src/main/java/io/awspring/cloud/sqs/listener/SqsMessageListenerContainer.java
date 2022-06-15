@@ -16,19 +16,43 @@
 package io.awspring.cloud.sqs.listener;
 
 import io.awspring.cloud.messaging.support.listener.AbstractMessageListenerContainer;
+import io.awspring.cloud.messaging.support.listener.AsyncMessagePoller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.Assert;
+import software.amazon.awssdk.services.sqs.SqsAsyncClient;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.stream.Collectors;
 
 /**
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SqsMessageListenerContainer extends AbstractMessageListenerContainer<String> {
+public class SqsMessageListenerContainer<T> extends AbstractMessageListenerContainer<T> {
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessageListenerContainer.class);
 
-	public SqsMessageListenerContainer(SqsContainerOptions options) {
+	private final SqsAsyncClient asyncClient;
+
+	public SqsMessageListenerContainer(SqsAsyncClient asyncClient, SqsContainerOptions options) {
 		super(options);
+		this.asyncClient = asyncClient;
 	}
 
+	@Override
+	protected Collection<AsyncMessagePoller<T>> doCreateMessagePollers(Collection<String> endpointNames) {
+		return endpointNames.stream()
+			.map(name -> new SqsMessagePoller<T>(name, this.asyncClient))
+			.collect(Collectors.toList());
+	}
+
+	public void setQueueNames(Collection<String> queueNames) {
+		super.setAssignments(queueNames);
+	}
+
+	public void setQueueNames(String... queueNames) {
+		super.setAssignments(Arrays.asList(queueNames));
+	}
 }

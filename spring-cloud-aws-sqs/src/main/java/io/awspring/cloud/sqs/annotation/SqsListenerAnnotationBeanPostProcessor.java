@@ -48,14 +48,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
- * A {@link AbstractAnnotationBeanPostProcessor} for processing
+ * An {@link AbstractAnnotationBeanPostProcessor} for processing
  * {@link SqsListener @SqsListener} annotations and creating {@link SqsEndpoint} instances
  * for a given bean instance.
  *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SqsListenerAnnotationBeanPostProcessor extends AbstractAnnotationBeanPostProcessor<String, SqsListener, SqsEndpoint> {
+public class SqsListenerAnnotationBeanPostProcessor extends AbstractAnnotationBeanPostProcessor<SqsListener, SqsEndpoint> {
 
 	private static final String GENERATED_ID_PREFIX = "io.awspring.cloud.sqs.sqsListenerEndpointContainer#";
 
@@ -97,13 +97,7 @@ public class SqsListenerAnnotationBeanPostProcessor extends AbstractAnnotationBe
 	}
 
 	@Override
-	protected void initializeHandlerMethodFactory(DefaultMessageHandlerMethodFactory handlerMethodFactory,
-												  Collection<MessageConverter> messageConverters, ObjectMapper objectMapper) {
-		handlerMethodFactory.setArgumentResolvers(createArgumentResolvers(messageConverters, objectMapper));
-		handlerMethodFactory.afterPropertiesSet();
-	}
-
-	protected List<HandlerMethodArgumentResolver> createArgumentResolvers(Collection<MessageConverter> messageConverters, ObjectMapper objectMapper) {
+	protected List<HandlerMethodArgumentResolver> doCreateArgumentResolvers(Collection<MessageConverter> messageConverters, ObjectMapper objectMapper) {
 		return Arrays.asList(
 			new SqsHeadersMethodArgumentResolver(),
 			new AsyncAcknowledgmentHandlerMethodArgumentResolver(MessageHeaders.ACKNOWLEDGMENT_HEADER),

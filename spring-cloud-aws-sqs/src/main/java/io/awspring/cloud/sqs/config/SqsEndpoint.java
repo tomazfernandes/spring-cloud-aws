@@ -33,7 +33,7 @@ import java.util.Map;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SqsEndpoint extends AbstractEndpoint<String> {
+public class SqsEndpoint extends AbstractEndpoint {
 
 	private final Integer simultaneousPollsPerQueue;
 
@@ -56,8 +56,8 @@ public class SqsEndpoint extends AbstractEndpoint<String> {
 		this.isAsync = isAsync;
 	}
 
-	public static SqsEndpointBuilder from(Collection<String> logicalEndpointNames) {
-		return new SqsEndpointBuilder(logicalEndpointNames);
+	public static <T> SqsEndpointBuilder<T> from(Collection<String> logicalEndpointNames) {
+		return new SqsEndpointBuilder<>(logicalEndpointNames);
 	}
 
 	public Integer getSimultaneousPollsPerQueue() {
@@ -88,7 +88,7 @@ public class SqsEndpoint extends AbstractEndpoint<String> {
 		return this.isAsync;
 	}
 
-	public static class SqsEndpointBuilder {
+	public static class SqsEndpointBuilder<T> {
 
 		private final Collection<String> logicalEndpointNames;
 
@@ -110,37 +110,37 @@ public class SqsEndpoint extends AbstractEndpoint<String> {
 			this.logicalEndpointNames = logicalEndpointNames;
 		}
 
-		public SqsEndpointBuilder factoryBeanName(String factoryName) {
+		public SqsEndpointBuilder<T> factoryBeanName(String factoryName) {
 			this.factoryName = factoryName;
 			return this;
 		}
 
-		public SqsEndpointBuilder simultaneousPollsPerQueue(Integer simultaneousPollsPerQueue) {
+		public SqsEndpointBuilder<T> simultaneousPollsPerQueue(Integer simultaneousPollsPerQueue) {
 			this.simultaneousPollsPerQueue = simultaneousPollsPerQueue;
 			return this;
 		}
 
-		public SqsEndpointBuilder pollTimeoutSeconds(Integer pollTimeoutSeconds) {
+		public SqsEndpointBuilder<T> pollTimeoutSeconds(Integer pollTimeoutSeconds) {
 			this.pollTimeoutSeconds = pollTimeoutSeconds;
 			return this;
 		}
 
-		public SqsEndpointBuilder minTimeToProcess(Integer minTimeToProcess) {
+		public SqsEndpointBuilder<T> minTimeToProcess(Integer minTimeToProcess) {
 			this.minTimeToProcess = minTimeToProcess;
 			return this;
 		}
 
-		public SqsEndpointBuilder queuesAttributes(Map<String, QueueAttributes> queueAttributesMap) {
+		public SqsEndpointBuilder<T> queuesAttributes(Map<String, QueueAttributes> queueAttributesMap) {
 			this.queuesAttributes = queueAttributesMap;
 			return this;
 		}
 
-		public SqsEndpointBuilder async(boolean async) {
+		public SqsEndpointBuilder<T> async(boolean async) {
 			this.async = async;
 			return this;
 		}
 
-		public SqsEndpointBuilder id(String id) {
+		public SqsEndpointBuilder<T> id(String id) {
 			this.id = id;
 			return this;
 		}

@@ -26,6 +26,6 @@ import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
 @FunctionalInterface
 public interface MessageListenerFactory<T> {
 
-	AsyncMessageListener<T> createMessageListener(Endpoint<T> endpoint);
+	AsyncMessageListener<T> createMessageListener(Endpoint endpoint);
 
 }

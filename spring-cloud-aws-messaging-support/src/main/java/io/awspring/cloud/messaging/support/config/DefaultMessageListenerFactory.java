@@ -16,12 +16,15 @@
 package io.awspring.cloud.messaging.support.config;
 
 import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
-import io.awspring.cloud.messaging.support.listener.adapter.AsyncSingleMessageListenerAdapter;
+import io.awspring.cloud.messaging.support.listener.adapter.AsyncMessagingMessageListenerAdapter;
 import org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.util.Assert;
 
 /**
+ * Create a suitable {@link AsyncMessageListener} instance for a given {@link Endpoint},
+ * including any adapters that may be required.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */
@@ -30,11 +33,12 @@ public class DefaultMessageListenerFactory<T> implements MessageListenerFactory<
 	private MessageHandlerMethodFactory handlerMethodFactory = new DefaultMessageHandlerMethodFactory();
 
 	@Override
-	public AsyncMessageListener<T> createMessageListener(Endpoint<T> endpoint) {
-		Assert.isInstanceOf(AbstractEndpoint.class, endpoint, "Endpoint must be an instance of AbstractEndpoint");
+	public AsyncMessageListener<T> createMessageListener(Endpoint endpoint) {
+		Assert.isInstanceOf(AbstractEndpoint.class, endpoint,
+			() -> "Endpoint must be an instance of AbstractEndpoint to be used with this factory. Provided: " + endpoint.getClass());
 		Assert.notNull(this.handlerMethodFactory, "No handlerMethodFactory has been set");
-		AbstractEndpoint<T> abstractEndpoint = (AbstractEndpoint<T>) endpoint;
-		return new AsyncSingleMessageListenerAdapter<>(
+		AbstractEndpoint abstractEndpoint = (AbstractEndpoint) endpoint;
+		return new AsyncMessagingMessageListenerAdapter<>(
 			this.handlerMethodFactory.createInvocableHandlerMethod(abstractEndpoint.getBean(), abstractEndpoint.getMethod()));
 	}
 

@@ -16,10 +16,10 @@
 package io.awspring.cloud.messaging.support.listener;
 
 import io.awspring.cloud.messaging.support.MessageHeaderUtils;
-import io.awspring.cloud.messaging.support.MessagingUtils;
 import io.awspring.cloud.messaging.support.listener.acknowledgement.AsyncAckHandler;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
@@ -37,18 +37,19 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.messaging.Message;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
 
 /**
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractMessageListenerContainer<T> implements MessageListenerContainer {
+public abstract class AbstractMessageListenerContainer<T> implements MessageListenerContainer<T> {
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractMessageListenerContainer.class);
 
 	private final Object lifecycleMonitor = new Object();
 
-	private final AbstractContainerOptions<T, ?> containerOptions;
+	private final CommonContainerOptions<?> containerOptions;
 
 	private volatile boolean isRunning;
 
@@ -68,7 +69,10 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	private AsyncMessageInterceptor<T> messageInterceptor;
 
-	protected AbstractMessageListenerContainer(AbstractContainerOptions<T, ?> options) {
+	private Collection<String> assignments;
+
+	protected AbstractMessageListenerContainer(CommonContainerOptions<?> options) {
+		Assert.notNull(options, "options cannot be null");
 		this.containerOptions = options.createCopy();
 	}
 
@@ -82,28 +86,43 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 		return this.id;
 	}
 
+	public void setAssignments(Collection<String> assignments) {
+		this.assignments = assignments;
+	}
+
 	public void setErrorHandler(AsyncErrorHandler<T> errorHandler) {
+		Assert.notNull(errorHandler, "errorHandler cannot be null");
 		this.errorHandler = errorHandler;
 	}
 
 	public void setAckHandler(AsyncAckHandler<T> ackHandler) {
+		Assert.notNull(ackHandler, "ackHandler cannot be null");
 		this.ackHandler = ackHandler;
 	}
 
 	public void setMessageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
+		Assert.notNull(messageInterceptor, "messageInterceptor cannot be null");
 		this.messageInterceptor = messageInterceptor;
 	}
 
-	public AsyncMessageInterceptor<T> getMessageInterceptor() {
-		return this.containerOptions.getMessageInterceptor();
+	public void setMessagePollers(Collection<AsyncMessagePoller<T>> messagePollers) {
+		Assert.notEmpty(messagePollers, "messagePollers cannot be null");
+		this.messagePollers = messagePollers;
 	}
 
-	/**
-	 * Return the {@link ContainerOptions} for this container.
-	 * @return the container options instance.
-	 */
-	public AbstractContainerOptions<T, ?> getContainerOptions() {
-		return this.containerOptions;
+	public void setMessagePoller(AsyncMessagePoller<T> messagePoller) {
+		Assert.notNull(messagePoller, "messagePoller cannot be null");
+		this.messagePollers = Collections.singletonList(messagePoller);
+	}
+
+	@Override
+	public boolean isRunning() {
+		return this.isRunning;
+	}
+
+	@Override
+	public void setMessageListener(AsyncMessageListener<T> asyncMessageListener) {
+		this.messageListener = asyncMessageListener;
 	}
 
 	@Override
@@ -112,33 +131,33 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 			return;
 		}
 		synchronized (this.lifecycleMonitor) {
-			Assert.notEmpty(this.containerOptions.getMessagePollers(), () -> "MessagePollers cannot be empty: "
+			this.isRunning = true;
+			Assert.notEmpty(this.assignments, "No endpoint names set");
+			if (CollectionUtils.isEmpty(this.messagePollers)) {
+				this.messagePollers = doCreateMessagePollers(this.assignments);
+			}
+			Assert.notEmpty(this.messagePollers, () -> "MessagePollers cannot be empty: "
 				+ this.containerOptions);
-			Assert.notNull(this.containerOptions.getMessageListener(), () -> "MessageListener cannot be empty:  "
+			Assert.notNull(this.messageListener, () -> "MessageListener cannot be empty:  "
 				+ this.containerOptions);
 			if (this.id == null) {
 				this.id = resolveContainerId();
 			}
 			logger.debug("Starting container {}", this.id);
-			this.isRunning = true;
-			this.taskExecutor = createTaskExecutor();
-			this.messageListener = this.containerOptions.getMessageListener();
-			this.messagePollers = this.containerOptions.getMessagePollers();
-			this.pollersSemaphore = new Semaphore(this.containerOptions.getSimultaneousPolls());
-			MessagingUtils.INSTANCE
-				.acceptIfNotNull(this.containerOptions.getErrorHandler(), this::setErrorHandler)
-				.acceptIfNotNull(this.containerOptions.getAckHandler(), this::setAckHandler)
-				.acceptIfNotNull(this.containerOptions.getMessageInterceptor(), this::setMessageInterceptor);
-			managePollersLifecycle(Lifecycle::start);
 			doStart();
+			this.taskExecutor = createTaskExecutor();
+			this.pollersSemaphore = new Semaphore(this.containerOptions.getSimultaneousPolls());
+			managePollersLifecycle(Lifecycle::start);
 			this.taskExecutor.execute(this::pollAndProcessMessages);
 		}
 		logger.debug("Container started {}", this.id);
 	}
 
+	protected abstract Collection<AsyncMessagePoller<T>> doCreateMessagePollers(Collection<String> endpointNames);
+
 	private String resolveContainerId() {
 		return "io.awspring.cloud.sqs.sqsListenerEndpointContainer#" +
-			this.containerOptions.getMessagePollers().stream()
+			this.messagePollers.stream()
 				.filter(poller -> poller instanceof AbstractMessagePoller)
 				.findFirst()
 				.map(poller -> (((AbstractMessagePoller<?>) poller).getLogicalEndpointName()))
@@ -254,8 +273,8 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 		logger.debug("Stopping container {}", this.id);
 		synchronized (this.lifecycleMonitor) {
 			this.isRunning = false;
-			managePollersLifecycle(Lifecycle::stop);
 			doStop();
+			managePollersLifecycle(Lifecycle::stop);
 			if (this.taskExecutor instanceof DisposableBean) {
 				try {
 					((DisposableBean) this.taskExecutor).destroy();
@@ -269,15 +288,5 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	protected void doStop() {
-	}
-
-	@Override
-	public boolean isRunning() {
-		return this.isRunning;
-	}
-
-	@Override
-	public void setMessageListener(AsyncMessageListener<?> asyncMessageListener) {
-		this.containerOptions.messageListener((AsyncMessageListener<T>) asyncMessageListener);
 	}
 }

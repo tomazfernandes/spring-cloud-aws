@@ -23,7 +23,7 @@ import java.util.Collection;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public interface Endpoint<T> {
+public interface Endpoint {
 
 	Collection<String> getLogicalNames();
 

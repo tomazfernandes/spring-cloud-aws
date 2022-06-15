@@ -18,54 +18,83 @@ package io.awspring.cloud.sqs.config;
 import io.awspring.cloud.messaging.support.MessagingUtils;
 import io.awspring.cloud.messaging.support.config.AbstractMessageListenerContainerFactory;
 import io.awspring.cloud.messaging.support.config.MessageListenerContainerFactory;
-import io.awspring.cloud.messaging.support.config.MessagePollerFactory;
 import io.awspring.cloud.sqs.listener.SqsContainerOptions;
 import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.util.ReflectionUtils;
-import software.amazon.awssdk.core.internal.http.AmazonAsyncHttpClient;
+import org.springframework.util.Assert;
+import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 import java.util.Collection;
+import java.util.function.Supplier;
 
 /**
  * {@link MessageListenerContainerFactory} implementation for creating
  * {@link SqsMessageListenerContainer} instances.
- * It is typed as String since {@link AmazonAsyncHttpClient} returns strings
- * rather than POJOs.
  *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SqsMessageListenerContainerFactory
-		extends AbstractMessageListenerContainerFactory<String, SqsMessageListenerContainer, SqsEndpoint> {
+public class SqsMessageListenerContainerFactory<T>
+		extends AbstractMessageListenerContainerFactory<T, SqsMessageListenerContainer<T>, SqsEndpoint> {
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessageListenerContainerFactory.class);
 
 	private final SqsContainerOptions sqsContainerOptions;
+	private Supplier<SqsAsyncClient> sqsAsyncClientSupplier;
 
-	public SqsMessageListenerContainerFactory(SqsMessagePollerFactory pollerFactory) {
-		this(pollerFactory, SqsContainerOptions.create());
+	public SqsMessageListenerContainerFactory() {
+		this(SqsContainerOptions.create());
 	}
 
-	public SqsMessageListenerContainerFactory(SqsMessagePollerFactory pollerFactory, SqsContainerOptions containerOptions) {
-		super(pollerFactory, containerOptions);
+	private SqsMessageListenerContainerFactory(SqsContainerOptions containerOptions) {
+		super(containerOptions);
 		this.sqsContainerOptions = containerOptions;
 	}
 
 	@Override
-	protected SqsMessageListenerContainer createContainerInstance(SqsEndpoint endpoint) {
-		SqsContainerOptions containerOptions = createContainerOptions(endpoint);
-		SqsMessageListenerContainer container = new SqsMessageListenerContainer(containerOptions);
-//		MessagingUtils.INSTANCE.acceptBothIfNoneNull(containerOptions.getMinTimeToProcess(), container,
-//				this::addVisibilityExtender);
-		return container;
+	protected SqsEndpoint createEndpointAdapter(Collection<String> endpointNames) {
+		return SqsEndpoint.from(endpointNames).build();
 	}
 
 	@Override
-	protected SqsMessageListenerContainer createContainerInstance(Collection<String> endpointNames) {
-		return createContainerInstance(SqsEndpoint.from(endpointNames).build());
+	protected SqsMessageListenerContainer<T> doCreateContainerInstance(SqsEndpoint endpoint) {
+		logger.debug("Creating {} for endpoint {}", SqsMessageListenerContainer.class.getSimpleName(), endpoint);
+		Assert.notNull(this.sqsAsyncClientSupplier, "No asyncClient set");
+		return new SqsMessageListenerContainer<>(this.sqsAsyncClientSupplier.get(),
+			createContainerOptions(endpoint));
 	}
+
+	protected SqsContainerOptions createContainerOptions(SqsEndpoint endpoint) {
+		SqsContainerOptions options = this.sqsContainerOptions.createCopy();
+		MessagingUtils.INSTANCE
+				.acceptIfNotNull(endpoint.getMinTimeToProcess(), options::minTimeToProcess)
+				.acceptIfNotNull(endpoint.getSimultaneousPollsPerQueue(), options::simultaneousPolls)
+				.acceptIfNotNull(endpoint.getPollTimeout(), options::pollTimeout);
+		return options;
+	}
+
+	public SqsContainerOptions getContainerOptions() {
+		return this.sqsContainerOptions;
+	}
+
+	public void setSqsAsyncClientSupplier(Supplier<SqsAsyncClient> sqsAsyncClientSupplier) {
+		Assert.notNull(sqsAsyncClientSupplier, "sqsAsyncClientSupplier cannot be null.");
+		this.sqsAsyncClientSupplier = sqsAsyncClientSupplier;
+	}
+
+	public void setSqsAsyncClient(SqsAsyncClient sqsAsyncClient) {
+		Assert.notNull(sqsAsyncClient, "sqsAsyncClient cannot be null.");
+		setSqsAsyncClientSupplier(() -> sqsAsyncClient);
+	}
+
+//	protected MessagePollerFactory<T> createMessagePollerFactory(SqsAsyncClientSupplier sqsAsyncClientSupplier) {
+//		return new SqsMessagePollerFactory<>(sqsAsyncClientSupplier);
+//	}
+
+	//		MessagingUtils.INSTANCE.acceptBothIfNoneNull(containerOptions.getMinTimeToProcess(), container,
+//				this::addVisibilityExtender);
+
 
 //	private void addVisibilityExtender(Integer minTimeToProcess, SqsMessageListenerContainer container) {
 //		MessageVisibilityExtenderInterceptor<String> interceptor = new MessageVisibilityExtenderInterceptor<>(
@@ -74,13 +103,4 @@ public class SqsMessageListenerContainerFactory
 //		container.getContainerOptions().setMessageInterceptor(interceptor);
 //	}
 
-	protected SqsContainerOptions createContainerOptions(SqsEndpoint endpoint) {
-		SqsContainerOptions options = SqsContainerOptions.create();
-		ReflectionUtils.shallowCopyFieldState(this.sqsContainerOptions, options);
-		MessagingUtils.INSTANCE
-				.acceptIfNotNull(endpoint.getMinTimeToProcess(), options::minTimeToProcess)
-				.acceptIfNotNull(endpoint.getSimultaneousPollsPerQueue(), options::simultaneousPolls)
-				.acceptIfNotNull(endpoint.getPollTimeout(), options::pollTimeout);
-		return options;
-	}
 }

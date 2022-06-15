@@ -15,7 +15,11 @@
  */
 package io.awspring.cloud.messaging.support;
 
+import io.awspring.cloud.messaging.support.listener.AsyncMessagePoller;
+import org.springframework.util.CollectionUtils;
+
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -47,6 +51,13 @@ public class MessagingUtils {
 
 	public <T> MessagingUtils acceptFirstNonNull(Consumer<T> consumer, T... values) {
 		Arrays.stream(values).filter(Objects::nonNull).findFirst().ifPresent(consumer);
+		return this;
+	}
+
+	public <T> MessagingUtils acceptIfNotEmpty(Collection<T> value, Consumer<Collection<T>> consumer) {
+		if (!CollectionUtils.isEmpty(value)) {
+			consumer.accept(value);
+		}
 		return this;
 	}
 }
