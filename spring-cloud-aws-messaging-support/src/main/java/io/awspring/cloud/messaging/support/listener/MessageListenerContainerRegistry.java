@@ -25,11 +25,11 @@ import org.springframework.lang.Nullable;
  */
 public interface MessageListenerContainerRegistry extends SmartLifecycle {
 
-	void registerListenerContainer(MessageListenerContainer listenerContainer);
+	void registerListenerContainer(MessageListenerContainer<?> listenerContainer);
 
-	Collection<MessageListenerContainer> getListenerContainers();
+	Collection<MessageListenerContainer<?>> getListenerContainers();
 
 	@Nullable
-	MessageListenerContainer getContainerById(String id);
+	MessageListenerContainer<?> getContainerById(String id);
 
 }

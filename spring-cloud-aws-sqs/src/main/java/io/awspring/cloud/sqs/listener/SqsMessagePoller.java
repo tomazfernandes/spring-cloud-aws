@@ -42,7 +42,7 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SqsMessagePoller extends AbstractMessagePoller<String> {
+public class SqsMessagePoller<T> extends AbstractMessagePoller<T> {
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessagePoller.class);
 
@@ -65,6 +65,11 @@ public class SqsMessagePoller extends AbstractMessagePoller<String> {
 		}
 	}
 
+	@Override
+	protected void doStop() {
+
+	}
+
 	// TODO: Consider a way of producing a Message<POJO> for SQS, so that the MessageListener gets the converted
 	//  message. We can do that by inferring the type from the target method - perhaps by passing all method argument resolvers
 	//  to exclude useful ones.
@@ -72,7 +77,7 @@ public class SqsMessagePoller extends AbstractMessagePoller<String> {
 	//  that receives the target type and the MessageListener.
 
 	@Override
-	protected CompletableFuture<Collection<Message<String>>> doPollForMessages(int numberOfMessages, Duration timeout) {
+	protected CompletableFuture<Collection<Message<T>>> doPollForMessages(int numberOfMessages, Duration timeout) {
 		return sqsAsyncClient
 			.receiveMessage(req -> req.queueUrl(this.queueUrl).maxNumberOfMessages(numberOfMessages)
 				.waitTimeSeconds((int) timeout.getSeconds()))
@@ -80,11 +85,11 @@ public class SqsMessagePoller extends AbstractMessagePoller<String> {
 			.thenApply(this::convertMessages);
 	}
 
-	private Collection<Message<String>> convertMessages(List<software.amazon.awssdk.services.sqs.model.Message> messages) {
+	private Collection<Message<T>> convertMessages(List<software.amazon.awssdk.services.sqs.model.Message> messages) {
 		return messages.stream().map(this::convertMessage).collect(Collectors.toList());
 	}
 
-	protected Message<String> convertMessage(final software.amazon.awssdk.services.sqs.model.Message message) {
+	protected Message<T> convertMessage(final software.amazon.awssdk.services.sqs.model.Message message) {
 		logger.trace("Converting message {}", message);
 		HashMap<String, Object> additionalHeaders = new HashMap<>();
 		additionalHeaders.put(MessageHeaders.MESSAGE_ID_HEADER, message.messageId());
@@ -96,7 +101,7 @@ public class SqsMessagePoller extends AbstractMessagePoller<String> {
 		return createMessage(message, Collections.unmodifiableMap(additionalHeaders));
 	}
 
-	protected Message<String> createMessage(
+	protected Message<T> createMessage(
 			software.amazon.awssdk.services.sqs.model.Message message, Map<String, Object> additionalHeaders) {
 
 		HashMap<String, Object> messageHeaders = new HashMap<>();
@@ -108,7 +113,7 @@ public class SqsMessagePoller extends AbstractMessagePoller<String> {
 		messageHeaders.putAll(additionalHeaders);
 		messageHeaders.putAll(getAttributesAsMessageHeaders(message));
 		messageHeaders.putAll(getMessageAttributesAsMessageHeaders(message));
-		return new GenericMessage<>(message.body(), new SqsMessageHeaders(messageHeaders));
+		return new GenericMessage<>((T) message.body(), new SqsMessageHeaders(messageHeaders));
 	}
 
 	private static Map<String, Object> getMessageAttributesAsMessageHeaders(

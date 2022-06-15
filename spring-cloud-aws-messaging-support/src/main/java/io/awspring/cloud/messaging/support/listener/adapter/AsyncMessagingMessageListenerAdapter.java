@@ -25,9 +25,9 @@ import java.util.concurrent.CompletableFuture;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class AsyncSingleMessageListenerAdapter<T> extends MessagingMessageListenerAdapter implements AsyncMessageListener<T> {
+public class AsyncMessagingMessageListenerAdapter<T> extends MessagingMessageListenerAdapter implements AsyncMessageListener<T> {
 
-	public AsyncSingleMessageListenerAdapter(InvocableHandlerMethod handlerMethod) {
+	public AsyncMessagingMessageListenerAdapter(InvocableHandlerMethod handlerMethod) {
 		super(handlerMethod);
 	}
 

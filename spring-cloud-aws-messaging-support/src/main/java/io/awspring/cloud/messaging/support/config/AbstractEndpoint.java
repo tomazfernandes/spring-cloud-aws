@@ -31,7 +31,7 @@ import java.util.Collection;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractEndpoint<T> implements Endpoint<T> {
+public abstract class AbstractEndpoint implements Endpoint {
 
 	private final Collection<String> logicalNames;
 
@@ -43,7 +43,7 @@ public abstract class AbstractEndpoint<T> implements Endpoint<T> {
 
 	private Method method;
 
-	private MessageListenerFactory<T> messageListenerFactory;
+	private MessageListenerFactory<?> messageListenerFactory;
 
 	protected AbstractEndpoint(Collection<String> logicalNames,
 							   @Nullable String listenerContainerFactoryName,
@@ -82,10 +82,11 @@ public abstract class AbstractEndpoint<T> implements Endpoint<T> {
 	 * {@link AsyncMessageListener} to be used with this {@link Endpoint}.
 	 * @param messageListenerFactory the factory instance.
 	 */
-	public void setMessageListenerFactory(MessageListenerFactory<T> messageListenerFactory) {
+	public void setMessageListenerFactory(MessageListenerFactory<?> messageListenerFactory) {
 		this.messageListenerFactory = messageListenerFactory;
 	}
 
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	public void setupMessageListener(MessageListenerContainer container) {
 		container.setMessageListener(this.messageListenerFactory.createMessageListener(this));
 	}

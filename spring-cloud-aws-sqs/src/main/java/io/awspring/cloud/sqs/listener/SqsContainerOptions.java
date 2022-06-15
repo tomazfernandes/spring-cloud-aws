@@ -15,23 +15,16 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import io.awspring.cloud.messaging.support.listener.AbstractContainerOptions;
+import io.awspring.cloud.messaging.support.listener.CommonContainerOptions;
 import org.springframework.util.ReflectionUtils;
 
 /**
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SqsContainerOptions extends AbstractContainerOptions<String, SqsContainerOptions> {
-
-//	private final Map<String, QueueAttributes> queuesAttributes;
+public class SqsContainerOptions extends CommonContainerOptions<SqsContainerOptions> {
 
 	private Integer minTimeToProcess;
-
-//	private SqsContainerOptions(Map<String, QueueAttributes> queuesAttributes) {
-//		this.queuesAttributes = queuesAttributes;
-//	}
-//
 
 	private SqsContainerOptions() {
 	}
@@ -39,10 +32,6 @@ public class SqsContainerOptions extends AbstractContainerOptions<String, SqsCon
 	public static SqsContainerOptions create() {
 		return new SqsContainerOptions();
 	}
-//
-//	public static SqsContainerOptions create(Map<String, QueueAttributes> queuesAttributes) {
-//		return new SqsContainerOptions(queuesAttributes);
-//	}
 
 	public SqsContainerOptions minTimeToProcess(Integer minTimeToProcess) {
 		this.minTimeToProcess = minTimeToProcess;
@@ -52,10 +41,6 @@ public class SqsContainerOptions extends AbstractContainerOptions<String, SqsCon
 	public Integer getMinTimeToProcess() {
 		return minTimeToProcess;
 	}
-//
-//	public Map<String, QueueAttributes> getQueuesAttributes() {
-//		return queuesAttributes;
-//	}
 
 	@Override
 	protected SqsContainerOptions doCreateCopy() {
@@ -63,4 +48,26 @@ public class SqsContainerOptions extends AbstractContainerOptions<String, SqsCon
 		ReflectionUtils.shallowCopyFieldState(this, newCopy);
 		return newCopy;
 	}
+
+
+
+
+
+//	private final Map<String, QueueAttributes> queuesAttributes;
+//	private SqsContainerOptions(Map<String, QueueAttributes> queuesAttributes) {
+//		this.queuesAttributes = queuesAttributes;
+//	}
+//
+
+	//
+//	public static SqsContainerOptions create(Map<String, QueueAttributes> queuesAttributes) {
+//		return new SqsContainerOptions(queuesAttributes);
+//	}
+
+//
+//	public Map<String, QueueAttributes> getQueuesAttributes() {
+//		return queuesAttributes;
+//	}
+
+
 }

@@ -26,10 +26,12 @@ import java.util.Collection;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public interface MessageListenerContainerFactory<C extends MessageListenerContainer, E extends Endpoint> {
+@FunctionalInterface
+public interface MessageListenerContainerFactory<C extends MessageListenerContainer<?>, E extends Endpoint> {
 
-	C create(E endpoint);
+	C createContainerInstance(String... endpointNames);
 
-	C create(Collection<String> endpointNames);
-
+	default C createContainerInstance(E endpoint) {
+		throw new UnsupportedOperationException("Not implemented");
+	}
 }

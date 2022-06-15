@@ -33,12 +33,14 @@ import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.messaging.converter.MessageConverter;
 import org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
+import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 
 
@@ -52,7 +54,7 @@ import java.util.Map;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractAnnotationBeanPostProcessor<T, A extends Annotation, E extends AbstractEndpoint<T>>
+public abstract class AbstractAnnotationBeanPostProcessor<A extends Annotation, E extends AbstractEndpoint>
 	implements BeanPostProcessor, BeanFactoryAware, SmartInitializingSingleton {
 
 	private final Collection<Class<?>> nonAnnotatedClasses = Collections.synchronizedSet(new HashSet<>());
@@ -61,7 +63,7 @@ public abstract class AbstractAnnotationBeanPostProcessor<T, A extends Annotatio
 
 	private final EndpointRegistrar endpointRegistrar = new EndpointRegistrar();
 
-	private final MessageListenerFactory<T> messageListenerFactory = new DefaultMessageListenerFactory<T>();
+	private final MessageListenerFactory<?> messageListenerFactory = new DefaultMessageListenerFactory<>();
 
 	private BeanFactory beanFactory;
 
@@ -109,8 +111,7 @@ public abstract class AbstractAnnotationBeanPostProcessor<T, A extends Annotatio
 	@Override
 	public void afterSingletonsInstantiated() {
 		this.endpointRegistrar.setBeanFactory(this.beanFactory);
-		// TODO: Add EndpointRegistrarCustomizer interface
-		// TODO: Initialize methodFactory
+		// TODO: Add EndpointRegistrarCustomizer (not that name) interface
 		initializeHandlerMethodFactory();
 		this.endpointRegistrar.afterSingletonsInstantiated();
 	}
@@ -118,26 +119,28 @@ public abstract class AbstractAnnotationBeanPostProcessor<T, A extends Annotatio
 	protected void initializeHandlerMethodFactory() {
 		MessageHandlerMethodFactory handlerMethodFactory = this.endpointRegistrar.getMessageHandlerMethodFactory();
 		if (this.messageListenerFactory instanceof DefaultMessageListenerFactory) {
-			((DefaultMessageListenerFactory<T>) this.messageListenerFactory)
+			((DefaultMessageListenerFactory<?>) this.messageListenerFactory)
 				.setHandlerMethodFactory(handlerMethodFactory);
 		}
 		if (handlerMethodFactory instanceof DefaultMessageHandlerMethodFactory) {
 			try {
-				initializeHandlerMethodFactory((DefaultMessageHandlerMethodFactory) handlerMethodFactory,
-					this.endpointRegistrar.getMessageConverters(), this.endpointRegistrar.getObjectMapper());
+				DefaultMessageHandlerMethodFactory defaultHandlerMethodFactory =
+					(DefaultMessageHandlerMethodFactory) handlerMethodFactory;
+				defaultHandlerMethodFactory.setArgumentResolvers(doCreateArgumentResolvers(
+						this.endpointRegistrar.getMessageConverters(), this.endpointRegistrar.getObjectMapper()));
+				defaultHandlerMethodFactory.afterPropertiesSet();
 			} catch (Exception e) {
 				throw new IllegalArgumentException("Error initializing MessageHandlerMethodFactory", e);
 			}
 		}
 	}
 
-	protected abstract void initializeHandlerMethodFactory(DefaultMessageHandlerMethodFactory defaultFactory,
-														   Collection<MessageConverter> messageConverters,
-														   ObjectMapper objectMapper);
-
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
 		this.beanFactory = beanFactory;
 		this.expressionResolvingHelper.setBeanFactory(beanFactory);
 	}
+
+	protected abstract List<HandlerMethodArgumentResolver> doCreateArgumentResolvers(
+		Collection<MessageConverter> messageConverters, ObjectMapper objectMapper);
 }

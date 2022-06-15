@@ -32,14 +32,14 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 
 	private static final Logger logger = LoggerFactory.getLogger(DefaultListenerContainerRegistry.class);
 
-	private final Collection<MessageListenerContainer> listenerContainers = new ArrayList<>();
+	private final Collection<MessageListenerContainer<?>> listenerContainers = new ArrayList<>();
 
 	private final Object lifecycleMonitor = new Object();
 
 	private volatile boolean running = false;
 
 	@Override
-	public void registerListenerContainer(MessageListenerContainer listenerContainer) {
+	public void registerListenerContainer(MessageListenerContainer<?> listenerContainer) {
 		logger.debug("Registering listener container {}", listenerContainer);
 		Assert.state(getContainerById(listenerContainer.getId()) == null,
 			() -> "Already registered container with id " + listenerContainer.getId());
@@ -47,7 +47,7 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 	}
 
 	@Override
-	public Collection<MessageListenerContainer> getListenerContainers() {
+	public Collection<MessageListenerContainer<?>> getListenerContainers() {
 		return Collections.unmodifiableCollection(this.listenerContainers);
 	}
 

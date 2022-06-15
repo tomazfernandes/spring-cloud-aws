@@ -58,7 +58,7 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 	private String defaultListenerContainerFactoryBeanName =
 		MessagingConfigUtils.DEFAULT_LISTENER_CONTAINER_FACTORY_BEAN_NAME;
 
-	private final Collection<AbstractEndpoint<?>> endpoints = new ArrayList<>();
+	private final Collection<AbstractEndpoint> endpoints = new ArrayList<>();
 
 	private Collection<MessageConverter> messageConverters = new ArrayList<>();
 
@@ -113,7 +113,7 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 		this.objectMapper = objectMapper;
 	}
 
-	public <E extends AbstractEndpoint<?>> void registerEndpoint(E endpoint) {
+	public <E extends AbstractEndpoint> void registerEndpoint(E endpoint) {
 		this.endpoints.add(endpoint);
 	}
 
@@ -126,24 +126,24 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 		this.endpoints.forEach(this::process);
 	}
 
-	private void process(AbstractEndpoint<?> endpoint) {
+	private void process(AbstractEndpoint endpoint) {
 		logger.debug("Processing endpoint {}", endpoint);
 		this.listenerContainerRegistry.registerListenerContainer(createContainerFor(endpoint));
 	}
 
-	@SuppressWarnings({"unchecked", "rawtype"})
-	private <E extends AbstractEndpoint<?>> MessageListenerContainer createContainerFor(E endpoint) {
+	@SuppressWarnings("unchecked")
+	public <E extends AbstractEndpoint> MessageListenerContainer<?> createContainerFor(E endpoint) {
 		String factoryBeanName = getListenerContainerFactoryName(endpoint);
 		Assert.isTrue(this.beanFactory.containsBean(factoryBeanName),
 				() -> "No factory bean with name " + factoryBeanName + " found for endpoint " + endpoint.getId());
 		MessageListenerContainerFactory<?, E> factory =
 			this.beanFactory.getBean(factoryBeanName, MessageListenerContainerFactory.class);
-		MessageListenerContainer containerInstance = factory.create(endpoint);
+		MessageListenerContainer<?> containerInstance = factory.createContainerInstance(endpoint);
 		endpoint.setupMessageListener(containerInstance);
 		return containerInstance;
 	}
 
-	private String getListenerContainerFactoryName(Endpoint<?> endpoint) {
+	private String getListenerContainerFactoryName(Endpoint endpoint) {
 		return StringUtils.hasText(endpoint.getListenerContainerFactoryName())
 				? endpoint.getListenerContainerFactoryName()
 				: this.defaultListenerContainerFactoryBeanName;
