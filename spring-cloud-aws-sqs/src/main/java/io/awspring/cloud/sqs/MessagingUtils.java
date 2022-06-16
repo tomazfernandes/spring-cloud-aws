@@ -48,7 +48,9 @@ public class MessagingUtils {
 		return this;
 	}
 
-	public <T> MessagingUtils acceptFirstNonNull(Consumer<T> consumer, T... values) {
+	@SuppressWarnings("varargs")
+	@SafeVarargs
+	public final <T> MessagingUtils acceptFirstNonNull(Consumer<T> consumer, T... values) {
 		Arrays.stream(values).filter(Objects::nonNull).findFirst().ifPresent(consumer);
 		return this;
 	}
