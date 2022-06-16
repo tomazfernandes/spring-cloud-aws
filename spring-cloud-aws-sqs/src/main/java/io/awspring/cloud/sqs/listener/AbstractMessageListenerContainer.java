@@ -85,8 +85,6 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 		logger.debug("Container started {}", this.id);
 	}
 
-	protected abstract Collection<AsyncMessagePoller<T>> doCreateMessagePollers(Collection<String> endpointNames);
-
 	private String resolveContainerId() {
 		return "io.awspring.cloud.sqs.sqsListenerEndpointContainer#" +
 			this.queueNames.stream()

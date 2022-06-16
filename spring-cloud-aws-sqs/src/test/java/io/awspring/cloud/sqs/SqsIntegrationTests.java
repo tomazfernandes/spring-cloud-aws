@@ -39,6 +39,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
@@ -51,15 +52,18 @@ import software.amazon.awssdk.services.sqs.model.SendMessageBatchRequestEntry;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -115,7 +119,6 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		sendMessageTo(DOES_NOT_ACK_ON_ERROR_QUEUE_NAME);
 		assertThat(latchContainer.doesNotAckLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(latchContainer.errorHandlerLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(latchContainer.interceptorLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Test
@@ -129,6 +132,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		sendMessageTo(RESOLVES_POJO_TYPES_QUEUE_NAME,
 				objectMapper.writeValueAsString(new MyPojo("firstValue", "secondValue")));
 		assertThat(latchContainer.resolvesPojoLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(latchContainer.interceptorLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Test
@@ -146,6 +150,18 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 	final int outerBatchSize = 1; // 50;
 	final int innerBatchSize = 1; // 10;
 	final int totalMessages = 2 * outerBatchSize * innerBatchSize;
+
+	@Autowired
+	OrderedLoadListener orderedLoadListener;
+
+	@Test
+	void receivesOrderedLoad() throws Exception {
+		latchContainer.orderedLoadLatch = new CountDownLatch(10);
+		String queueUrl = fetchQueueUrl(ORDERED_LOAD_QUEUE_NAME);
+		sendMessageBatch(queueUrl, 0, 10);
+		assertThat(latchContainer.orderedLoadLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(orderedLoadListener.receivedMessages).containsSequence(IntStream.range(0, 10).boxed().collect(Collectors.toList()));
+	}
 
 	// These tests are really only for us to have some indication on how the system performs under load.
 	// We can probably remove them later, or adapt to only make sure it handles more than one queue.
@@ -243,8 +259,8 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		LatchContainer latchContainer;
 
 		@SqsListener(queueNames = DOES_NOT_ACK_ON_ERROR_QUEUE_NAME, factory = "lowResourceFactory")
-		void listen(String message) {
-			logger.debug("Received message in Listener Method: " + message);
+		void listen(String message, @Header(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID) String queueName) {
+			logger.debug("Received message {} from queue {}", message, queueName);
 			latchContainer.doesNotAckLatch.countDown();
 			throw new RuntimeException("Expected exception");
 		}
@@ -273,11 +289,28 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Autowired
 		LatchContainer latchContainer;
 
-		@SqsListener(queueNames = RESOLVES_POJO_TYPES_QUEUE_NAME)
-		void listen(MyPojo pojo) {
+		@SqsListener(queueNames = RESOLVES_POJO_TYPES_QUEUE_NAME, factory = "lowResourceFactory")
+		void listen(MyPojo pojo, @Header(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID) String queueName) {
 			Assert.notNull(pojo, "Received null message");
-			logger.debug("Received message in Listener Method: " + pojo);
+			logger.debug("Received message {} from queue {}", pojo, queueName);
 			latchContainer.resolvesPojoLatch.countDown();
+		}
+	}
+
+	static class OrderedLoadListener {
+
+		private final List<Integer> receivedMessages = new ArrayList<>();
+
+		@Autowired
+		LatchContainer latchContainer;
+
+		@SqsListener(queueNames = ORDERED_LOAD_QUEUE_NAME, factory = "highThroughputFactory")
+		void listen(String message, @Header(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID) String queueName) throws Exception {
+			int sleepTime = new Random().nextInt(500) + 500;
+			Thread.sleep(sleepTime);
+			logger.debug("Received message {} from queue {}", message, queueName);
+			receivedMessages.add(Integer.valueOf(message.split("-")[1].trim()));
+			latchContainer.orderedLoadLatch.countDown();
 		}
 	}
 
@@ -371,13 +404,14 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		final CountDownLatch receivesMessageLatch = new CountDownLatch(1);
 		final CountDownLatch doesNotAckLatch = new CountDownLatch(2);
 		final CountDownLatch errorHandlerLatch = new CountDownLatch(2);
-		final CountDownLatch interceptorLatch = new CountDownLatch(1);
+		final CountDownLatch interceptorLatch = new CountDownLatch(2);
 		final CountDownLatch manyParameterTypesLatch = new CountDownLatch(1);
 		final CountDownLatch resolvesPojoLatch = new CountDownLatch(1);
 		final CountDownLatch manuallyCreatedContainerLatch = new CountDownLatch(1);
 		final CountDownLatch manuallyCreatedFactoryLatch = new CountDownLatch(1);
 
 		// Lazily initialized
+		CountDownLatch orderedLoadLatch = new CountDownLatch(1);
 		CountDownLatch manyMessagesTwoQueuesLatch = new CountDownLatch(1);
 		CountDownLatch asyncManyMessagesTwoQueuesLatch = new CountDownLatch(1);
 		CountDownLatch messageAckLatch = new CountDownLatch(1);
@@ -399,7 +433,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Bean
 		public SqsMessageListenerContainerFactory<String> highThroughputFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
-			factory.getContainerOptions().simultaneousPolls(10).pollTimeout(Duration.ofSeconds(2)).messagesPerPoll(10);
+			factory.getContainerOptions().simultaneousPolls(1).pollTimeout(Duration.ofSeconds(2)).messagesPerPoll(10);
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			factory.setAckHandler(testAckHandler());
 			return factory;
@@ -411,7 +445,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			factory.getContainerOptions().simultaneousPolls(1).pollTimeout(Duration.ofSeconds(2)).messagesPerPoll(1);
 			factory.setAckHandler(testAckHandler());
 			factory.setErrorHandler(testErrorHandler());
-			factory.setMessageInterceptor(testInterceptor());
+			factory.addMessageInterceptors(Arrays.asList(testInterceptor(), testInterceptor()));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			return factory;
 		}
@@ -440,30 +474,35 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		}
 
 		LatchContainer latchContainer = new LatchContainer();
+//
+//		@Bean
+//		ReceivesMessageListener receivesMessageListener() {
+//			return new ReceivesMessageListener();
+//		}
+//
+//		@Bean
+//		DoesNotAckOnErrorListener doesNotAckOnErrorListener() {
+//			return new DoesNotAckOnErrorListener();
+//		}
+//
+//		@Bean
+//		ResolvesParameterTypesListener resolvesParameterTypesListener() {
+//			return new ResolvesParameterTypesListener();
+//		}
+//
+//		@Bean
+//		ResolvesPojoListener resolvesPojoListener() {
+//			return new ResolvesPojoListener();
+//		}
+//
+//		@Bean
+//		ReceiveManyFromTwoQueuesListener receiveManyFromTwoQueuesListener() {
+//			return new ReceiveManyFromTwoQueuesListener();
+//		}
 
 		@Bean
-		ReceivesMessageListener receivesMessageListener() {
-			return new ReceivesMessageListener();
-		}
-
-		@Bean
-		DoesNotAckOnErrorListener doesNotAckOnErrorListener() {
-			return new DoesNotAckOnErrorListener();
-		}
-
-		@Bean
-		ResolvesParameterTypesListener resolvesParameterTypesListener() {
-			return new ResolvesParameterTypesListener();
-		}
-
-		@Bean
-		ResolvesPojoListener resolvesPojoListener() {
-			return new ResolvesPojoListener();
-		}
-
-		@Bean
-		ReceiveManyFromTwoQueuesListener receiveManyFromTwoQueuesListener() {
-			return new ReceiveManyFromTwoQueuesListener();
+		OrderedLoadListener orderedLoadListener() {
+			return new OrderedLoadListener();
 		}
 
 

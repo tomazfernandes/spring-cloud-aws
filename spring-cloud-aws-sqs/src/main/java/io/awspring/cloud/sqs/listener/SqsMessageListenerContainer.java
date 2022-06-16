@@ -29,6 +29,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -36,7 +37,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -63,8 +63,9 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	private AsyncAckHandler<T> ackHandler = new OnSuccessAckHandler<>();
 
-	private AsyncMessageInterceptor<T> messageInterceptor;
+	private MessageSplitter<T> splitter;
 
+	private final Collection<AsyncMessageInterceptor<T>> messageInterceptors = new ArrayList<>();
 
 	public SqsMessageListenerContainer(SqsAsyncClient asyncClient, SqsContainerOptions options) {
 		super(options);
@@ -82,26 +83,20 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		this.ackHandler = ackHandler;
 	}
 
-	public void setMessageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
+	public void addMessageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
 		Assert.notNull(messageInterceptor, "messageInterceptor cannot be null");
-		this.messageInterceptor = messageInterceptor;
+		this.messageInterceptors.add(messageInterceptor);
 	}
 
-	public void setMessagePollers(Collection<AsyncMessagePoller<T>> messagePollers) {
-		Assert.notEmpty(messagePollers, "messagePollers cannot be null");
-		this.messagePollers = messagePollers;
-	}
-
-	public void setMessagePoller(AsyncMessagePoller<T> messagePoller) {
-		Assert.notNull(messagePoller, "messagePoller cannot be null");
-		this.messagePollers = Collections.singletonList(messagePoller);
+	public void addMessageInterceptors(Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
+		Assert.notNull(messageInterceptors, "messageInterceptors cannot be null");
+		this.messageInterceptors.addAll(messageInterceptors);
 	}
 
 	@Override
 	public void setMessageListener(AsyncMessageListener<T> asyncMessageListener) {
 		this.messageListener = asyncMessageListener;
 	}
-
 
 	@Override
 	protected void doStart() {
@@ -112,10 +107,10 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 			+ this.containerOptions);
 		logger.debug("Starting container {}", super.getId());
 		this.taskExecutor = createTaskExecutor();
+		this.splitter = new OrderedSplitter<>(this.taskExecutor);
 		this.pollersSemaphore = new Semaphore(this.containerOptions.getSimultaneousPolls());
 		managePollersLifecycle(Lifecycle::start);
 		this.taskExecutor.execute(this::pollAndProcessMessages);
-
 	}
 
 	private void managePollersLifecycle(Consumer<SmartLifecycle> consumer) {
@@ -136,8 +131,9 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 						this.pollersSemaphore.release();
 						return;
 					}
+
 					poller.poll(containerOptions.getMessagesPerPoll(), containerOptions.getPollTimeout())
-						.thenCompose(this::splitAndProcessMessages)
+						.thenCompose(msgs -> this.splitter.splitAndProcess(msgs, this::processMessage))
 						.handle(handleProcessingResult())
 						.thenRun(releaseSemaphore());
 				}
@@ -152,38 +148,24 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		}
 	}
 
-	protected CompletableFuture<?> splitAndProcessMessages(Collection<Message<T>> messages) {
-		logger.trace("Received {} messages", messages.size());
-		return CompletableFuture
-			.allOf(messages.stream().map(this::processMessageAsync).toArray(CompletableFuture[]::new));
-	}
-
-	protected CompletableFuture<?> processMessageAsync(Message<T> message) {
-		logger.trace("Received message {}", MessageHeaderUtils.getId(message));
-		return CompletableFuture.supplyAsync(() -> doProcessMessage(message), this.taskExecutor)
-			.thenCompose(x -> x);
-	}
-
-	protected CompletableFuture<?> doProcessMessage(Message<T> message) {
-		logger.trace("Processing message {}", MessageHeaderUtils.getId(message));
-		return maybeIntercept(message, this.messageListener::onMessage)
+	protected CompletableFuture<Void> processMessage(Message<T> message) {
+		logger.trace("Processing message {}", message.getPayload());// MessageHeaderUtils.getId(message));
+		return intercept(message)
+			.thenCompose(this.messageListener::onMessage)
 			.handle((val, t) -> handleResult(message, t))
 			.thenCompose(x -> x);
 	}
 
-	protected CompletableFuture<?> handleResult(Message<T> message, Throwable throwable) {
+	private CompletableFuture<Message<T>> intercept(Message<T> message) {
+		return this.messageInterceptors.stream().reduce(CompletableFuture.completedFuture(message),
+			(messageFuture, interceptor) -> messageFuture.thenCompose(interceptor::intercept), (a, b) -> a);
+	}
+
+	protected CompletableFuture<Void> handleResult(Message<T> message, Throwable throwable) {
 		logger.trace("Handling result for message {}", MessageHeaderUtils.getId(message));
 		return throwable == null ? this.ackHandler.onSuccess(message)
 			: this.errorHandler.handleError(message, throwable)
 			.thenCompose(val -> this.ackHandler.onError(message, throwable));
-	}
-
-	private CompletableFuture<Void> maybeIntercept(Message<T> message,
-												   Function<Message<T>, CompletableFuture<Void>> listener) {
-		logger.trace("Evaluating interceptor for message {}", MessageHeaderUtils.getId(message));
-		return this.messageInterceptor != null
-			? this.messageInterceptor.intercept(message).thenCompose(listener)
-			: listener.apply(message);
 	}
 
 	private void acquireSemaphore() throws InterruptedException {
@@ -216,8 +198,6 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		return taskExecutor;
 	}
 
-
-	@Override
 	protected Collection<AsyncMessagePoller<T>> doCreateMessagePollers(Collection<String> endpointNames) {
 		return endpointNames.stream()
 			.map(name -> new SqsMessagePoller<T>(name, this.asyncClient))
