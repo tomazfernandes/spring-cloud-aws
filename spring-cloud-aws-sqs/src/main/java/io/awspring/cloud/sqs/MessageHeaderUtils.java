@@ -15,8 +15,8 @@
  */
 package io.awspring.cloud.sqs;
 
-import io.awspring.cloud.messaging.support.listener.MessageHeaders;
-import io.awspring.cloud.messaging.support.listener.acknowledgement.AsyncAcknowledgement;
+import io.awspring.cloud.sqs.listener.MessageHeaders;
+import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAcknowledgement;
 import org.springframework.messaging.Message;
 
 import java.util.Objects;

@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sqs.config;
 
-import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
+import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 
 /**
  * A Factory for creating {@link AsyncMessageListener} instances.

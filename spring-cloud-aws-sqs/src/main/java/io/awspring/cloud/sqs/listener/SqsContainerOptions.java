@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import io.awspring.cloud.messaging.support.listener.CommonContainerOptions;
+import io.awspring.cloud.sqs.listener.CommonContainerOptions;
 import org.springframework.util.ReflectionUtils;
 
 /**

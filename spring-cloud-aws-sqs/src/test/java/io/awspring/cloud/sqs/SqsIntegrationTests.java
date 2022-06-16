@@ -16,13 +16,13 @@
 package io.awspring.cloud.sqs;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.awspring.cloud.messaging.support.listener.AsyncErrorHandler;
-import io.awspring.cloud.messaging.support.listener.AsyncMessageInterceptor;
-import io.awspring.cloud.messaging.support.listener.MessageHeaders;
-import io.awspring.cloud.messaging.support.listener.MessageListenerContainer;
-import io.awspring.cloud.messaging.support.listener.MessageListenerContainerRegistry;
-import io.awspring.cloud.messaging.support.listener.acknowledgement.AsyncAckHandler;
-import io.awspring.cloud.messaging.support.listener.acknowledgement.AsyncAcknowledgement;
+import io.awspring.cloud.sqs.listener.AsyncErrorHandler;
+import io.awspring.cloud.sqs.listener.AsyncMessageInterceptor;
+import io.awspring.cloud.sqs.listener.MessageHeaders;
+import io.awspring.cloud.sqs.listener.MessageListenerContainer;
+import io.awspring.cloud.sqs.listener.MessageListenerContainerRegistry;
+import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAckHandler;
+import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAcknowledgement;
 import io.awspring.cloud.sqs.annotation.EnableSqs;
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import io.awspring.cloud.sqs.config.SqsMessageListenerContainerFactory;
@@ -436,7 +436,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 				latchContainer.manuallyCreatedFactoryLatch.countDown();
 				return CompletableFuture.completedFuture(null);
 			});
-			return factory.createContainerInstance(MANUALLY_CREATE_FACTORY_QUEUE_NAME);
+			return factory.createContainer(MANUALLY_CREATE_FACTORY_QUEUE_NAME);
 		}
 
 		LatchContainer latchContainer = new LatchContainer();

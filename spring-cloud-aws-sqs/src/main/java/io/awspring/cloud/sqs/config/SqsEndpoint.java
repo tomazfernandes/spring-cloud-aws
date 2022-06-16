@@ -15,8 +15,8 @@
  */
 package io.awspring.cloud.sqs.config;
 
-import io.awspring.cloud.messaging.support.config.AbstractEndpoint;
-import io.awspring.cloud.messaging.support.config.Endpoint;
+import io.awspring.cloud.sqs.config.AbstractEndpoint;
+import io.awspring.cloud.sqs.config.Endpoint;
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import io.awspring.cloud.sqs.listener.QueueAttributes;
 

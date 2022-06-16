@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sqs.config;
 
-import io.awspring.cloud.messaging.support.listener.MessageListenerContainer;
+import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 
 /**
  * Creates a {@link MessageListenerContainer} instance for a given
@@ -25,11 +25,11 @@ import io.awspring.cloud.messaging.support.listener.MessageListenerContainer;
  * @since 3.0
  */
 @FunctionalInterface
-public interface MessageListenerContainerFactory<C extends MessageListenerContainer<?>, E extends Endpoint> {
+public interface MessageListenerContainerFactory<C extends MessageListenerContainer<?>> {
 
-	C createContainerInstance(String... endpointNames);
+	C createContainer(String... endpointNames);
 
-	default C createContainerInstance(E endpoint) {
+	default C createContainer(Endpoint endpoint) {
 		throw new UnsupportedOperationException("Not implemented");
 	}
 }

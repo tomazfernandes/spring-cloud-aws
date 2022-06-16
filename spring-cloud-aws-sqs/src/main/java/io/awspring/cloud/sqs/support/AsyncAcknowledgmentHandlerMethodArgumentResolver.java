@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sqs.support;
 
-import io.awspring.cloud.messaging.support.listener.acknowledgement.AsyncAcknowledgement;
+import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAcknowledgement;
 import org.springframework.core.MethodParameter;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;

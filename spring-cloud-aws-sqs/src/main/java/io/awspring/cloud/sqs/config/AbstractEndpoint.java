@@ -15,8 +15,8 @@
  */
 package io.awspring.cloud.sqs.config;
 
-import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
-import io.awspring.cloud.messaging.support.listener.MessageListenerContainer;
+import io.awspring.cloud.sqs.listener.AsyncMessageListener;
+import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
