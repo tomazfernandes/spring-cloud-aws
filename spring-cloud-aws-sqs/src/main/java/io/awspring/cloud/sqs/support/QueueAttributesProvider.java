@@ -30,10 +30,10 @@ public class QueueAttributesProvider {
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
-			throw new IllegalStateException("Interrupted while fetching attributes for queue " + queue);
+			throw new IllegalStateException("Interrupted while fetching attributes for queue " + queue, e);
 		}
 		catch (ExecutionException e) {
-			throw new IllegalStateException("ExecutionException while fetching attributes for queue " + queue);
+			throw new IllegalStateException("ExecutionException while fetching attributes for queue " + queue, e);
 		}
 	}
 

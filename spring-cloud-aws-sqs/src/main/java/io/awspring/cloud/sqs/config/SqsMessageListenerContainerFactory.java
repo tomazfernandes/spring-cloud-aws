@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.function.Supplier;
 
@@ -50,7 +51,7 @@ public class SqsMessageListenerContainerFactory<T>
 
 	private AsyncAckHandler<T> ackHandler;
 
-	private AsyncMessageInterceptor<T> messageInterceptor;
+	private Collection<AsyncMessageInterceptor<T>> messageInterceptors = new ArrayList<>();
 
 	private AsyncMessageListener<T> messageListener;
 
@@ -64,16 +65,20 @@ public class SqsMessageListenerContainerFactory<T>
 		this.ackHandler = ackHandler;
 	}
 
-	public void setMessageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
+	public void addMessageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
 		Assert.notNull(messageInterceptor, "messageInterceptor cannot be null");
-		this.messageInterceptor = messageInterceptor;
+		this.messageInterceptors.add(messageInterceptor);
+	}
+
+	public void addMessageInterceptors(Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
+		Assert.notEmpty(messageInterceptors, "messageInterceptors cannot be null");
+		this.messageInterceptors.addAll(messageInterceptors);
 	}
 
 	public void setMessageListener(AsyncMessageListener<T> messageListener) {
 		Assert.notNull(messageListener, "messageListener cannot be null");
 		this.messageListener = messageListener;
 	}
-
 
 	public SqsMessageListenerContainerFactory() {
 		this(SqsContainerOptions.create());
@@ -129,13 +134,8 @@ public class SqsMessageListenerContainerFactory<T>
 			.acceptIfNotNull(this.messageListener, container::setMessageListener)
 			.acceptIfNotNull(this.errorHandler, container::setErrorHandler)
 			.acceptIfNotNull(this.ackHandler, container::setAckHandler)
-			.acceptIfNotNull(this.messageInterceptor, container::setMessageInterceptor);
+			.acceptIfNotNull(this.messageInterceptors, container::addMessageInterceptors);
 	}
-
-
-//	protected MessagePollerFactory<T> createMessagePollerFactory(SqsAsyncClientSupplier sqsAsyncClientSupplier) {
-//		return new SqsMessagePollerFactory<>(sqsAsyncClientSupplier);
-//	}
 
 	//		MessagingUtils.INSTANCE.acceptBothIfNoneNull(containerOptions.getMinTimeToProcess(), container,
 //				this::addVisibilityExtender);
