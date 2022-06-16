@@ -53,7 +53,7 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 
 	@Nullable
 	@Override
-	public MessageListenerContainer getContainerById(String id) {
+	public MessageListenerContainer<?> getContainerById(String id) {
 		Assert.notNull(id, "id cannot be null.");
 		return this.listenerContainers.stream()
 			.filter(container -> container.getId().equals(id)).findFirst().orElse(null);
