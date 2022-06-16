@@ -15,10 +15,8 @@
  */
 package io.awspring.cloud.sqs.config;
 
-import io.awspring.cloud.messaging.support.config.EndpointRegistrar;
-import io.awspring.cloud.messaging.support.config.MessagingConfigUtils;
-import io.awspring.cloud.messaging.support.listener.DefaultListenerContainerRegistry;
 import io.awspring.cloud.sqs.annotation.SqsListenerAnnotationBeanPostProcessor;
+import io.awspring.cloud.sqs.listener.DefaultListenerContainerRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;

@@ -15,8 +15,7 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import io.awspring.cloud.messaging.support.listener.AbstractMessagePoller;
-import io.awspring.cloud.messaging.support.listener.MessageHeaders;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;

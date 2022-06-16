@@ -16,8 +16,8 @@
 package io.awspring.cloud.sqs.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.awspring.cloud.messaging.support.listener.MessageListenerContainer;
-import io.awspring.cloud.messaging.support.listener.MessageListenerContainerRegistry;
+import io.awspring.cloud.sqs.listener.MessageListenerContainer;
+import io.awspring.cloud.sqs.listener.MessageListenerContainerRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
@@ -136,9 +136,9 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 		String factoryBeanName = getListenerContainerFactoryName(endpoint);
 		Assert.isTrue(this.beanFactory.containsBean(factoryBeanName),
 				() -> "No factory bean with name " + factoryBeanName + " found for endpoint " + endpoint.getId());
-		MessageListenerContainerFactory<?, E> factory =
+		MessageListenerContainerFactory<?> factory =
 			this.beanFactory.getBean(factoryBeanName, MessageListenerContainerFactory.class);
-		MessageListenerContainer<?> containerInstance = factory.createContainerInstance(endpoint);
+		MessageListenerContainer<?> containerInstance = factory.createContainer(endpoint);
 		endpoint.setupMessageListener(containerInstance);
 		return containerInstance;
 	}

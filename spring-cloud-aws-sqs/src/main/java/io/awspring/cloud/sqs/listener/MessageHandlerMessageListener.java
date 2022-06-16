@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
+import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

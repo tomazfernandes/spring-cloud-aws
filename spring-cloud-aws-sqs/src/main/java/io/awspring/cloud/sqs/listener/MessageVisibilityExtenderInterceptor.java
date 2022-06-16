@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import io.awspring.cloud.messaging.support.listener.AsyncMessageInterceptor;
+import io.awspring.cloud.sqs.listener.AsyncMessageInterceptor;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;

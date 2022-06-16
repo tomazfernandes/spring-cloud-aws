@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sqs.listener.acknowledgement;
 
-import io.awspring.cloud.messaging.support.MessageHeaderUtils;
+import io.awspring.cloud.sqs.MessageHeaderUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;

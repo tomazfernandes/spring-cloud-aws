@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sqs.listener.adapter;
 
-import io.awspring.cloud.messaging.support.listener.AsyncMessageListener;
+import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 
