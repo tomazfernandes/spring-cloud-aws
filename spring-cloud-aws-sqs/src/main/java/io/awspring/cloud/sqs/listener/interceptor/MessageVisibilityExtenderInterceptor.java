@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener;
+package io.awspring.cloud.sqs.listener.interceptor;
 
-import io.awspring.cloud.sqs.listener.AsyncMessageInterceptor;
+import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
+import io.awspring.cloud.sqs.listener.Visibility;
+
 import java.time.Instant;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;

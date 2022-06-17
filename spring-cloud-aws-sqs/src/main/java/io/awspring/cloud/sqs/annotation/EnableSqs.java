@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sqs.annotation;
 
-import io.awspring.cloud.sqs.config.MessagingBootstrapConfiguration;
+import io.awspring.cloud.sqs.config.SqsBootstrapConfiguration;
 import io.awspring.cloud.sqs.config.SqsConfigurationSupport;
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -31,7 +31,7 @@ import org.springframework.context.annotation.Import;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Import({ MessagingBootstrapConfiguration.class, SqsConfigurationSupport.class })
+@Import({ SqsBootstrapConfiguration.class, SqsConfigurationSupport.class })
 public @interface EnableSqs {
 }
 

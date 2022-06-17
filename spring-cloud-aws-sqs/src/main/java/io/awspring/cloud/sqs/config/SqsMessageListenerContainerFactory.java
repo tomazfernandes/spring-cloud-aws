@@ -15,13 +15,14 @@
  */
 package io.awspring.cloud.sqs.config;
 
-import io.awspring.cloud.sqs.MessagingUtils;
-import io.awspring.cloud.sqs.listener.AsyncErrorHandler;
-import io.awspring.cloud.sqs.listener.AsyncMessageInterceptor;
+import io.awspring.cloud.sqs.ConfigUtils;
+import io.awspring.cloud.sqs.listener.ContainerOptions;
+import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
+import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
-import io.awspring.cloud.sqs.listener.SqsContainerOptions;
 import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAckHandler;
+import io.awspring.cloud.sqs.listener.splitter.AsyncMessageSplitter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
@@ -43,48 +44,15 @@ public class SqsMessageListenerContainerFactory<T>
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessageListenerContainerFactory.class);
 
-	private final SqsContainerOptions sqsContainerOptions;
+	private final ContainerOptions sqsContainerOptions;
 
 	private Supplier<SqsAsyncClient> sqsAsyncClientSupplier;
 
-	private AsyncErrorHandler<T> errorHandler;
-
-	private AsyncAckHandler<T> ackHandler;
-
-	private Collection<AsyncMessageInterceptor<T>> messageInterceptors = new ArrayList<>();
-
-	private AsyncMessageListener<T> messageListener;
-
-	public void setErrorHandler(AsyncErrorHandler<T> errorHandler) {
-		Assert.notNull(errorHandler, "errorHandler cannot be null");
-		this.errorHandler = errorHandler;
-	}
-
-	public void setAckHandler(AsyncAckHandler<T> ackHandler) {
-		Assert.notNull(ackHandler, "ackHandler cannot be null");
-		this.ackHandler = ackHandler;
-	}
-
-	public void addMessageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
-		Assert.notNull(messageInterceptor, "messageInterceptor cannot be null");
-		this.messageInterceptors.add(messageInterceptor);
-	}
-
-	public void addMessageInterceptors(Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
-		Assert.notEmpty(messageInterceptors, "messageInterceptors cannot be null");
-		this.messageInterceptors.addAll(messageInterceptors);
-	}
-
-	public void setMessageListener(AsyncMessageListener<T> messageListener) {
-		Assert.notNull(messageListener, "messageListener cannot be null");
-		this.messageListener = messageListener;
-	}
-
 	public SqsMessageListenerContainerFactory() {
-		this(SqsContainerOptions.create());
+		this(ContainerOptions.create());
 	}
 
-	private SqsMessageListenerContainerFactory(SqsContainerOptions containerOptions) {
+	private SqsMessageListenerContainerFactory(ContainerOptions containerOptions) {
 		super(containerOptions);
 		this.sqsContainerOptions = containerOptions;
 	}
@@ -98,22 +66,22 @@ public class SqsMessageListenerContainerFactory<T>
 	protected SqsMessageListenerContainer<T> createContainerInstance(Endpoint endpoint) {
 		logger.debug("Creating {} for endpoint {}", SqsMessageListenerContainer.class.getSimpleName(), endpoint);
 		Assert.notNull(this.sqsAsyncClientSupplier, "No asyncClient set");
-		return new SqsMessageListenerContainer<>(this.sqsAsyncClientSupplier.get(),
-			createContainerOptions(endpoint));
+		return new SqsMessageListenerContainer<>(this.sqsAsyncClientSupplier.get(), createContainerOptions(endpoint));
 	}
 
-	protected SqsContainerOptions createContainerOptions(Endpoint endpoint) {
-		Assert.isInstanceOf(SqsEndpoint.class, endpoint, "Endpoint must be an instance of " + SqsEndpoint.class.getSimpleName());
-		SqsEndpoint sqsEndpoint = (SqsEndpoint) endpoint;
-		SqsContainerOptions options = this.sqsContainerOptions.createCopy();
-		MessagingUtils.INSTANCE
-				.acceptIfNotNull(sqsEndpoint.getMinTimeToProcess(), options::minTimeToProcess)
-				.acceptIfNotNull(sqsEndpoint.getSimultaneousPollsPerQueue(), options::simultaneousPolls)
-				.acceptIfNotNull(sqsEndpoint.getPollTimeout(), options::pollTimeout);
+	protected ContainerOptions createContainerOptions(Endpoint endpoint) {
+		ContainerOptions options = this.sqsContainerOptions.createCopy();
+		if (endpoint instanceof SqsEndpoint) {
+			SqsEndpoint sqsEndpoint = (SqsEndpoint) endpoint;
+			ConfigUtils.INSTANCE
+					.acceptIfNotNull(sqsEndpoint.getMinTimeToProcess(), options::minTimeToProcess)
+					.acceptIfNotNull(sqsEndpoint.getSimultaneousPollsPerQueue(), options::simultaneousPolls)
+					.acceptIfNotNull(sqsEndpoint.getPollTimeout(), options::pollTimeout);
+		}
 		return options;
 	}
 
-	public SqsContainerOptions getContainerOptions() {
+	public ContainerOptions getContainerOptions() {
 		return this.sqsContainerOptions;
 	}
 
@@ -125,16 +93,6 @@ public class SqsMessageListenerContainerFactory<T>
 	public void setSqsAsyncClient(SqsAsyncClient sqsAsyncClient) {
 		Assert.notNull(sqsAsyncClient, "sqsAsyncClient cannot be null.");
 		setSqsAsyncClientSupplier(() -> sqsAsyncClient);
-	}
-
-	protected void configureContainer(SqsMessageListenerContainer<T> container, Endpoint endpoint) {
-		container.setId(endpoint.getId());
-		container.setQueueNames(endpoint.getLogicalNames());
-		MessagingUtils.INSTANCE
-			.acceptIfNotNull(this.messageListener, container::setMessageListener)
-			.acceptIfNotNull(this.errorHandler, container::setErrorHandler)
-			.acceptIfNotNull(this.ackHandler, container::setAckHandler)
-			.acceptIfNotNull(this.messageInterceptors, container::addMessageInterceptors);
 	}
 
 	//		MessagingUtils.INSTANCE.acceptBothIfNoneNull(containerOptions.getMinTimeToProcess(), container,

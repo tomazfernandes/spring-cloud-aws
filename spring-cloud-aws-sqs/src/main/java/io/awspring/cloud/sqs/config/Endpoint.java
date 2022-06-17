@@ -15,6 +15,8 @@
  */
 package io.awspring.cloud.sqs.config;
 
+import io.awspring.cloud.sqs.listener.MessageListenerContainer;
+
 import java.util.Collection;
 
 /**
@@ -30,5 +32,7 @@ public interface Endpoint {
 	String getListenerContainerFactoryName();
 
 	String getId();
+
+	void setupContainer(MessageListenerContainer<?> container);
 
 }

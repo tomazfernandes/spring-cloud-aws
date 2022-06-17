@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener;
+package io.awspring.cloud.sqs.listener.poller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +36,8 @@ public abstract class AbstractMessagePoller<T> implements AsyncMessagePoller<T>,
 	private final String logicalEndpointName;
 
 	private volatile boolean running;
+
+	private final Object lifecycleMonitor = new Object();
 
 	public AbstractMessagePoller(String logicalEndpointName) {
 		this.logicalEndpointName = logicalEndpointName;
@@ -60,9 +62,11 @@ public abstract class AbstractMessagePoller<T> implements AsyncMessagePoller<T>,
 
 	@Override
 	public void start() {
-		logger.debug("Starting SqsMessageProducer for {}", this.logicalEndpointName);
-		this.running = true;
-		doStart();
+		synchronized (this.lifecycleMonitor) {
+			logger.debug("Starting SqsMessageProducer for {}", this.logicalEndpointName);
+			this.running = true;
+			doStart();
+		}
 	}
 
 	protected void doStart() {
@@ -70,9 +74,11 @@ public abstract class AbstractMessagePoller<T> implements AsyncMessagePoller<T>,
 
 	@Override
 	public void stop() {
-		logger.debug("Stopping SqsMessageProducer for {}", this.logicalEndpointName);
-		this.running = false;
-		doStop();
+		synchronized (this.lifecycleMonitor) {
+			logger.debug("Stopping SqsMessageProducer for {}", this.logicalEndpointName);
+			this.running = false;
+			doStop();
+		}
 	}
 
 	protected void doStop() {

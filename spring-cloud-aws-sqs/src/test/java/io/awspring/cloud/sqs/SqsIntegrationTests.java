@@ -16,8 +16,9 @@
 package io.awspring.cloud.sqs;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.awspring.cloud.sqs.listener.AsyncErrorHandler;
-import io.awspring.cloud.sqs.listener.AsyncMessageInterceptor;
+import io.awspring.cloud.sqs.listener.ContainerOptions;
+import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
+import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.MessageHeaders;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.MessageListenerContainerRegistry;
@@ -26,10 +27,10 @@ import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAcknowledgement;
 import io.awspring.cloud.sqs.annotation.EnableSqs;
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import io.awspring.cloud.sqs.config.SqsMessageListenerContainerFactory;
-import io.awspring.cloud.sqs.listener.SqsContainerOptions;
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
 import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.Visibility;
+import io.awspring.cloud.sqs.listener.splitter.OrderedSplitter;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -82,6 +83,10 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 	private static final Logger logger = LoggerFactory.getLogger(SqsIntegrationTests.class);
 
 	private static final String TEST_SQS_ASYNC_CLIENT_BEAN_NAME = "testSqsAsyncClient";
+
+	private static final String HIGH_THROUGHPUT_FACTORY_NAME = "highThroughputFactory";
+
+	private static final String LOW_RESOURCE_FACTORY_NAME = "lowResourceFactory";
 
 	@Autowired
 	LatchContainer latchContainer;
@@ -258,7 +263,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Autowired
 		LatchContainer latchContainer;
 
-		@SqsListener(queueNames = DOES_NOT_ACK_ON_ERROR_QUEUE_NAME, factory = "lowResourceFactory")
+		@SqsListener(queueNames = DOES_NOT_ACK_ON_ERROR_QUEUE_NAME, factory = LOW_RESOURCE_FACTORY_NAME)
 		void listen(String message, @Header(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID) String queueName) {
 			logger.debug("Received message {} from queue {}", message, queueName);
 			latchContainer.doesNotAckLatch.countDown();
@@ -304,7 +309,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Autowired
 		LatchContainer latchContainer;
 
-		@SqsListener(queueNames = ORDERED_LOAD_QUEUE_NAME, factory = "highThroughputFactory")
+		@SqsListener(queueNames = ORDERED_LOAD_QUEUE_NAME, factory = LOW_RESOURCE_FACTORY_NAME)
 		void listen(String message, @Header(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID) String queueName) throws Exception {
 			int sleepTime = new Random().nextInt(500) + 500;
 			Thread.sleep(sleepTime);
@@ -324,7 +329,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		AtomicInteger messagesReceived = new AtomicInteger();
 
 		@SqsListener(queueNames = { RECEIVE_FROM_MANY_1_QUEUE_NAME,
-				RECEIVE_FROM_MANY_2_QUEUE_NAME }, factory = "highThroughputFactory")
+				RECEIVE_FROM_MANY_2_QUEUE_NAME }, factory = HIGH_THROUGHPUT_FACTORY_NAME)
 		void listen(String message) {
 			logger.trace("Started processing " + message);
 			if (this.messagesReceivedPayload.contains(message)) {
@@ -443,6 +448,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		public SqsMessageListenerContainerFactory<String> lowResourceFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions().simultaneousPolls(1).pollTimeout(Duration.ofSeconds(2)).messagesPerPoll(1);
+			factory.setMessageSplitter(new OrderedSplitter<>());
 			factory.setAckHandler(testAckHandler());
 			factory.setErrorHandler(testErrorHandler());
 			factory.addMessageInterceptors(Arrays.asList(testInterceptor(), testInterceptor()));
@@ -452,7 +458,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 
 		@Bean
 		public MessageListenerContainer<String> manuallyCreatedContainer() {
-			SqsMessageListenerContainer<String> container = new SqsMessageListenerContainer<>(createAsyncClient(), SqsContainerOptions.create());
+			SqsMessageListenerContainer<String> container = new SqsMessageListenerContainer<>(createAsyncClient(), ContainerOptions.create());
 			container.setQueueNames(MANUALLY_CREATE_CONTAINER_QUEUE_NAME);
 			container.setMessageListener(msg -> {
 								latchContainer.manuallyCreatedContainerLatch.countDown();
@@ -474,31 +480,31 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		}
 
 		LatchContainer latchContainer = new LatchContainer();
-//
-//		@Bean
-//		ReceivesMessageListener receivesMessageListener() {
-//			return new ReceivesMessageListener();
-//		}
-//
-//		@Bean
-//		DoesNotAckOnErrorListener doesNotAckOnErrorListener() {
-//			return new DoesNotAckOnErrorListener();
-//		}
-//
-//		@Bean
-//		ResolvesParameterTypesListener resolvesParameterTypesListener() {
-//			return new ResolvesParameterTypesListener();
-//		}
-//
-//		@Bean
-//		ResolvesPojoListener resolvesPojoListener() {
-//			return new ResolvesPojoListener();
-//		}
-//
-//		@Bean
-//		ReceiveManyFromTwoQueuesListener receiveManyFromTwoQueuesListener() {
-//			return new ReceiveManyFromTwoQueuesListener();
-//		}
+
+		@Bean
+		ReceivesMessageListener receivesMessageListener() {
+			return new ReceivesMessageListener();
+		}
+
+		@Bean
+		DoesNotAckOnErrorListener doesNotAckOnErrorListener() {
+			return new DoesNotAckOnErrorListener();
+		}
+
+		@Bean
+		ResolvesParameterTypesListener resolvesParameterTypesListener() {
+			return new ResolvesParameterTypesListener();
+		}
+
+		@Bean
+		ResolvesPojoListener resolvesPojoListener() {
+			return new ResolvesPojoListener();
+		}
+
+		@Bean
+		ReceiveManyFromTwoQueuesListener receiveManyFromTwoQueuesListener() {
+			return new ReceiveManyFromTwoQueuesListener();
+		}
 
 		@Bean
 		OrderedLoadListener orderedLoadListener() {

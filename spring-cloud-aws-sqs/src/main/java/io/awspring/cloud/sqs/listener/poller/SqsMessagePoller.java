@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener;
+package io.awspring.cloud.sqs.listener.poller;
 
 
 import java.time.Duration;
@@ -27,6 +27,10 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import io.awspring.cloud.sqs.listener.MessageHeaders;
+import io.awspring.cloud.sqs.listener.QueueMessageVisibility;
+import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
+import io.awspring.cloud.sqs.listener.acknowledgement.SqsAcknowledge;
 import io.awspring.cloud.sqs.support.QueueAttributesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,14 +70,7 @@ public class SqsMessagePoller<T> extends AbstractMessagePoller<T> {
 
 	@Override
 	protected void doStop() {
-
 	}
-
-	// TODO: Consider a way of producing a Message<POJO> for SQS, so that the MessageListener gets the converted
-	//  message. We can do that by inferring the type from the target method - perhaps by passing all method argument resolvers
-	//  to exclude useful ones.
-	//  We can also have an PayloadConvertingMessageListenerAdapter that can be added, with a method
-	//  that receives the target type and the MessageListener.
 
 	@Override
 	protected CompletableFuture<Collection<Message<T>>> doPollForMessages(int numberOfMessages, Duration timeout) {

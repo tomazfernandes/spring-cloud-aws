@@ -31,17 +31,17 @@ import org.springframework.core.type.AnnotationMetadata;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class MessagingBootstrapConfiguration implements ImportBeanDefinitionRegistrar {
+public class SqsBootstrapConfiguration implements ImportBeanDefinitionRegistrar {
 
 	@Override
 	public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
-		if (!registry.containsBeanDefinition(MessagingConfigUtils.SQS_LISTENER_ANNOTATION_BEAN_POST_PROCESSOR_BEAN_NAME)) {
-			registry.registerBeanDefinition(MessagingConfigUtils.SQS_LISTENER_ANNOTATION_BEAN_POST_PROCESSOR_BEAN_NAME,
+		if (!registry.containsBeanDefinition(SqsBeanNames.SQS_LISTENER_ANNOTATION_BEAN_POST_PROCESSOR_BEAN_NAME)) {
+			registry.registerBeanDefinition(SqsBeanNames.SQS_LISTENER_ANNOTATION_BEAN_POST_PROCESSOR_BEAN_NAME,
 					new RootBeanDefinition(SqsListenerAnnotationBeanPostProcessor.class));
 		}
 
-		if (!registry.containsBeanDefinition(MessagingConfigUtils.ENDPOINT_REGISTRY_BEAN_NAME)) {
-			registry.registerBeanDefinition(MessagingConfigUtils.ENDPOINT_REGISTRY_BEAN_NAME,
+		if (!registry.containsBeanDefinition(SqsBeanNames.ENDPOINT_REGISTRY_BEAN_NAME)) {
+			registry.registerBeanDefinition(SqsBeanNames.ENDPOINT_REGISTRY_BEAN_NAME,
 					new RootBeanDefinition(DefaultListenerContainerRegistry.class));
 		}
 	}

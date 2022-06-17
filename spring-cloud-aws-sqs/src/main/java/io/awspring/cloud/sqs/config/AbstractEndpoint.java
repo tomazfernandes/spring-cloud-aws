@@ -17,7 +17,11 @@ package io.awspring.cloud.sqs.config;
 
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
+import io.awspring.cloud.sqs.listener.adapter.AsyncMessagingMessageListenerAdapter;
+import io.awspring.cloud.sqs.listener.splitter.AsyncMessageSplitter;
+import io.awspring.cloud.sqs.listener.splitter.FanOutSplitter;
 import org.springframework.lang.Nullable;
+import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.util.Assert;
 
 import java.lang.reflect.Method;
@@ -43,7 +47,9 @@ public abstract class AbstractEndpoint implements Endpoint {
 
 	private Method method;
 
-	private MessageListenerFactory<?> messageListenerFactory;
+	private MessageHandlerMethodFactory handlerMethodFactory;
+
+	private AsyncMessageSplitter<?> messageSplitter;
 
 	protected AbstractEndpoint(Collection<String> logicalNames,
 							   @Nullable String listenerContainerFactoryName,
@@ -77,18 +83,31 @@ public abstract class AbstractEndpoint implements Endpoint {
 		this.method = method;
 	}
 
-	/**
-	 * Set the {@link MessageListenerFactory} that will create the
-	 * {@link AsyncMessageListener} to be used with this {@link Endpoint}.
-	 * @param messageListenerFactory the factory instance.
-	 */
-	public void setMessageListenerFactory(MessageListenerFactory<?> messageListenerFactory) {
-		this.messageListenerFactory = messageListenerFactory;
+	public void setMessageSplitter(AsyncMessageSplitter<?> messageSplitter) {
+		this.messageSplitter = messageSplitter;
 	}
 
 	@SuppressWarnings({"rawtypes", "unchecked"})
-	public void setupMessageListener(MessageListenerContainer container) {
-		container.setMessageListener(this.messageListenerFactory.createMessageListener(this));
+	public void setupContainer(MessageListenerContainer container) {
+		container.setMessageListener(createMessageListener());
+		container.setMessageSplitter(createOrGetMessageSplitter());
+	}
+
+	private AsyncMessageSplitter<?> createOrGetMessageSplitter() {
+		return this.messageSplitter != null
+			? this.messageSplitter
+			: new FanOutSplitter<>();
+	}
+
+	public AsyncMessageListener<?> createMessageListener() {
+		Assert.notNull(this.handlerMethodFactory, "No handlerMethodFactory has been set");
+		return new AsyncMessagingMessageListenerAdapter<>(
+			this.handlerMethodFactory.createInvocableHandlerMethod(this.bean, this.method));
+	}
+
+	public void setHandlerMethodFactory(MessageHandlerMethodFactory handlerMethodFactory) {
+		Assert.notNull(handlerMethodFactory, "handlerMethodFactory cannot be null");
+		this.handlerMethodFactory = handlerMethodFactory;
 	}
 
 	public Method getMethod() {

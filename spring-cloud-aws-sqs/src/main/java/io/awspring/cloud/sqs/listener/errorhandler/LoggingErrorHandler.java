@@ -13,8 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener;
+package io.awspring.cloud.sqs.listener.errorhandler;
 
+import io.awspring.cloud.sqs.MessageHeaderUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 
 import java.util.concurrent.CompletableFuture;
@@ -23,9 +26,13 @@ import java.util.concurrent.CompletableFuture;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-@FunctionalInterface
-public interface AsyncErrorHandler<T> {
+public class LoggingErrorHandler<T> implements AsyncErrorHandler<T> {
 
-	CompletableFuture<Void> handleError(Message<T> message, Throwable t);
+	private static final Logger logger = LoggerFactory.getLogger(LoggingErrorHandler.class);
 
+	@Override
+	public CompletableFuture<Void> handleError(Message<T> message, Throwable t) {
+		logger.error("Error processing message {}", MessageHeaderUtils.getId(message), t);
+		return CompletableFuture.completedFuture(null);
+	}
 }

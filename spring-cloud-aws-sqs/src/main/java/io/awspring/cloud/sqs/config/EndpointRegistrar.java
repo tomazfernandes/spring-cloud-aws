@@ -46,17 +46,17 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 
 	private static final Logger logger = LoggerFactory.getLogger(EndpointRegistrar.class);
 
+	public static final String DEFAULT_LISTENER_CONTAINER_FACTORY_BEAN_NAME = "defaultListenerContainerFactory";
+
 	private BeanFactory beanFactory;
 
 	private MessageHandlerMethodFactory messageHandlerMethodFactory = new DefaultMessageHandlerMethodFactory();
 
 	private MessageListenerContainerRegistry listenerContainerRegistry;
 
-	private String messageListenerContainerRegistryBeanName =
-		MessagingConfigUtils.ENDPOINT_REGISTRY_BEAN_NAME;
+	private String messageListenerContainerRegistryBeanName = SqsBeanNames.ENDPOINT_REGISTRY_BEAN_NAME;
 
-	private String defaultListenerContainerFactoryBeanName =
-		MessagingConfigUtils.DEFAULT_LISTENER_CONTAINER_FACTORY_BEAN_NAME;
+	private String defaultListenerContainerFactoryBeanName = DEFAULT_LISTENER_CONTAINER_FACTORY_BEAN_NAME;
 
 	private final Collection<AbstractEndpoint> endpoints = new ArrayList<>();
 
@@ -138,9 +138,7 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 				() -> "No factory bean with name " + factoryBeanName + " found for endpoint " + endpoint.getId());
 		MessageListenerContainerFactory<?> factory =
 			this.beanFactory.getBean(factoryBeanName, MessageListenerContainerFactory.class);
-		MessageListenerContainer<?> containerInstance = factory.createContainer(endpoint);
-		endpoint.setupMessageListener(containerInstance);
-		return containerInstance;
+		return factory.createContainer(endpoint);
 	}
 
 	private String getListenerContainerFactoryName(Endpoint endpoint) {
