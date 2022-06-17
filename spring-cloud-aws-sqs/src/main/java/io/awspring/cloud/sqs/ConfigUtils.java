@@ -27,21 +27,21 @@ import java.util.function.Consumer;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class MessagingUtils {
+public class ConfigUtils {
 
-	public static final MessagingUtils INSTANCE = new MessagingUtils();
+	public static final ConfigUtils INSTANCE = new ConfigUtils();
 
-	private MessagingUtils() {
+	private ConfigUtils() {
 	}
 
-	public <T> MessagingUtils acceptIfNotNull(T value, Consumer<T> consumer) {
+	public <T> ConfigUtils acceptIfNotNull(T value, Consumer<T> consumer) {
 		if (value != null) {
 			consumer.accept(value);
 		}
 		return this;
 	}
 
-	public <T, V> MessagingUtils acceptBothIfNoneNull(T firstValue, V secondValue, BiConsumer<T, V> consumer) {
+	public <T, V> ConfigUtils acceptBothIfNoneNull(T firstValue, V secondValue, BiConsumer<T, V> consumer) {
 		if (firstValue != null && secondValue != null) {
 			consumer.accept(firstValue, secondValue);
 		}
@@ -50,12 +50,12 @@ public class MessagingUtils {
 
 	@SuppressWarnings("varargs")
 	@SafeVarargs
-	public final <T> MessagingUtils acceptFirstNonNull(Consumer<T> consumer, T... values) {
+	public final <T> ConfigUtils acceptFirstNonNull(Consumer<T> consumer, T... values) {
 		Arrays.stream(values).filter(Objects::nonNull).findFirst().ifPresent(consumer);
 		return this;
 	}
 
-	public <T> MessagingUtils acceptIfNotEmpty(Collection<T> value, Consumer<Collection<T>> consumer) {
+	public <T> ConfigUtils acceptIfNotEmpty(Collection<T> value, Consumer<Collection<T>> consumer) {
 		if (!CollectionUtils.isEmpty(value)) {
 			consumer.accept(value);
 		}

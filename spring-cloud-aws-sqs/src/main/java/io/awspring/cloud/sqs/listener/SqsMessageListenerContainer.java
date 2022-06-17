@@ -18,21 +18,28 @@ package io.awspring.cloud.sqs.listener;
 import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAckHandler;
 import io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler;
+import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
+import io.awspring.cloud.sqs.listener.errorhandler.LoggingErrorHandler;
+import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
+import io.awspring.cloud.sqs.listener.poller.AsyncMessagePoller;
+import io.awspring.cloud.sqs.listener.poller.SqsMessagePoller;
+import io.awspring.cloud.sqs.listener.splitter.AbstractMessageSplitter;
+import io.awspring.cloud.sqs.listener.splitter.AsyncMessageSplitter;
+import io.awspring.cloud.sqs.listener.splitter.FanOutSplitter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.Lifecycle;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.messaging.Message;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
 import java.util.function.BiFunction;
@@ -49,68 +56,64 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	private final SqsAsyncClient asyncClient;
 
-	private SqsContainerOptions containerOptions;
+	private final ContainerOptions containerOptions;
 
 	private TaskExecutor taskExecutor;
+
+	private Semaphore pollersSemaphore;
 
 	private Collection<AsyncMessagePoller<T>> messagePollers;
 
 	private AsyncMessageListener<T> messageListener;
 
-	private Semaphore pollersSemaphore;
+	private AsyncErrorHandler<T> errorHandler;
 
-	private AsyncErrorHandler<T> errorHandler = new LoggingErrorHandler<>();
+	private AsyncAckHandler<T> ackHandler;
 
-	private AsyncAckHandler<T> ackHandler = new OnSuccessAckHandler<>();
+	private AsyncMessageSplitter<T> splitter;
 
-	private MessageSplitter<T> splitter;
+	private Collection<AsyncMessageInterceptor<T>> messageInterceptors;
 
-	private final Collection<AsyncMessageInterceptor<T>> messageInterceptors = new ArrayList<>();
-
-	public SqsMessageListenerContainer(SqsAsyncClient asyncClient, SqsContainerOptions options) {
+	public SqsMessageListenerContainer(SqsAsyncClient asyncClient, ContainerOptions options) {
 		super(options);
 		this.asyncClient = asyncClient;
 		this.containerOptions = options;
 	}
 
-	public void setErrorHandler(AsyncErrorHandler<T> errorHandler) {
-		Assert.notNull(errorHandler, "errorHandler cannot be null");
-		this.errorHandler = errorHandler;
-	}
-
-	public void setAckHandler(AsyncAckHandler<T> ackHandler) {
-		Assert.notNull(ackHandler, "ackHandler cannot be null");
-		this.ackHandler = ackHandler;
-	}
-
-	public void addMessageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
-		Assert.notNull(messageInterceptor, "messageInterceptor cannot be null");
-		this.messageInterceptors.add(messageInterceptor);
-	}
-
-	public void addMessageInterceptors(Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
-		Assert.notNull(messageInterceptors, "messageInterceptors cannot be null");
-		this.messageInterceptors.addAll(messageInterceptors);
-	}
-
-	@Override
-	public void setMessageListener(AsyncMessageListener<T> asyncMessageListener) {
-		this.messageListener = asyncMessageListener;
-	}
-
 	@Override
 	protected void doStart() {
-		this.messagePollers = doCreateMessagePollers(super.getQueueNames());
+		this.messagePollers = super.getMessagePollers() != null
+			? super.getMessagePollers()
+			: doCreateMessagePollers(super.getQueueNames());
+		this.splitter = super.getSplitter();
+		this.messageListener = super.getMessageListener();
+		this.errorHandler = super.getErrorHandler();
+		this.ackHandler = super.getAckHandler();
+		this.messageInterceptors = super.getMessageInterceptors();
+		this.pollersSemaphore = new Semaphore(this.containerOptions.getSimultaneousPolls());
 		Assert.notEmpty(this.messagePollers, () -> "MessagePollers cannot be empty: "
 			+ this.containerOptions);
 		Assert.notNull(this.messageListener, () -> "MessageListener cannot be empty:  "
 			+ this.containerOptions);
 		logger.debug("Starting container {}", super.getId());
-		this.taskExecutor = createTaskExecutor();
-		this.splitter = new OrderedSplitter<>(this.taskExecutor);
-		this.pollersSemaphore = new Semaphore(this.containerOptions.getSimultaneousPolls());
+		if (this.taskExecutor == null) {
+			this.taskExecutor = createTaskExecutor();
+		}
 		managePollersLifecycle(Lifecycle::start);
+		manageSplitter();
 		this.taskExecutor.execute(this::pollAndProcessMessages);
+	}
+
+	private void manageSplitter() {
+		if (this.splitter instanceof AbstractMessageSplitter) {
+			((AbstractMessageSplitter<T>) this.splitter)
+				.setCoreSize(this.containerOptions.getSimultaneousPolls()
+					* this.containerOptions.getMessagesPerPoll()
+					* this.messagePollers.size());
+		}
+		if (this.splitter instanceof SmartLifecycle) {
+			((SmartLifecycle) this.splitter).start();
+		}
 	}
 
 	private void managePollersLifecycle(Consumer<SmartLifecycle> consumer) {
@@ -131,8 +134,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 						this.pollersSemaphore.release();
 						return;
 					}
-
-					poller.poll(containerOptions.getMessagesPerPoll(), containerOptions.getPollTimeout())
+					poller.poll(this.containerOptions.getMessagesPerPoll(), this.containerOptions.getPollTimeout())
 						.thenCompose(msgs -> this.splitter.splitAndProcess(msgs, this::processMessage))
 						.handle(handleProcessingResult())
 						.thenRun(releaseSemaphore());
@@ -161,7 +163,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 			(messageFuture, interceptor) -> messageFuture.thenCompose(interceptor::intercept), (a, b) -> a);
 	}
 
-	protected CompletableFuture<Void> handleResult(Message<T> message, Throwable throwable) {
+	private CompletableFuture<Void> handleResult(Message<T> message, Throwable throwable) {
 		logger.trace("Handling result for message {}", MessageHeaderUtils.getId(message));
 		return throwable == null ? this.ackHandler.onSuccess(message)
 			: this.errorHandler.handleError(message, throwable)
@@ -180,7 +182,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		};
 	}
 
-	protected BiFunction<Object, Throwable, Void> handleProcessingResult() {
+	private BiFunction<Object, Throwable, Void> handleProcessingResult() {
 		return (value, t) -> {
 			if (t != null) {
 				logger.error("Error handling messages in container {} ", getId(), t);
@@ -189,13 +191,8 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		};
 	}
 
-	protected ThreadPoolTaskExecutor createTaskExecutor() {
-		ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
-		int poolSize = this.containerOptions.getSimultaneousPolls() + 1;
-		taskExecutor.setMaxPoolSize(poolSize);
-		taskExecutor.setCorePoolSize(poolSize);
-		taskExecutor.afterPropertiesSet();
-		return taskExecutor;
+	protected TaskExecutor createTaskExecutor() {
+		return new SimpleAsyncTaskExecutor();
 	}
 
 	protected Collection<AsyncMessagePoller<T>> doCreateMessagePollers(Collection<String> endpointNames) {
@@ -207,6 +204,9 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	@Override
 	protected void doStop() {
 		managePollersLifecycle(Lifecycle::stop);
+		if (this.splitter instanceof SmartLifecycle) {
+			((SmartLifecycle) this.splitter).stop();
+		}
 		if (this.taskExecutor instanceof DisposableBean) {
 			try {
 				((DisposableBean) this.taskExecutor).destroy();
@@ -220,4 +220,5 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	public void setQueueNames(String... queueNames) {
 		super.setQueueNames(Arrays.asList(queueNames));
 	}
+
 }

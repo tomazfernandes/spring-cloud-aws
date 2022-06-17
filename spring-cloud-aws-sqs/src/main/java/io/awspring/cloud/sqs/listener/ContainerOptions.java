@@ -16,13 +16,15 @@
 package io.awspring.cloud.sqs.listener;
 
 
+import org.springframework.util.ReflectionUtils;
+
 import java.time.Duration;
 
 /**
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class CommonContainerOptions<O extends CommonContainerOptions<?>> {
+public class ContainerOptions {
 
 	private static final int DEFAULT_SIMULTANEOUS_POLL_CALLS = 2;
 
@@ -36,24 +38,36 @@ public abstract class CommonContainerOptions<O extends CommonContainerOptions<?>
 
 	private Duration pollTimeout = DEFAULT_POLL_TIMEOUT;
 
+	private Integer minTimeToProcess;
+
+	public static ContainerOptions create() {
+		return new ContainerOptions();
+	}
+
+	public ContainerOptions minTimeToProcess(Integer minTimeToProcess) {
+		this.minTimeToProcess = minTimeToProcess;
+		return this;
+	}
+
+	public Integer getMinTimeToProcess() {
+		return minTimeToProcess;
+	}
+
 	@SuppressWarnings("unchecked")
-	private O self() {
-		return (O) this;
-	}
 
-	public O simultaneousPolls(int simultaneousPollCalls) {
+	public ContainerOptions simultaneousPolls(int simultaneousPollCalls) {
 		this.simultaneousPolls = simultaneousPollCalls;
-		return self();
+		return this;
 	}
 
-	public O messagesPerPoll(int messagesPerPoll) {
+	public ContainerOptions messagesPerPoll(int messagesPerPoll) {
 		this.messagesPerPoll = messagesPerPoll;
-		return self();
+		return this;
 	}
 
-	public O pollTimeout(Duration pollTimeout) {
+	public ContainerOptions pollTimeout(Duration pollTimeout) {
 		this.pollTimeout = pollTimeout;
-		return self();
+		return this;
 	}
 
 	public int getSimultaneousPolls() {
@@ -72,10 +86,9 @@ public abstract class CommonContainerOptions<O extends CommonContainerOptions<?>
 	 * Creates a shallow copy of these options.
 	 * @return the copy.
 	 */
-	public O createCopy() {
-		return doCreateCopy();
+	public ContainerOptions createCopy() {
+		ContainerOptions newCopy = new ContainerOptions();
+		ReflectionUtils.shallowCopyFieldState(this, newCopy);
+		return newCopy;
 	}
-
-	protected abstract O doCreateCopy();
-
 }

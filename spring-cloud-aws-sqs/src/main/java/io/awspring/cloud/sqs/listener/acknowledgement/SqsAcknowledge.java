@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener;
+package io.awspring.cloud.sqs.listener.acknowledgement;
 
-import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAcknowledgement;
 import java.util.concurrent.CompletableFuture;
 
 import org.slf4j.Logger;

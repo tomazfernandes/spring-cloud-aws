@@ -17,10 +17,8 @@ package io.awspring.cloud.sqs.annotation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sqs.ExpressionResolvingHelper;
-import io.awspring.cloud.sqs.config.DefaultMessageListenerFactory;
 import io.awspring.cloud.sqs.config.Endpoint;
 import io.awspring.cloud.sqs.config.EndpointRegistrar;
-import io.awspring.cloud.sqs.config.MessageListenerFactory;
 import io.awspring.cloud.sqs.config.SqsEndpoint;
 import io.awspring.cloud.sqs.listener.MessageHeaders;
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
@@ -48,6 +46,8 @@ import org.springframework.messaging.handler.annotation.support.MessageHandlerMe
 import org.springframework.messaging.handler.annotation.support.MessageMethodArgumentResolver;
 import org.springframework.messaging.handler.annotation.support.PayloadMethodArgumentResolver;
 import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
+import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
+import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 import java.lang.annotation.Annotation;
@@ -84,7 +84,7 @@ public class SqsListenerAnnotationBeanPostProcessor
 
 	private final EndpointRegistrar endpointRegistrar = new EndpointRegistrar();
 
-	private final MessageListenerFactory<?> messageListenerFactory = new DefaultMessageListenerFactory<>();
+	private final DelegatingMessageHandlerMethodFactory delegatingHandlerMethodFactory = new DelegatingMessageHandlerMethodFactory();
 
 	private BeanFactory beanFactory;
 
@@ -117,7 +117,7 @@ public class SqsListenerAnnotationBeanPostProcessor
 		SqsEndpoint endpoint = doCreateEndpointFromAnnotation(bean, method, annotation);
 		endpoint.setBean(bean);
 		endpoint.setMethod(method);
-		endpoint.setMessageListenerFactory(this.messageListenerFactory);
+		endpoint.setHandlerMethodFactory(this.delegatingHandlerMethodFactory);
 		return endpoint;
 	}
 
@@ -135,10 +135,6 @@ public class SqsListenerAnnotationBeanPostProcessor
 
 	protected void initializeHandlerMethodFactory() {
 		MessageHandlerMethodFactory handlerMethodFactory = this.endpointRegistrar.getMessageHandlerMethodFactory();
-		if (this.messageListenerFactory instanceof DefaultMessageListenerFactory) {
-			((DefaultMessageListenerFactory<?>) this.messageListenerFactory)
-				.setHandlerMethodFactory(handlerMethodFactory);
-		}
 		if (handlerMethodFactory instanceof DefaultMessageHandlerMethodFactory) {
 			try {
 				DefaultMessageHandlerMethodFactory defaultHandlerMethodFactory =
@@ -150,6 +146,7 @@ public class SqsListenerAnnotationBeanPostProcessor
 				throw new IllegalArgumentException("Error initializing MessageHandlerMethodFactory", e);
 			}
 		}
+		this.delegatingHandlerMethodFactory.setDelegate(handlerMethodFactory);
 	}
 
 	@Override
@@ -204,14 +201,14 @@ public class SqsListenerAnnotationBeanPostProcessor
 		);
 	}
 
-	private CompositeMessageConverter createPayloadArgumentCompositeConverter(Collection<MessageConverter> messageConverters, ObjectMapper objectMapper) {
+	protected CompositeMessageConverter createPayloadArgumentCompositeConverter(Collection<MessageConverter> messageConverters, ObjectMapper objectMapper) {
 		List<MessageConverter> payloadArgumentConverters = new ArrayList<>(messageConverters);
 		payloadArgumentConverters.add(getDefaultMappingJackson2MessageConverter(objectMapper));
 		payloadArgumentConverters.add(new SimpleMessageConverter());
 		return new CompositeMessageConverter(payloadArgumentConverters);
 	}
 
-	private MappingJackson2MessageConverter getDefaultMappingJackson2MessageConverter(ObjectMapper objectMapper) {
+	protected MappingJackson2MessageConverter getDefaultMappingJackson2MessageConverter(ObjectMapper objectMapper) {
 		MappingJackson2MessageConverter jacksonMessageConverter = new MappingJackson2MessageConverter();
 		jacksonMessageConverter.setSerializedPayloadClass(String.class);
 		jacksonMessageConverter.setStrictContentTypeMatch(false);
@@ -220,5 +217,22 @@ public class SqsListenerAnnotationBeanPostProcessor
 		}
 		return jacksonMessageConverter;
 	}
+
+	private static class DelegatingMessageHandlerMethodFactory implements MessageHandlerMethodFactory {
+
+		private MessageHandlerMethodFactory delegate;
+
+		@Override
+		public InvocableHandlerMethod createInvocableHandlerMethod(Object bean, Method method) {
+			Assert.notNull(this.delegate, "No delegate MessageHandlerMethodFactory set.");
+			return this.delegate.createInvocableHandlerMethod(bean, method);
+		}
+
+		public void setDelegate(MessageHandlerMethodFactory delegate) {
+			this.delegate = delegate;
+		}
+	}
+
+
 
 }

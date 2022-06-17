@@ -21,17 +21,13 @@ package io.awspring.cloud.sqs.config;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class MessagingConfigUtils {
+public class SqsBeanNames {
 
-	private MessagingConfigUtils() {
+	private SqsBeanNames() {
 	}
-
-	public static final String DEFAULT_LISTENER_CONTAINER_FACTORY_BEAN_NAME = "defaultListenerContainerFactory";
 
 	public static final String ENDPOINT_REGISTRY_BEAN_NAME = "io.awspring.cloud.messaging.internalEndpointRegistryBeanName";
 
 	public static final String SQS_LISTENER_ANNOTATION_BEAN_POST_PROCESSOR_BEAN_NAME = "io.awspring.cloud.messaging.internalSqsListenerAnnotationBeanPostProcessor";
-
-	public static final String ENDPOINT_PROCESSOR_BEAN_NAME = "io.awspring.cloud.messaging.internalEndpointProcessor";
 
 }

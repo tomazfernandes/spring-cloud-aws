@@ -15,10 +15,19 @@
  */
 package io.awspring.cloud.sqs.listener;
 
+import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAckHandler;
+import io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler;
+import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
+import io.awspring.cloud.sqs.listener.errorhandler.LoggingErrorHandler;
+import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
+import io.awspring.cloud.sqs.listener.poller.AsyncMessagePoller;
+import io.awspring.cloud.sqs.listener.splitter.AsyncMessageSplitter;
+import io.awspring.cloud.sqs.listener.splitter.FanOutSplitter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.UUID;
@@ -31,9 +40,15 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractMessageListenerContainer.class);
 
+	private final LoggingErrorHandler<T> DEFAULT_ERROR_HANDLER = new LoggingErrorHandler<>();
+
+	private final OnSuccessAckHandler<T> DEFAULT_ACK_HANDLER = new OnSuccessAckHandler<>();
+
+	private final FanOutSplitter<T> DEFAULT_MESSAGE_SPLITTER = new FanOutSplitter<>();
+
 	private final Object lifecycleMonitor = new Object();
 
-	private final CommonContainerOptions<?> containerOptions;
+	private final ContainerOptions containerOptions;
 
 	private volatile boolean isRunning;
 
@@ -41,14 +56,76 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	private Collection<String> queueNames;
 
-	protected AbstractMessageListenerContainer(CommonContainerOptions<?> options) {
+	private Collection<AsyncMessagePoller<T>> messagePollers;
+
+	private AsyncMessageListener<T> messageListener;
+
+	private AsyncErrorHandler<T> errorHandler = DEFAULT_ERROR_HANDLER;
+
+	private AsyncAckHandler<T> ackHandler = DEFAULT_ACK_HANDLER;
+
+	private AsyncMessageSplitter<T> splitter = DEFAULT_MESSAGE_SPLITTER;
+
+	private final Collection<AsyncMessageInterceptor<T>> messageInterceptors = new ArrayList<>();
+
+	protected AbstractMessageListenerContainer(ContainerOptions options) {
 		Assert.notNull(options, "options cannot be null");
-		this.containerOptions = options.createCopy();
+		this.containerOptions = options;
 	}
 
 	public void setId(String id) {
 		Assert.state(this.id == null, () -> "id already set for container " + this.id);
 		this.id = id;
+	}
+
+	public void setErrorHandler(AsyncErrorHandler<T> errorHandler) {
+		Assert.notNull(errorHandler, "errorHandler cannot be null");
+		this.errorHandler = errorHandler;
+	}
+
+	public void setAckHandler(AsyncAckHandler<T> ackHandler) {
+		Assert.notNull(ackHandler, "ackHandler cannot be null");
+		this.ackHandler = ackHandler;
+	}
+
+	public void addMessageInterceptors(Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
+		Assert.notNull(messageInterceptors, "messageInterceptors cannot be null");
+		this.messageInterceptors.addAll(messageInterceptors);
+	}
+
+	@Override
+	public void setMessageSplitter(AsyncMessageSplitter<T> splitter) {
+		Assert.notNull(splitter, "splitter cannot be null");
+		this.splitter = splitter;
+	}
+
+	@Override
+	public void setMessageListener(AsyncMessageListener<T> asyncMessageListener) {
+		this.messageListener = asyncMessageListener;
+	}
+
+	protected Collection<AsyncMessagePoller<T>> getMessagePollers() {
+		return this.messagePollers;
+	}
+
+	public AsyncMessageListener<T> getMessageListener() {
+		return this.messageListener;
+	}
+
+	public AsyncErrorHandler<T> getErrorHandler() {
+		return this.errorHandler;
+	}
+
+	public AsyncAckHandler<T> getAckHandler() {
+		return this.ackHandler;
+	}
+
+	public AsyncMessageSplitter<T> getSplitter() {
+		return this.splitter;
+	}
+
+	public Collection<AsyncMessageInterceptor<T>> getMessageInterceptors() {
+		return this.messageInterceptors;
 	}
 
 	@Override
