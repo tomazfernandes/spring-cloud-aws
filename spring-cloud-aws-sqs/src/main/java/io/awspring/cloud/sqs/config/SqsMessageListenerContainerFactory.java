@@ -21,6 +21,7 @@ import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.interceptor.MessageVisibilityExtenderInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
@@ -29,6 +30,8 @@ import java.util.function.Supplier;
 /**
  * {@link MessageListenerContainerFactory} implementation for creating
  * {@link SqsMessageListenerContainer} instances.
+ *
+ * @param <T> the {@link Message} payload type.
  *
  * @author Tomaz Fernandes
  * @since 3.0

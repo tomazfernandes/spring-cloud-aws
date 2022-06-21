@@ -15,10 +15,15 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import io.awspring.cloud.sqs.listener.splitter.AsyncMessageSplitter;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.messaging.Message;
 
 /**
+ * Interface representing a container for a {@link AsyncMessageListener}
+ * with {@link SmartLifecycle} capabilities.
+ *
+ * @param <T> the {@link Message} payload type.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */
@@ -27,7 +32,5 @@ public interface MessageListenerContainer<T> extends SmartLifecycle {
     String getId();
 
 	void setMessageListener(AsyncMessageListener<T> asyncMessageListener);
-
-	void setMessageSplitter(AsyncMessageSplitter<T> asyncMessageSplitter);
 
 }

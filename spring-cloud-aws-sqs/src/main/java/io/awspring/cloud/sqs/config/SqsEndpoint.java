@@ -33,15 +33,15 @@ import java.util.Map;
  */
 public class SqsEndpoint extends AbstractEndpoint {
 
-	private Integer maxInflightMessagesPerQueue;
+	private final Integer maxInflightMessagesPerQueue;
 
-	private Integer pollTimeoutSeconds;
+	private final Integer pollTimeoutSeconds;
 
-	private Integer minimumVisibility;
+	private final Integer minimumVisibility;
 
-	private Map<String, QueueAttributes> queuesAttributes;
+	private final Map<String, QueueAttributes> queuesAttributes;
 
-	private Boolean isAsync;
+	private final Boolean isAsync;
 
 	private SqsEndpoint(Collection<String> logicalEndpointNames, String listenerContainerFactoryName,
 						Integer maxInflightMessagesPerQueue, Integer pollTimeoutSeconds, Integer minTimeToProcess,

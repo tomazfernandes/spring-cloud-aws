@@ -49,6 +49,12 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
+ * {@link MessageListenerContainer} implementation for SQS queues.
+ *
+ *  All properties are assigned on {@link #start()}, meaning components and
+ *  {@link ContainerOptions} can be changed at runtime and such changes will be valid
+ *  upon container restart.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */
@@ -282,10 +288,6 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 				throw new IllegalStateException("Error shutting down TaskExecutor", e);
 			}
 		}
-	}
-
-	public void setQueueNames(String... queueNames) {
-		super.setQueueNames(Arrays.asList(queueNames));
 	}
 
 }

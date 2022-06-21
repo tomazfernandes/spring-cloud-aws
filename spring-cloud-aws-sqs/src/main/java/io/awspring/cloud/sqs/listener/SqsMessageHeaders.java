@@ -18,6 +18,7 @@ package io.awspring.cloud.sqs.listener;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+
 import org.springframework.messaging.MessageHeaders;
 
 /**
@@ -74,6 +75,8 @@ public class SqsMessageHeaders extends MessageHeaders {
 	public static final String RECEIVED_AT = "ReceivedAt";
 
 	public static final String QUEUE_VISIBILITY = "QueueVisibility";
+
+	public static final String ACKNOWLEDGMENT_HEADER = "acknowledgement";
 
 	public SqsMessageHeaders(Map<String, Object> headers) {
 		super(headers, getId(headers), getTimestamp(headers));

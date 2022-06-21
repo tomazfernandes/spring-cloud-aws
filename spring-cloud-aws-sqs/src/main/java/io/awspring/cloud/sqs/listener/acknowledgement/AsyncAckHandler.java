@@ -20,9 +20,15 @@ import org.springframework.messaging.Message;
 import java.util.concurrent.CompletableFuture;
 
 /**
+ * Interface for managing acknowledgement in success
+ * and failure scenarios.
+ *
+ * @param <T> the {@link Message} payload type.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */
+@FunctionalInterface
 public interface AsyncAckHandler<T> {
 
 	CompletableFuture<Void> onSuccess(Message<T> message);

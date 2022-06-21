@@ -21,8 +21,11 @@ import org.springframework.lang.Nullable;
 import java.util.Collection;
 
 /**
+ * Interface for registering and looking up containers at startup and runtime.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
+ * @see DefaultListenerContainerRegistry
  */
 public interface MessageListenerContainerRegistry extends SmartLifecycle {
 

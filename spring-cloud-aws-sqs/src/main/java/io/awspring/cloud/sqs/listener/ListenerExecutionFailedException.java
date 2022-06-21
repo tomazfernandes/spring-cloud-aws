@@ -16,6 +16,8 @@
 package io.awspring.cloud.sqs.listener;
 
 /**
+ * Exception thrown when the {@link AsyncMessageListener} completes with an exception.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

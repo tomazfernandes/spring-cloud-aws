@@ -20,6 +20,10 @@ import org.springframework.messaging.Message;
 import java.util.concurrent.CompletableFuture;
 
 /**
+ * Functional interface for handling message processing errors.
+ *
+ * @param <T> the {@link Message} payload type.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

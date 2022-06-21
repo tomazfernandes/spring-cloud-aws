@@ -15,13 +15,17 @@
  */
 package io.awspring.cloud.sqs;
 
-import io.awspring.cloud.sqs.listener.MessageHeaders;
+import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
 import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAcknowledgement;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
 
 import java.util.Objects;
+import java.util.UUID;
 
 /**
+ * Utility class for extracting {@link MessageHeaders} from a {@link Message}.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */
@@ -31,12 +35,12 @@ public class MessageHeaderUtils {
 	}
 
 	public static String getId(Message<?> message) {
-		return Objects.requireNonNull(message.getHeaders().get(MessageHeaders.MESSAGE_ID_HEADER, String.class),
-			() -> "No ID found for message " + message);
+		return Objects.requireNonNull(message.getHeaders().get(MessageHeaders.ID, UUID.class),
+			() -> "No ID found for message " + message).toString();
 	}
 
 	public static AsyncAcknowledgement getAcknowledgement(Message<?> message) {
-		return Objects.requireNonNull(message.getHeaders().get(MessageHeaders.ACKNOWLEDGMENT_HEADER, AsyncAcknowledgement.class),
+		return Objects.requireNonNull(message.getHeaders().get(SqsMessageHeaders.ACKNOWLEDGMENT_HEADER, AsyncAcknowledgement.class),
 			() -> "No Acknowledgment found for message " + message);
 	}
 

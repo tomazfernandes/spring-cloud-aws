@@ -15,6 +15,7 @@
  */
 package io.awspring.cloud.sqs.config;
 
+import io.awspring.cloud.sqs.listener.AbstractMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.adapter.AsyncMessagingMessageListenerAdapter;
@@ -90,7 +91,9 @@ public abstract class AbstractEndpoint implements Endpoint {
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	public void setupContainer(MessageListenerContainer container) {
 		container.setMessageListener(createMessageListener());
-		container.setMessageSplitter(createOrGetMessageSplitter());
+		if (container instanceof AbstractMessageListenerContainer) {
+			((AbstractMessageListenerContainer) container).setMessageSplitter(createOrGetMessageSplitter());
+		}
 	}
 
 	private AsyncMessageSplitter<?> createOrGetMessageSplitter() {

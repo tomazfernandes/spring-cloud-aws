@@ -21,6 +21,8 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 /**
+ * {@link Visibility} implementation for SQS messages.
+ *
  * @author Szymon Dembek
  * @author Tomaz Fernandes
  * @since 1.3

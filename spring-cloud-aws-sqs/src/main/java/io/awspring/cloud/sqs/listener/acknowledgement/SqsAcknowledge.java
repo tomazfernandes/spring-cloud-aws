@@ -23,6 +23,8 @@ import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 /**
+ * {@link AsyncAcknowledgement} implementation for Sqs messages.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

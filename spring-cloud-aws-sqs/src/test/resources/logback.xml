@@ -23,12 +23,12 @@
 	</appender>
 
 	<logger name="io.awspring.cloud.sqs" level="INFO"/>
-	<logger name="io.awspring.cloud.sqs.listener.SqsMessageListenerContainer" level="INFO"/>
+	<logger name="io.awspring.cloud.sqs.listener.SqsMessageListenerContainer" level="DEBUG"/>
 	<logger name="io.awspring.cloud.sqs.listener.splitter" level="INFO"/>
 	<logger name="io.awspring.cloud.sqs.listener.interceptor" level="INFO"/>
 	<logger name="io.awspring.cloud.sqs.listener.poller" level="INFO"/>
 	<logger name="io.awspring.cloud.sqs.listener.acknowledgement" level="INFO"/>
-	<logger name="io.awspring.cloud.sqs.SqsIntegrationTests" level="INFO"/>
+	<logger name="io.awspring.cloud.sqs.SqsIntegrationTests" level="DEBUG"/>
 
 	<root level="warn">
 		<appender-ref ref="STDOUT"/>

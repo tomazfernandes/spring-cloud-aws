@@ -22,6 +22,9 @@ import org.springframework.util.ReflectionUtils;
 import java.time.Duration;
 
 /**
+ * Contains the options to be used by the {@link MessageListenerContainer} at runtime.
+ * Changes will be reflected upon container restart.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

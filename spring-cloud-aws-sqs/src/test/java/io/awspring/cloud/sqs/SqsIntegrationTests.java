@@ -16,11 +16,12 @@
 package io.awspring.cloud.sqs;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.awspring.cloud.sqs.config.SqsListenerCustomizer;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
+import io.awspring.cloud.sqs.listener.DefaultListenerContainerRegistry;
 import io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
-import io.awspring.cloud.sqs.listener.MessageHeaders;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.MessageListenerContainerRegistry;
 import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAckHandler;
@@ -43,6 +44,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory;
+import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
@@ -52,6 +55,7 @@ import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SendMessageBatchRequestEntry;
 
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -117,6 +121,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 	void receivesMessage() throws Exception {
 		sendMessageTo(RECEIVES_MESSAGE_QUEUE_NAME);
 		assertThat(latchContainer.receivesMessageLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(latchContainer.invocableHandlerMethodLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Test
@@ -424,6 +429,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		final CountDownLatch resolvesPojoLatch = new CountDownLatch(1);
 		final CountDownLatch manuallyCreatedContainerLatch = new CountDownLatch(1);
 		final CountDownLatch manuallyCreatedFactoryLatch = new CountDownLatch(1);
+		final CountDownLatch invocableHandlerMethodLatch = new CountDownLatch(1);
 
 		// Lazily initialized
 		CountDownLatch orderedLoadLatch = new CountDownLatch(1);
@@ -532,6 +538,20 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		}
 
 		@Bean
+		SqsListenerCustomizer customizer() {
+			return registrar -> {
+				registrar.setMessageHandlerMethodFactory(new DefaultMessageHandlerMethodFactory() {
+					@Override
+					public InvocableHandlerMethod createInvocableHandlerMethod(Object bean, Method method) {
+						latchContainer.invocableHandlerMethodLatch.countDown();
+						return super.createInvocableHandlerMethod(bean, method);
+					}
+				});
+				registrar.setParallelLifecycleManagement(false);
+			};
+		}
+
+		@Bean
 		LatchContainer latchContainer() {
 			return this.latchContainer;
 		}
@@ -563,7 +583,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 				// Eventually ack to not interfere with other tests.
 				if (latchContainer.errorHandlerLatch.getCount() == 0) {
 					Objects.requireNonNull(
-							(AsyncAcknowledgement) msg.getHeaders().get(MessageHeaders.ACKNOWLEDGMENT_HEADER),
+							(AsyncAcknowledgement) msg.getHeaders().get(SqsMessageHeaders.ACKNOWLEDGMENT_HEADER),
 							"No acknowledgement present").acknowledge();
 				}
 				return CompletableFuture.completedFuture(null);
