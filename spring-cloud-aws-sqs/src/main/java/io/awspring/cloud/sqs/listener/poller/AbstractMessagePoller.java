@@ -26,6 +26,11 @@ import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 
 /**
+ * Base implementation of {@link AsyncMessagePoller} with {@link SmartLifecycle}
+ * capabilities.
+ *
+ * @param <T> the {@link Message} payload type.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

@@ -16,8 +16,11 @@
 package io.awspring.cloud.sqs.listener;
 
 /**
+ * Queue attributes extracted from AWS.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
+ * @see QueueAttributesResolver
  */
 public class QueueAttributes {
 

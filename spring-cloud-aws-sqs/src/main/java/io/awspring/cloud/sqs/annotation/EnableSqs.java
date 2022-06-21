@@ -16,7 +16,7 @@
 package io.awspring.cloud.sqs.annotation;
 
 import io.awspring.cloud.sqs.config.SqsBootstrapConfiguration;
-import io.awspring.cloud.sqs.config.SqsConfigurationSupport;
+
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -31,8 +31,8 @@ import org.springframework.context.annotation.Import;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Import({ SqsBootstrapConfiguration.class, SqsConfigurationSupport.class })
+@Import(SqsBootstrapConfiguration.class)
 public @interface EnableSqs {
 }
 
-// TODO: Probably add autoconfiguration for this
+// TODO: Add autoconfiguration for this

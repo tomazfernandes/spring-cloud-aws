@@ -22,7 +22,9 @@ import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * A component capable of polling a resources and return messages.
+ * Interface for polling a resource and returning {@link Message} instances.
+ *
+ * @param <T> the {@link Message} payload type.
  *
  * @author Tomaz Fernandes
  * @since 3.0

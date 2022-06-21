@@ -21,7 +21,7 @@ import java.util.concurrent.CompletableFuture;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-// TODO: Implement this
+// TODO: TBD
 public interface AckFrequencyHandler {
 
 	CompletableFuture<Void> registerAck(AsyncAcknowledgement ack);

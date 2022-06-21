@@ -17,11 +17,9 @@ package io.awspring.cloud.sqs.annotation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sqs.ExpressionResolvingHelper;
-import io.awspring.cloud.sqs.config.Endpoint;
 import io.awspring.cloud.sqs.config.EndpointRegistrar;
 import io.awspring.cloud.sqs.config.SqsEndpoint;
 import io.awspring.cloud.sqs.config.SqsListenerCustomizer;
-import io.awspring.cloud.sqs.listener.MessageHeaders;
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
 import io.awspring.cloud.sqs.support.AsyncAcknowledgmentHandlerMethodArgumentResolver;
 import io.awspring.cloud.sqs.support.SqsHeadersMethodArgumentResolver;
@@ -52,7 +50,6 @@ import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -69,10 +66,8 @@ import java.util.stream.Collectors;
 
 /**
  * {@link BeanPostProcessor} implementation that scans the bean
- * for an {@link Annotation}, extracts information
- * to an {@link Endpoint}, and delegates to an {@link EndpointRegistrar}.
- *
- * The Endpoint configuration / initialization is delegated to the subclasses.
+ * for an {@link SqsListener @SqsListener} annotation, extracts information
+ * to an {@link SqsEndpoint}, and registers it in the {@link EndpointRegistrar}.
  *
  * @author Tomaz Fernandes
  * @since 3.0
@@ -192,7 +187,7 @@ public class SqsListenerAnnotationBeanPostProcessor
 	protected List<HandlerMethodArgumentResolver> createArgumentResolvers(Collection<MessageConverter> messageConverters, ObjectMapper objectMapper) {
 		return Arrays.asList(
 			new SqsHeadersMethodArgumentResolver(),
-			new AsyncAcknowledgmentHandlerMethodArgumentResolver(MessageHeaders.ACKNOWLEDGMENT_HEADER),
+			new AsyncAcknowledgmentHandlerMethodArgumentResolver(SqsMessageHeaders.ACKNOWLEDGMENT_HEADER),
 			new VisibilityHandlerMethodArgumentResolver(SqsMessageHeaders.VISIBILITY),
 			new SqsMessageMethodArgumentResolver(),
 			new HeaderMethodArgumentResolver(new GenericConversionService(), null),
@@ -233,7 +228,5 @@ public class SqsListenerAnnotationBeanPostProcessor
 			this.delegate = delegate;
 		}
 	}
-
-
 
 }

@@ -26,9 +26,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
-import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 /**
+ * {@link AsyncMessageInterceptor} implementation for automatically extending
+ * the message's visibility in case it's less than the minimum required for processing.
+ *
+ * @param <T> the {@link Message} payload type.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

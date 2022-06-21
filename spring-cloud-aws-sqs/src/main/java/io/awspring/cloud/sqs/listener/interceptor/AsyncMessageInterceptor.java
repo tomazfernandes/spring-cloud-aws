@@ -20,6 +20,11 @@ import org.springframework.messaging.Message;
 import java.util.concurrent.CompletableFuture;
 
 /**
+ * Interface for intercepting messages before being sent to the
+ * {@link io.awspring.cloud.sqs.listener.AsyncMessageListener}.
+ *
+ * @param <T> the {@link Message} payload type.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

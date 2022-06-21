@@ -44,6 +44,12 @@ public class ExpressionResolvingHelper implements BeanFactoryAware {
 
 	private BeanExpressionContext expressionContext;
 
+	/**
+	 * Resolves a given value as {@link String}.
+	 * @param value the value to be resolved.
+	 * @param attribute the attribute name to be used in case of an exception.
+	 * @return the resolved {@link String}
+	 */
 	public String asString(String value, String attribute) {
 		if (!StringUtils.hasText(value)) {
 			return null;
@@ -59,6 +65,12 @@ public class ExpressionResolvingHelper implements BeanFactoryAware {
 		return null;
 	}
 
+	/**
+	 * Resolves a given value as {@link Integer}.
+	 * @param value the value to be resolved.
+	 * @param attribute the attribute name to be used in case of an exception.
+	 * @return the resolved {@link Integer}
+	 */
 	public Integer asInteger(String value, String attribute) {
 		if (!StringUtils.hasText(value)) {
 			return null;

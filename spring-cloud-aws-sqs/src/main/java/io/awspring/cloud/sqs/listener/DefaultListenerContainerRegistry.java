@@ -25,6 +25,17 @@ import java.util.Collection;
 import java.util.Collections;
 
 /**
+ * {@link MessageListenerContainerRegistry} implementation that registers the
+ * {@link MessageListenerContainer} instances and automatically manage their lifecycle.
+ *
+ * This bean can be autowired and used to lookup container instances at runtime
+ * as well as manually manage their lifecycle.
+ *
+ * Supports starting and stopping the container instances sequentially or in parallel.
+ *
+ * Note that only containers created via {@link io.awspring.cloud.sqs.annotation.SqsListener}
+ * annotations are registered automatically.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */
@@ -34,7 +45,7 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 
 	private final Collection<MessageListenerContainer<?>> listenerContainers = new ArrayList<>();
 
-	private boolean isLifecycleParallel = true;
+	private boolean isParallelLifecycleManagement = true;
 
 	private final Object lifecycleMonitor = new Object();
 
@@ -61,8 +72,13 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 			.filter(container -> container.getId().equals(id)).findFirst().orElse(null);
 	}
 
-	public void setLifecycleParallel(boolean lifecycleParallel) {
-		this.isLifecycleParallel = lifecycleParallel;
+	/**
+	 * Set to false if {@link org.springframework.context.SmartLifecycle} management
+	 * should be made sequentially rather than in parallel.
+	 * @param parallelLifecycleManagement the value.
+	 */
+	public void setParallelLifecycleManagement(boolean parallelLifecycleManagement) {
+		this.isParallelLifecycleManagement = parallelLifecycleManagement;
 	}
 
 	@Override
@@ -70,7 +86,7 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 		synchronized (this.lifecycleMonitor) {
 			logger.debug("Starting registry {}", this);
 			this.running = true;
-			if (this.isLifecycleParallel) {
+			if (this.isParallelLifecycleManagement) {
 				this.listenerContainers.parallelStream().forEach(MessageListenerContainer::start);
 			} else {
 				this.listenerContainers.forEach(MessageListenerContainer::start);
@@ -83,7 +99,7 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 		synchronized (this.lifecycleMonitor) {
 			logger.debug("Stopping registry {}", this);
 			this.running = false;
-			if (this.isLifecycleParallel) {
+			if (this.isParallelLifecycleManagement) {
 				this.listenerContainers.parallelStream().forEach(MessageListenerContainer::stop);
 			} else {
 				this.listenerContainers.forEach(MessageListenerContainer::stop);

@@ -20,7 +20,8 @@ import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import java.util.Collection;
 
 /**
- * Represents a messaging endpoint from and to which messages can be sent and received.
+ * Represents a messaging endpoint from which messages can be consumed
+ * by a {@link MessageListenerContainer}.
  *
  * @author Tomaz Fernandes
  * @since 3.0

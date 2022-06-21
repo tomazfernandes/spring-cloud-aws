@@ -24,6 +24,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
+ * Utilities class for conditional configurations.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

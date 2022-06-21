@@ -37,7 +37,6 @@ import java.util.Collection;
  *
  * @param <T> the {@link Message} type to be consumed by the {@link AbstractMessageListenerContainer}
  * @param <C> the {@link AbstractMessageListenerContainer} type.
- * @param <E> the {@link AbstractEndpoint} type for which the {@link AbstractMessageListenerContainer} will be created.
  *
  * @author Tomaz Fernandes
  * @since 3.0

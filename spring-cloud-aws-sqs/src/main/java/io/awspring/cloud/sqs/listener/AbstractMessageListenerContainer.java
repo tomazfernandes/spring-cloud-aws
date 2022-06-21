@@ -25,6 +25,8 @@ import io.awspring.cloud.sqs.listener.splitter.AsyncMessageSplitter;
 import io.awspring.cloud.sqs.listener.splitter.FanOutSplitter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.SmartLifecycle;
+import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
 import java.util.ArrayList;
@@ -33,6 +35,11 @@ import java.util.Collection;
 import java.util.UUID;
 
 /**
+ * Base implementation for {@link MessageListenerContainer} with {@link SmartLifecycle}
+ * and component management capabilities.
+ *
+ * @param <T> the {@link Message} type to be consumed by the {@link AbstractMessageListenerContainer}
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */
@@ -93,7 +100,6 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 		this.messageInterceptors.addAll(messageInterceptors);
 	}
 
-	@Override
 	public void setMessageSplitter(AsyncMessageSplitter<T> splitter) {
 		Assert.notNull(splitter, "splitter cannot be null");
 		this.splitter = splitter;

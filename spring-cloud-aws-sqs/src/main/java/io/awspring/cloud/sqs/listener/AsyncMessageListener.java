@@ -20,6 +20,10 @@ import org.springframework.messaging.Message;
 import java.util.concurrent.CompletableFuture;
 
 /**
+ * Interface to process incoming {@link Message}s.
+ *
+ * @param <T> the {@link Message} payload type.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

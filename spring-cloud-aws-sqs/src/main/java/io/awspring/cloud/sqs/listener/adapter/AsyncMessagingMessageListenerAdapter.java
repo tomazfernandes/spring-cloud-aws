@@ -22,6 +22,11 @@ import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 import java.util.concurrent.CompletableFuture;
 
 /**
+ * {@link AsyncMessageListener} implementation to handle a message by
+ * invoking a method handler.
+ *
+ * @param <T> the {@link Message} payload type.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */

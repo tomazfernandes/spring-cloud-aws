@@ -18,6 +18,8 @@ package io.awspring.cloud.sqs.listener.acknowledgement;
 import java.util.concurrent.CompletableFuture;
 
 /**
+ * Interface representing a message acknowledgement.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */
