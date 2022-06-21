@@ -128,8 +128,6 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 			.acceptIfNotNull(this.messageInterceptors, container::addMessageInterceptors);
 	}
 
-	protected abstract SqsEndpoint createEndpointAdapter(Collection<String> endpointNames);
-
 	protected abstract C createContainerInstance(Endpoint endpoint);
 
 }

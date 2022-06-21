@@ -17,19 +17,12 @@ package io.awspring.cloud.sqs.config;
 
 import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
-import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
-import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
-import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
-import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAckHandler;
-import io.awspring.cloud.sqs.listener.splitter.AsyncMessageSplitter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.function.Supplier;
 
 /**
@@ -58,11 +51,6 @@ public class SqsMessageListenerContainerFactory<T>
 	}
 
 	@Override
-	protected SqsEndpoint createEndpointAdapter(Collection<String> endpointNames) {
-		return SqsEndpoint.from(endpointNames).build();
-	}
-
-	@Override
 	protected SqsMessageListenerContainer<T> createContainerInstance(Endpoint endpoint) {
 		logger.debug("Creating {} for endpoint {}", SqsMessageListenerContainer.class.getSimpleName(), endpoint);
 		Assert.notNull(this.sqsAsyncClientSupplier, "No asyncClient set");
@@ -75,7 +63,7 @@ public class SqsMessageListenerContainerFactory<T>
 			SqsEndpoint sqsEndpoint = (SqsEndpoint) endpoint;
 			ConfigUtils.INSTANCE
 					.acceptIfNotNull(sqsEndpoint.getMinTimeToProcess(), options::minTimeToProcess)
-					.acceptIfNotNull(sqsEndpoint.getSimultaneousPollsPerQueue(), options::simultaneousPolls)
+					.acceptIfNotNull(sqsEndpoint.getMaxInflightMessagesPerQueue(), options::maxInflightMessagesPerQueue)
 					.acceptIfNotNull(sqsEndpoint.getPollTimeout(), options::pollTimeout);
 		}
 		return options;

@@ -40,7 +40,7 @@ public class OnSuccessAckHandler<T> implements AsyncAckHandler<T> {
 	}
 
 	private Void logError(Message<T> message, Throwable t) {
-		logger.error("Error acknowledging message {}", message, t);
+		logger.error("Error acknowledging message {}", MessageHeaderUtils.getId(message), t);
 		return null;
 	}
 }

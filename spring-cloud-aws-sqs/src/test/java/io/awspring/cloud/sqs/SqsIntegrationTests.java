@@ -17,6 +17,7 @@ package io.awspring.cloud.sqs;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
+import io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.MessageHeaders;
@@ -40,13 +41,13 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.util.Assert;
 import org.springframework.util.StopWatch;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SendMessageBatchRequestEntry;
@@ -68,7 +69,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
 
 /**
  * @author Tomaz Fernandes
@@ -152,11 +152,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		assertThat(latchContainer.manuallyCreatedFactoryLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
-	final int outerBatchSize = 1; // 50;
-	final int innerBatchSize = 1; // 10;
-	final int totalMessages = 2 * outerBatchSize * innerBatchSize;
-
-	@Autowired
+	@Autowired(required = false)
 	OrderedLoadListener orderedLoadListener;
 
 	@Test
@@ -167,6 +163,10 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		assertThat(latchContainer.orderedLoadLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(orderedLoadListener.receivedMessages).containsSequence(IntStream.range(0, 10).boxed().collect(Collectors.toList()));
 	}
+
+	final int outerBatchSize = 50; // 50;
+	final int innerBatchSize = 10; // 10;
+	final int totalMessages = 2 * outerBatchSize * innerBatchSize;
 
 	// These tests are really only for us to have some indication on how the system performs under load.
 	// We can probably remove them later, or adapt to only make sure it handles more than one queue.
@@ -196,8 +196,10 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		watch.start();
 		String queueUrl1 = fetchQueueUrl(queue1);
 		String queueUrl2 = fetchQueueUrl(queue2);
-		IntStream.range(0, outerBatchSize).forEach(index -> sendMessageBatch(queueUrl1, index, innerBatchSize));
-		IntStream.range(outerBatchSize, outerBatchSize * 2).forEach(index -> sendMessageBatch(queueUrl2, index, innerBatchSize));
+		IntStream.range(0, outerBatchSize).forEach(index -> {
+			sendMessageBatch(queueUrl1, index, innerBatchSize);
+			sendMessageBatch(queueUrl2, index + outerBatchSize, innerBatchSize);
+		});
 		assertThat(countDownLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(secondLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		watch.stop();
@@ -329,7 +331,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		AtomicInteger messagesReceived = new AtomicInteger();
 
 		@SqsListener(queueNames = { RECEIVE_FROM_MANY_1_QUEUE_NAME,
-				RECEIVE_FROM_MANY_2_QUEUE_NAME }, factory = HIGH_THROUGHPUT_FACTORY_NAME)
+				RECEIVE_FROM_MANY_2_QUEUE_NAME }, factory = HIGH_THROUGHPUT_FACTORY_NAME, id = "receive-many-from-two-queues")
 		void listen(String message) {
 			logger.trace("Started processing " + message);
 			if (this.messagesReceivedPayload.contains(message)) {
@@ -342,11 +344,11 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 				Thread.currentThread().interrupt();
 				// do nothing
 			}
+			latchContainer.manyMessagesTwoQueuesLatch.countDown();
 			int count;
 			if ((count = messagesReceived.incrementAndGet()) % 50 == 0) {
 				logger.debug("Listener processed {} messages", count);
 			}
-			latchContainer.manyMessagesTwoQueuesLatch.countDown();
 			logger.trace("Finished processing " + message);
 		}
 	}
@@ -385,11 +387,11 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 				logger.trace("Finished processing " + message);
 				return null;
 			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				// do nothing
-				return null;
-			}
+//			catch (InterruptedException e) {
+//				Thread.currentThread().interrupt();
+//				// do nothing
+//				return null;
+//			}
 			catch (Exception e) {
 				logger.error("Error in listener", e);
 				throw new RuntimeException(e);
@@ -438,7 +440,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Bean
 		public SqsMessageListenerContainerFactory<String> highThroughputFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
-			factory.getContainerOptions().simultaneousPolls(1).pollTimeout(Duration.ofSeconds(2)).messagesPerPoll(10);
+			factory.getContainerOptions().maxInflightMessagesPerQueue(600).pollTimeout(Duration.ofSeconds(1)).messagesPerPoll(10);
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			factory.setAckHandler(testAckHandler());
 			return factory;
@@ -447,7 +449,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Bean
 		public SqsMessageListenerContainerFactory<String> lowResourceFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
-			factory.getContainerOptions().simultaneousPolls(1).pollTimeout(Duration.ofSeconds(2)).messagesPerPoll(1);
+			factory.getContainerOptions().maxInflightMessagesPerQueue(1).pollTimeout(Duration.ofSeconds(2)).messagesPerPoll(1);
 			factory.setMessageSplitter(new OrderedSplitter<>());
 			factory.setAckHandler(testAckHandler());
 			factory.setErrorHandler(testErrorHandler());
@@ -456,7 +458,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			return factory;
 		}
 
-		@Bean
+//		@Bean
 		public MessageListenerContainer<String> manuallyCreatedContainer() {
 			SqsMessageListenerContainer<String> container = new SqsMessageListenerContainer<>(createAsyncClient(), ContainerOptions.create());
 			container.setQueueNames(MANUALLY_CREATE_CONTAINER_QUEUE_NAME);
@@ -467,10 +469,10 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			return container;
 		}
 
-		@Bean
+//		@Bean
 		public SqsMessageListenerContainer<String> manuallyCreatedFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
-			factory.getContainerOptions().simultaneousPolls(1).pollTimeout(Duration.ofSeconds(2)).messagesPerPoll(1);
+			factory.getContainerOptions().maxInflightMessagesPerQueue(1).pollTimeout(Duration.ofSeconds(2)).messagesPerPoll(1);
 			factory.setSqsAsyncClient(BaseSqsIntegrationTest.createAsyncClient());
 			factory.setMessageListener(msg -> {
 				latchContainer.manuallyCreatedFactoryLatch.countDown();
@@ -480,36 +482,36 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		}
 
 		LatchContainer latchContainer = new LatchContainer();
-
-		@Bean
-		ReceivesMessageListener receivesMessageListener() {
-			return new ReceivesMessageListener();
-		}
-
-		@Bean
-		DoesNotAckOnErrorListener doesNotAckOnErrorListener() {
-			return new DoesNotAckOnErrorListener();
-		}
-
-		@Bean
-		ResolvesParameterTypesListener resolvesParameterTypesListener() {
-			return new ResolvesParameterTypesListener();
-		}
-
-		@Bean
-		ResolvesPojoListener resolvesPojoListener() {
-			return new ResolvesPojoListener();
-		}
+//
+//		@Bean
+//		ReceivesMessageListener receivesMessageListener() {
+//			return new ReceivesMessageListener();
+//		}
+//
+//		@Bean
+//		DoesNotAckOnErrorListener doesNotAckOnErrorListener() {
+//			return new DoesNotAckOnErrorListener();
+//		}
+//
+//		@Bean
+//		ResolvesParameterTypesListener resolvesParameterTypesListener() {
+//			return new ResolvesParameterTypesListener();
+//		}
+//
+//		@Bean
+//		ResolvesPojoListener resolvesPojoListener() {
+//			return new ResolvesPojoListener();
+//		}
 
 		@Bean
 		ReceiveManyFromTwoQueuesListener receiveManyFromTwoQueuesListener() {
 			return new ReceiveManyFromTwoQueuesListener();
 		}
 
-		@Bean
-		OrderedLoadListener orderedLoadListener() {
-			return new OrderedLoadListener();
-		}
+//		@Bean
+//		OrderedLoadListener orderedLoadListener() {
+//			return new OrderedLoadListener();
+//		}
 
 
 //		@Bean
@@ -530,8 +532,8 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Bean(name = TEST_SQS_ASYNC_CLIENT_BEAN_NAME)
 		SqsAsyncClient sqsAsyncClientProducer() {
 			return SqsAsyncClient.builder()
-					.credentialsProvider(credentialsProvider)
-					.endpointOverride(localstack.getEndpointOverride(SQS)).region(Region.of(localstack.getRegion()))
+//					.credentialsProvider(credentialsProvider)
+//					.endpointOverride(localstack.getEndpointOverride(SQS)).region(Region.of(localstack.getRegion()))
 					.build();
 		}
 
@@ -557,19 +559,15 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		}
 
 		private AsyncAckHandler<String> testAckHandler() {
-			return msg -> Objects
-				.requireNonNull(
-					(AsyncAcknowledgement) msg.getHeaders().get(MessageHeaders.ACKNOWLEDGMENT_HEADER))
-				.acknowledge().handle((val, t) -> {
-					if (t != null) {
-						logger.error("Error acknowledging", t);
-					} else {
-						logger.trace("Acknowledged message {}", msg.getPayload());
+			return new OnSuccessAckHandler<String>() {
+				@Override
+				public CompletableFuture<Void> onSuccess(Message<String> message) {
+					return super.onSuccess(message).thenRun(() -> {
 						latchContainer.messageAckLatch.countDown();
 						latchContainer.messageAckLatchAsync.countDown();
-					}
-					return null;
-				});
+					});
+				}
+			};
 		}
 	}
 
