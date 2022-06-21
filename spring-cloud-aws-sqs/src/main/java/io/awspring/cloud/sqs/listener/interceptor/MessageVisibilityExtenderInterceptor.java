@@ -15,6 +15,7 @@
  */
 package io.awspring.cloud.sqs.listener.interceptor;
 
+import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
 import io.awspring.cloud.sqs.listener.Visibility;
 
@@ -39,13 +40,7 @@ public class MessageVisibilityExtenderInterceptor<T> implements AsyncMessageInte
 
 	private static final int DEFAULT_QUEUE_VISIBILITY = 30;
 
-	private final SqsAsyncClient asyncClient;
-
-	private int minTimeToProcessMessage = DEFAULT_MIN_VISIBILITY;
-
-	public MessageVisibilityExtenderInterceptor(SqsAsyncClient asyncClient) {
-		this.asyncClient = asyncClient;
-	}
+	private int minimumVisibility = DEFAULT_MIN_VISIBILITY;
 
 	@Override
 	public CompletableFuture<Message<T>> intercept(Message<T> message) {
@@ -55,25 +50,27 @@ public class MessageVisibilityExtenderInterceptor<T> implements AsyncMessageInte
 			logger.warn("Header {} needs to be present to extend visibility. Skipping.", SqsMessageHeaders.RECEIVED_AT);
 			return forwardMessage(message);
 		}
+		Instant receivedAt = (Instant) receivedAtObject;
 		int queueVisibility = queueVisibilityObject != null ? (int) queueVisibilityObject : DEFAULT_QUEUE_VISIBILITY;
 
-		return Instant.now().plusSeconds(this.minTimeToProcessMessage)
-				.isAfter(((Instant) receivedAtObject).plusSeconds(queueVisibility)) ? doChangeVisibility(message)
+		return Instant.now().plusSeconds(this.minimumVisibility).isAfter(receivedAt.plusSeconds(queueVisibility))
+						? doChangeVisibility(message)
 						: forwardMessage(message);
 	}
 
 	private CompletableFuture<Message<T>> doChangeVisibility(Message<T> message) {
+		logger.debug("Changing visibility of message {} to {}", MessageHeaderUtils.getId(message), this.minimumVisibility);
 		return ((Visibility) Objects.requireNonNull(message.getHeaders().get(SqsMessageHeaders.VISIBILITY),
-				"No Visibility found in " + message)).changeTo(this.minTimeToProcessMessage).thenApply(res -> message);
+				"No Visibility found in " + message)).changeTo(this.minimumVisibility).thenApply(res -> message);
 	}
 
 	private CompletableFuture<Message<T>> forwardMessage(Message<T> message) {
-		return CompletableFuture.supplyAsync(() -> message);
+		return CompletableFuture.completedFuture(message);
 	}
 
-	public void setMinTimeToProcessMessage(int minTimeToProcessMessage) {
-		Assert.isTrue(minTimeToProcessMessage > 0, "minTimeToProcessMessage cannot be < 0");
-		Assert.isTrue(minTimeToProcessMessage < 43200, "minTimeToProcessMessage cannot be > 43200");
-		this.minTimeToProcessMessage = minTimeToProcessMessage;
+	public void setMinimumVisibility(int minimumVisibility) {
+		Assert.isTrue(minimumVisibility > 0, "minTimeToProcessMessage cannot be < 0");
+		Assert.isTrue(minimumVisibility < 43200, "minTimeToProcessMessage cannot be > 43200");
+		this.minimumVisibility = minimumVisibility;
 	}
 }

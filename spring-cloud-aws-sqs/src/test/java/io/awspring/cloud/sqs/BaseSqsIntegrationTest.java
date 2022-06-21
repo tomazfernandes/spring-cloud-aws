@@ -41,7 +41,7 @@ abstract class BaseSqsIntegrationTest {
 
 	protected static final String RECEIVES_MESSAGE_QUEUE_NAME = "receives_message_test_queue";
 	protected static final String DOES_NOT_ACK_ON_ERROR_QUEUE_NAME = "does_not_ack_test_queue";
-	protected static final String RESOLVES_PARAMETER_TYPES_QUEUE_NAME = "resolves_parameter_test_queue";
+	protected static final String RESOLVES_PARAMETER_TYPES_QUEUE_NAME = "resolves_parameter_type_test_queue";
 	protected static final String RESOLVES_POJO_TYPES_QUEUE_NAME = "resolves_pojo_test_queue";
 	protected static final String ORDERED_LOAD_QUEUE_NAME = "ordered_load_test_queue";
 	protected static final String RECEIVE_FROM_MANY_1_QUEUE_NAME = "receive_many_test_queue_1";
@@ -88,7 +88,8 @@ abstract class BaseSqsIntegrationTest {
 					.attributes(singletonMap(QueueAttributeName.VISIBILITY_TIMEOUT, "1")).build()),
 				client.createQueue(req -> req.queueName(RECEIVE_FROM_MANY_1_QUEUE_NAME).build()),
 				client.createQueue(req -> req.queueName(RECEIVE_FROM_MANY_2_QUEUE_NAME).build()),
-				client.createQueue(req -> req.queueName(RESOLVES_PARAMETER_TYPES_QUEUE_NAME).build()),
+				client.createQueue(req -> req.queueName(RESOLVES_PARAMETER_TYPES_QUEUE_NAME)
+					.attributes(singletonMap(QueueAttributeName.VISIBILITY_TIMEOUT, "1")).build()),
 				client.createQueue(req -> req.queueName(RESOLVES_POJO_TYPES_QUEUE_NAME).build()),
 				client.createQueue(req -> req.queueName(ORDERED_LOAD_QUEUE_NAME).build()),
 				client.createQueue(req -> req.queueName(ASYNC_RECEIVE_FROM_MANY_1_QUEUE_NAME).build()),

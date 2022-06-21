@@ -55,12 +55,6 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 
 	private AsyncMessageListener<T> messageListener;
 
-	private final ContainerOptions containerOptions;
-
-	protected AbstractMessageListenerContainerFactory(ContainerOptions containerOptions) {
-		this.containerOptions = containerOptions;
-	}
-
 	public void setErrorHandler(AsyncErrorHandler<T> errorHandler) {
 		Assert.notNull(errorHandler, "errorHandler cannot be null");
 		this.errorHandler = errorHandler;

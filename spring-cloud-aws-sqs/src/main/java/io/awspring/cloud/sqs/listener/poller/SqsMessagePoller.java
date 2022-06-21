@@ -29,10 +29,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import io.awspring.cloud.sqs.listener.MessageHeaders;
+import io.awspring.cloud.sqs.listener.QueueAttributes;
 import io.awspring.cloud.sqs.listener.QueueMessageVisibility;
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
 import io.awspring.cloud.sqs.listener.acknowledgement.SqsAcknowledge;
-import io.awspring.cloud.sqs.support.QueueAttributesProvider;
+import io.awspring.cloud.sqs.support.QueueAttributesResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
@@ -50,9 +51,9 @@ public class SqsMessagePoller<T> extends AbstractMessagePoller<T> {
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessagePoller.class);
 
-//	private final QueueAttributes queueAttributes;
-
 	private final SqsAsyncClient sqsAsyncClient;
+
+	private QueueAttributes queueAttributes;
 
 	private String queueUrl;
 
@@ -65,10 +66,8 @@ public class SqsMessagePoller<T> extends AbstractMessagePoller<T> {
 
 	@Override
 	protected void doStart() {
-		if (this.queueUrl == null) {
-			this.queueUrl = QueueAttributesProvider.fetchAttributes(super.getLogicalEndpointName(), this.sqsAsyncClient)
-				.getDestinationUrl();
-		}
+		this.queueAttributes = QueueAttributesResolver.resolveAttributes(super.getLogicalEndpointName(), this.sqsAsyncClient);
+		this.queueUrl = queueAttributes.getDestinationUrl();
 	}
 
 	@Override
@@ -96,7 +95,7 @@ public class SqsMessagePoller<T> extends AbstractMessagePoller<T> {
 		additionalHeaders.put(MessageHeaders.MESSAGE_ID_HEADER, message.messageId());
 		additionalHeaders.put(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID, getLogicalEndpointName());
 		additionalHeaders.put(SqsMessageHeaders.RECEIVED_AT, Instant.now());
-		// additionalHeaders.put(SqsMessageHeaders.QUEUE_VISIBILITY, this.queueAttributes.getVisibilityTimeout());
+		additionalHeaders.put(SqsMessageHeaders.QUEUE_VISIBILITY, this.queueAttributes.getVisibilityTimeout());
 		additionalHeaders.put(SqsMessageHeaders.VISIBILITY,
 				new QueueMessageVisibility(this.sqsAsyncClient, this.queueUrl, message.receiptHandle()));
 		return createMessage(message, Collections.unmodifiableMap(additionalHeaders));

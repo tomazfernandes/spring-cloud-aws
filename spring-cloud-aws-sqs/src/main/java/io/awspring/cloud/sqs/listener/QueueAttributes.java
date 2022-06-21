@@ -41,14 +41,14 @@ public class QueueAttributes {
 	}
 
 	boolean isFifo() {
-		return fifo;
+		return this.fifo;
 	}
 
 	public String getDestinationUrl() {
-		return destinationUrl;
+		return this.destinationUrl;
 	}
 
 	public Integer getVisibilityTimeout() {
-		return visibilityTimeout;
+		return this.visibilityTimeout;
 	}
 }
