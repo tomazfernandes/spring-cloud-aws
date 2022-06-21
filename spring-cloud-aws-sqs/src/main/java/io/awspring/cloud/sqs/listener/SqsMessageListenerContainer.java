@@ -17,32 +17,34 @@ package io.awspring.cloud.sqs.listener;
 
 import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAckHandler;
-import io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
-import io.awspring.cloud.sqs.listener.errorhandler.LoggingErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.poller.AsyncMessagePoller;
 import io.awspring.cloud.sqs.listener.poller.SqsMessagePoller;
 import io.awspring.cloud.sqs.listener.splitter.AbstractMessageSplitter;
 import io.awspring.cloud.sqs.listener.splitter.AsyncMessageSplitter;
-import io.awspring.cloud.sqs.listener.splitter.FanOutSplitter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.Lifecycle;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.core.task.AsyncListenableTaskExecutor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
-import java.util.ArrayList;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
-import java.util.function.BiFunction;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -58,9 +60,15 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	private final ContainerOptions containerOptions;
 
+	private int maxInFlightMessagesPerQueue;
+
+	private int messagesPerPoll;
+
+	private Duration pollTimeout;
+
 	private TaskExecutor taskExecutor;
 
-	private Semaphore pollersSemaphore;
+	private Semaphore inFlightMessagesSemaphore;
 
 	private Collection<AsyncMessagePoller<T>> messagePollers;
 
@@ -74,6 +82,12 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	private Collection<AsyncMessageInterceptor<T>> messageInterceptors;
 
+	private CompletableFuture<?> executionFuture;
+
+	private Duration semaphoreAcquireTimeout;
+
+	private Set<CompletableFuture<Void>> pollingFutures;
+
 	public SqsMessageListenerContainer(SqsAsyncClient asyncClient, ContainerOptions options) {
 		super(options);
 		this.asyncClient = asyncClient;
@@ -82,15 +96,21 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	@Override
 	protected void doStart() {
+		this.semaphoreAcquireTimeout = this.containerOptions.getSemaphoreAcquireTimeout();
+		this.messagesPerPoll = this.containerOptions.getMessagesPerPoll();
+		this.pollTimeout = this.containerOptions.getPollTimeout();
+		this.pollingFutures = Collections.synchronizedSet(new HashSet<>());
 		this.messagePollers = super.getMessagePollers() != null
 			? super.getMessagePollers()
-			: doCreateMessagePollers(super.getQueueNames());
+			: createMessagePollers(super.getQueueNames());
 		this.splitter = super.getSplitter();
 		this.messageListener = super.getMessageListener();
 		this.errorHandler = super.getErrorHandler();
 		this.ackHandler = super.getAckHandler();
 		this.messageInterceptors = super.getMessageInterceptors();
-		this.pollersSemaphore = new Semaphore(this.containerOptions.getSimultaneousPolls());
+		 this.maxInFlightMessagesPerQueue = this.containerOptions.getMaxInFlightMessagesPerQueue();
+		this.inFlightMessagesSemaphore = new Semaphore(this.maxInFlightMessagesPerQueue
+			* this.messagePollers.size());
 		Assert.notEmpty(this.messagePollers, () -> "MessagePollers cannot be empty: "
 			+ this.containerOptions);
 		Assert.notNull(this.messageListener, () -> "MessageListener cannot be empty:  "
@@ -100,15 +120,19 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 			this.taskExecutor = createTaskExecutor();
 		}
 		managePollersLifecycle(Lifecycle::start);
-		manageSplitter();
-		this.taskExecutor.execute(this::pollAndProcessMessages);
+		startSplitter();
+		if (this.taskExecutor instanceof AsyncListenableTaskExecutor) {
+			this.executionFuture = ((AsyncListenableTaskExecutor) this.taskExecutor)
+				.submitListenable(this::pollAndProcessMessages).completable();
+		} else {
+			this.taskExecutor.execute(this::pollAndProcessMessages);
+		}
 	}
 
-	private void manageSplitter() {
+	private void startSplitter() {
 		if (this.splitter instanceof AbstractMessageSplitter) {
 			((AbstractMessageSplitter<T>) this.splitter)
-				.setCoreSize(this.containerOptions.getSimultaneousPolls()
-					* this.containerOptions.getMessagesPerPoll()
+				.setCoreSize(this.containerOptions.getMaxInFlightMessagesPerQueue()
 					* this.messagePollers.size());
 		}
 		if (this.splitter instanceof SmartLifecycle) {
@@ -128,20 +152,21 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		while (super.isRunning()) {
 			this.messagePollers.forEach(poller -> {
 				try {
-					acquireSemaphore();
-					if (!super.isRunning()) {
-						logger.debug("Container not running, returning.");
-						this.pollersSemaphore.release();
+					if (!acquirePermits()) {
+						logger.warn("Not able to acquire permits in {} seconds. Skipping.", this.semaphoreAcquireTimeout.getSeconds());
 						return;
 					}
-					poller.poll(this.containerOptions.getMessagesPerPoll(), this.containerOptions.getPollTimeout())
-						.thenCompose(msgs -> this.splitter.splitAndProcess(msgs, this::processMessage))
-						.handle(handleProcessingResult())
-						.thenRun(releaseSemaphore());
-				}
-				catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					logger.trace("Thread interrupted", e);
+					if (!super.isRunning()) {
+						logger.debug("Container not running, returning.");
+						this.inFlightMessagesSemaphore.release(this.messagesPerPoll);
+						return;
+					}
+					CompletableFuture<Void> pollingFuture = poller.poll(this.messagesPerPoll, this.pollTimeout)
+						.thenApply(this::releaseUnusedPermits)
+						.thenAccept(msgs -> this.splitter.splitAndProcess(msgs, this::processMessage)
+							.forEach(this::releasePermitAndHandleResult));
+					this.pollingFutures.add(pollingFuture);
+					pollingFuture.thenRun(() -> this.pollingFutures.remove(pollingFuture));
 				}
 				catch (Exception e) {
 					logger.error("Error in ListenerContainer {}", getId(), e);
@@ -150,11 +175,27 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		}
 	}
 
-	protected CompletableFuture<Void> processMessage(Message<T> message) {
-		logger.trace("Processing message {}", message.getPayload());// MessageHeaderUtils.getId(message));
+	private boolean acquirePermits() throws InterruptedException {
+		boolean acquireResult =
+			this.inFlightMessagesSemaphore.tryAcquire(this.messagesPerPoll, this.semaphoreAcquireTimeout.getSeconds(), TimeUnit.SECONDS);
+		logger.trace("{} permits acquired in container {} ", this.containerOptions.getMessagesPerPoll(), getId());
+		return acquireResult;
+	}
+
+	private Collection<Message<T>> releaseUnusedPermits(Collection<Message<T>> msgs) {
+		this.inFlightMessagesSemaphore.release(this.messagesPerPoll - msgs.size());
+		return msgs;
+	}
+
+	private void releasePermitAndHandleResult(CompletableFuture<Void> processingPipelineFuture) {
+		processingPipelineFuture.handle(this::handleProcessingResult);
+	}
+
+	private CompletableFuture<Void> processMessage(Message<T> message) {
+		logger.trace("Processing message {}", MessageHeaderUtils.getId(message));
 		return intercept(message)
 			.thenCompose(this.messageListener::onMessage)
-			.handle((val, t) -> handleResult(message, t))
+			.handle((val, t) -> handleMessageListenerResult(message, t))
 			.thenCompose(x -> x);
 	}
 
@@ -163,40 +204,29 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 			(messageFuture, interceptor) -> messageFuture.thenCompose(interceptor::intercept), (a, b) -> a);
 	}
 
-	private CompletableFuture<Void> handleResult(Message<T> message, Throwable throwable) {
+	private CompletableFuture<Void> handleMessageListenerResult(Message<T> message, Throwable throwable) {
 		logger.trace("Handling result for message {}", MessageHeaderUtils.getId(message));
 		return throwable == null ? this.ackHandler.onSuccess(message)
 			: this.errorHandler.handleError(message, throwable)
 			.thenCompose(val -> this.ackHandler.onError(message, throwable));
 	}
 
-	private void acquireSemaphore() throws InterruptedException {
-		this.pollersSemaphore.acquire();
-		logger.trace("Semaphore acquired in container {} ", getId());
-	}
-
-	private Runnable releaseSemaphore() {
-		return () -> {
-			this.pollersSemaphore.release();
-			logger.trace("Semaphore released in container {} ", getId());
-		};
-	}
-
-	private BiFunction<Object, Throwable, Void> handleProcessingResult() {
-		return (value, t) -> {
-			if (t != null) {
-				logger.error("Error handling messages in container {} ", getId(), t);
-			}
-			return null;
-		};
+	private Object handleProcessingResult(Object value, @Nullable Throwable t) {
+		this.inFlightMessagesSemaphore.release();
+		if (t != null) {
+			logger.error("Error handling messages in container {} ", getId(), t);
+		}
+		return null;
 	}
 
 	protected TaskExecutor createTaskExecutor() {
-		return new SimpleAsyncTaskExecutor();
+		SimpleAsyncTaskExecutor taskExecutor = new SimpleAsyncTaskExecutor();
+		taskExecutor.setThreadNamePrefix(this.getId() + "-");
+		return taskExecutor;
 	}
 
-	protected Collection<AsyncMessagePoller<T>> doCreateMessagePollers(Collection<String> endpointNames) {
-		return endpointNames.stream()
+	private Collection<AsyncMessagePoller<T>> createMessagePollers(Collection<String> queueNames) {
+		return queueNames.stream()
 			.map(name -> new SqsMessagePoller<T>(name, this.asyncClient))
 			.collect(Collectors.toList());
 	}
@@ -204,9 +234,38 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	@Override
 	protected void doStop() {
 		managePollersLifecycle(Lifecycle::stop);
+		// TODO: Make waiting optional
+		waitExistingTasksToFinish();
+		this.pollingFutures.forEach(pollingFuture -> pollingFuture.cancel(true));
 		if (this.splitter instanceof SmartLifecycle) {
 			((SmartLifecycle) this.splitter).stop();
 		}
+		if (this.executionFuture != null) {
+			this.executionFuture.thenRun(this::shutdownTaskExecutor);
+		}
+		else {
+			shutdownTaskExecutor();
+		}
+	}
+
+	private void waitExistingTasksToFinish() {
+		try {
+			int timeoutSeconds = 20; // TODO: Make timeout configurable
+			int totalPermits = this.maxInFlightMessagesPerQueue * this.messagePollers.size();
+			logger.debug("Waiting up to {} seconds for approx. {} tasks to finish", timeoutSeconds,
+				totalPermits - this.inFlightMessagesSemaphore.availablePermits());
+			boolean tasksFinished =  this.inFlightMessagesSemaphore.tryAcquire(totalPermits, timeoutSeconds, TimeUnit.SECONDS);
+			if (!tasksFinished) {
+				logger.warn("Tasks did not finish in {} seconds, proceeding with container shutdown", timeoutSeconds);
+			}
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException("Interrupted while waiting for container tasks to finish", e);
+		}
+	}
+
+	private void shutdownTaskExecutor() {
 		if (this.taskExecutor instanceof DisposableBean) {
 			try {
 				((DisposableBean) this.taskExecutor).destroy();

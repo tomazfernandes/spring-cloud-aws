@@ -78,7 +78,7 @@ public @interface SqsListener {
 
 	String id() default "";
 
-	String concurrentPollsPerContainer() default "";
+	String maxInflightMessagesPerQueue() default "";
 
 	String pollTimeoutSeconds() default "";
 

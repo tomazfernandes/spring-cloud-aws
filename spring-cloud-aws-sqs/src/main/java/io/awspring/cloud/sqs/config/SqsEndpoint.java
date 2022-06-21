@@ -15,8 +15,6 @@
  */
 package io.awspring.cloud.sqs.config;
 
-import io.awspring.cloud.sqs.config.AbstractEndpoint;
-import io.awspring.cloud.sqs.config.Endpoint;
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import io.awspring.cloud.sqs.listener.QueueAttributes;
 
@@ -35,7 +33,7 @@ import java.util.Map;
  */
 public class SqsEndpoint extends AbstractEndpoint {
 
-	private final Integer simultaneousPollsPerQueue;
+	private final Integer maxInflightMessagesPerQueue;
 
 	private final Integer pollTimeoutSeconds;
 
@@ -46,11 +44,11 @@ public class SqsEndpoint extends AbstractEndpoint {
 	private final Boolean isAsync;
 
 	private SqsEndpoint(Collection<String> logicalEndpointNames, String listenerContainerFactoryName,
-						Integer simultaneousPollsPerQueue, Integer pollTimeoutSeconds, Integer minTimeToProcess,
+						Integer maxInflightMessagesPerQueue, Integer pollTimeoutSeconds, Integer minTimeToProcess,
 						Map<String, QueueAttributes> queueAttributesMap, Boolean isAsync, String id) {
 		super(logicalEndpointNames, listenerContainerFactoryName, id);
 		this.queuesAttributes = queueAttributesMap;
-		this.simultaneousPollsPerQueue = simultaneousPollsPerQueue;
+		this.maxInflightMessagesPerQueue = maxInflightMessagesPerQueue;
 		this.pollTimeoutSeconds = pollTimeoutSeconds;
 		this.minTimeToProcess = minTimeToProcess;
 		this.isAsync = isAsync;
@@ -60,8 +58,8 @@ public class SqsEndpoint extends AbstractEndpoint {
 		return new SqsEndpointBuilder<>(logicalEndpointNames);
 	}
 
-	public Integer getSimultaneousPollsPerQueue() {
-		return this.simultaneousPollsPerQueue;
+	public Integer getMaxInflightMessagesPerQueue() {
+		return this.maxInflightMessagesPerQueue;
 	}
 
 	public Integer getPollTimeoutSeconds() {
@@ -92,7 +90,7 @@ public class SqsEndpoint extends AbstractEndpoint {
 
 		private final Collection<String> logicalEndpointNames;
 
-		private Integer simultaneousPollsPerQueue;
+		private Integer maxInflightMessagesPerQueue;
 
 		private Integer pollTimeoutSeconds;
 
@@ -115,8 +113,8 @@ public class SqsEndpoint extends AbstractEndpoint {
 			return this;
 		}
 
-		public SqsEndpointBuilder<T> simultaneousPollsPerQueue(Integer simultaneousPollsPerQueue) {
-			this.simultaneousPollsPerQueue = simultaneousPollsPerQueue;
+		public SqsEndpointBuilder<T> maxInflightMessagesPerQueue(Integer maxInflightMessagesPerQueue) {
+			this.maxInflightMessagesPerQueue = maxInflightMessagesPerQueue;
 			return this;
 		}
 
@@ -146,7 +144,7 @@ public class SqsEndpoint extends AbstractEndpoint {
 		}
 
 		public SqsEndpoint build() {
-			return new SqsEndpoint(this.logicalEndpointNames, this.factoryName, this.simultaneousPollsPerQueue,
+			return new SqsEndpoint(this.logicalEndpointNames, this.factoryName, this.maxInflightMessagesPerQueue,
 					this.pollTimeoutSeconds, this.minTimeToProcess, this.queuesAttributes, this.async, this.id);
 		}
 	}

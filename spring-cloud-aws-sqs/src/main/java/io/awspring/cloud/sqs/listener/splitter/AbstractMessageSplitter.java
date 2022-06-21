@@ -9,6 +9,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * @author Tomaz Fernandes
@@ -45,16 +46,20 @@ public abstract class AbstractMessageSplitter<T> implements AsyncMessageSplitter
 		}
 	}
 
-	public CompletableFuture<Void> splitAndProcess(Collection<Message<T>> messages,
+	public Collection<CompletableFuture<Void>> splitAndProcess(Collection<Message<T>> messages,
 												  Function<Message<T>, CompletableFuture<Void>> processingPipeline) {
 		if (!this.isRunning) {
-			return CompletableFuture.completedFuture(null);
+			return returnCompletedVoidFutures(messages);
 		}
-		return doSplitAndProcess(messages, processingPipeline);
+		return doSplitAndProcessMessages(messages, processingPipeline);
 	}
 
-	protected abstract CompletableFuture<Void> doSplitAndProcess(Collection<Message<T>> messages,
-																Function<Message<T>, CompletableFuture<Void>> processingPipeline);
+	protected Collection<CompletableFuture<Void>> returnCompletedVoidFutures(Collection<Message<T>> messages) {
+		return messages.stream().map(msg -> CompletableFuture.<Void>completedFuture(null)).collect(Collectors.toList());
+	}
+
+	protected abstract Collection<CompletableFuture<Void>> doSplitAndProcessMessages(Collection<Message<T>> messages,
+																					 Function<Message<T>, CompletableFuture<Void>> processingPipeline);
 
 	@Override
 	public void stop() {
@@ -82,6 +87,7 @@ public abstract class AbstractMessageSplitter<T> implements AsyncMessageSplitter
 		ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
 		taskExecutor.setMaxPoolSize(this.coreSize);
 		taskExecutor.setCorePoolSize(this.coreSize);
+		taskExecutor.setThreadNamePrefix(this.getClass().getSimpleName().toLowerCase() + "-");
 		taskExecutor.afterPropertiesSet();
 		return taskExecutor;
 	}

@@ -164,7 +164,7 @@ public class SqsListenerAnnotationBeanPostProcessor
 			.factoryBeanName(resolveExpression().asString(sqsListenerAnnotation.factory(), "factory"))
 			.id(getEndpointId(sqsListenerAnnotation))
 			.pollTimeoutSeconds(resolveExpression().asInteger(sqsListenerAnnotation.pollTimeoutSeconds(), "pollTimeoutSeconds"))
-			.simultaneousPollsPerQueue(resolveExpression().asInteger(sqsListenerAnnotation.concurrentPollsPerContainer(), "concurrentPollsPerContainer"))
+			.maxInflightMessagesPerQueue(resolveExpression().asInteger(sqsListenerAnnotation.maxInflightMessagesPerQueue(), "maxInflightMessagesPerQueue"))
 			.minTimeToProcess(resolveExpression().asInteger(sqsListenerAnnotation.minSecondsToProcess(), "minSecondsToProcess"))
 			.async(CompletionStage.class.isAssignableFrom(method.getReturnType()))
 //			.queuesAttributes(logicalEndpointNames.stream()

@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import io.awspring.cloud.sqs.listener.MessageHeaders;
@@ -55,6 +56,8 @@ public class SqsMessagePoller<T> extends AbstractMessagePoller<T> {
 
 	private String queueUrl;
 
+	private AtomicInteger pollNumber = new AtomicInteger();
+
 	public SqsMessagePoller(String logicalEndpointName, SqsAsyncClient sqsClient) {
 		super(logicalEndpointName);
 		this.sqsAsyncClient = sqsClient;
@@ -74,6 +77,8 @@ public class SqsMessagePoller<T> extends AbstractMessagePoller<T> {
 
 	@Override
 	protected CompletableFuture<Collection<Message<T>>> doPollForMessages(int numberOfMessages, Duration timeout) {
+		int pollNumber = this.pollNumber.incrementAndGet();
+		logger.trace("Starting poll {} for queue {}.", pollNumber, this.queueUrl);
 		return sqsAsyncClient
 			.receiveMessage(req -> req.queueUrl(this.queueUrl).maxNumberOfMessages(numberOfMessages)
 				.waitTimeSeconds((int) timeout.getSeconds()))
@@ -86,7 +91,7 @@ public class SqsMessagePoller<T> extends AbstractMessagePoller<T> {
 	}
 
 	protected Message<T> convertMessage(final software.amazon.awssdk.services.sqs.model.Message message) {
-		logger.trace("Converting message {}", message);
+		//logger.trace("Converting message {} to messaging message", message);
 		HashMap<String, Object> additionalHeaders = new HashMap<>();
 		additionalHeaders.put(MessageHeaders.MESSAGE_ID_HEADER, message.messageId());
 		additionalHeaders.put(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID, getLogicalEndpointName());

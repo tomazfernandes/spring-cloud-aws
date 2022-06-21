@@ -19,6 +19,7 @@ import java.util.concurrent.CompletableFuture;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 /**
@@ -36,6 +37,9 @@ public class SqsAcknowledge implements AsyncAcknowledgement {
 	private final String receiptHandle;
 
 	public SqsAcknowledge(SqsAsyncClient sqsAsyncClient, String queueUrl, String receiptHandle) {
+		Assert.notNull(sqsAsyncClient, "sqsAsyncClient cannot be null");
+		Assert.notNull(queueUrl, "queueUrl cannot be null");
+		Assert.notNull(receiptHandle, "receiptHandle cannot be null");
 		this.sqsAsyncClient = sqsAsyncClient;
 		this.queueUrl = queueUrl;
 		this.receiptHandle = receiptHandle;

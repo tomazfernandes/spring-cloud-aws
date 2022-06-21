@@ -16,6 +16,7 @@
 package io.awspring.cloud.sqs.listener;
 
 
+import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 
 import java.time.Duration;
@@ -32,11 +33,15 @@ public class ContainerOptions {
 
 	private static final Duration DEFAULT_POLL_TIMEOUT = Duration.ofSeconds(10);
 
-	private int simultaneousPolls = DEFAULT_SIMULTANEOUS_POLL_CALLS;
+	private final Duration DEFAULT_SEMAPHORE_TIMEOUT = Duration.ofSeconds(10);
+
+	private int maxInflightMessagesPerQueue = DEFAULT_SIMULTANEOUS_POLL_CALLS;
 
 	private int messagesPerPoll = DEFAULT_MESSAGES_PER_POLL;
 
 	private Duration pollTimeout = DEFAULT_POLL_TIMEOUT;
+
+	private Duration semaphoreAcquireTimeout = DEFAULT_SEMAPHORE_TIMEOUT;
 
 	private Integer minTimeToProcess;
 
@@ -53,10 +58,14 @@ public class ContainerOptions {
 		return minTimeToProcess;
 	}
 
-	@SuppressWarnings("unchecked")
+	public ContainerOptions maxInflightMessagesPerQueue(int maxInflightMessagesPerQueue) {
+		this.maxInflightMessagesPerQueue = maxInflightMessagesPerQueue;
+		return this;
+	}
 
-	public ContainerOptions simultaneousPolls(int simultaneousPollCalls) {
-		this.simultaneousPolls = simultaneousPollCalls;
+	public ContainerOptions semaphoreAcquireTimeout(Duration semaphoreAcquireTimeout) {
+		Assert.notNull(semaphoreAcquireTimeout, "semaphoreAcquireTimeout cannot be null");
+		this.semaphoreAcquireTimeout = semaphoreAcquireTimeout;
 		return this;
 	}
 
@@ -66,12 +75,13 @@ public class ContainerOptions {
 	}
 
 	public ContainerOptions pollTimeout(Duration pollTimeout) {
+		Assert.notNull(pollTimeout, "pollTimeout cannot be null");
 		this.pollTimeout = pollTimeout;
 		return this;
 	}
 
-	public int getSimultaneousPolls() {
-		return this.simultaneousPolls;
+	public int getMaxInFlightMessagesPerQueue() {
+		return this.maxInflightMessagesPerQueue;
 	}
 
 	public int getMessagesPerPoll() {
@@ -80,6 +90,10 @@ public class ContainerOptions {
 
 	public Duration getPollTimeout() {
 		return this.pollTimeout;
+	}
+
+	public Duration getSemaphoreAcquireTimeout() {
+		return semaphoreAcquireTimeout;
 	}
 
 	/**
