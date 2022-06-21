@@ -33,15 +33,15 @@ import java.util.Map;
  */
 public class SqsEndpoint extends AbstractEndpoint {
 
-	private final Integer maxInflightMessagesPerQueue;
+	private Integer maxInflightMessagesPerQueue;
 
-	private final Integer pollTimeoutSeconds;
+	private Integer pollTimeoutSeconds;
 
-	private final Integer minTimeToProcess;
+	private Integer minimumVisibility;
 
-	private final Map<String, QueueAttributes> queuesAttributes;
+	private Map<String, QueueAttributes> queuesAttributes;
 
-	private final Boolean isAsync;
+	private Boolean isAsync;
 
 	private SqsEndpoint(Collection<String> logicalEndpointNames, String listenerContainerFactoryName,
 						Integer maxInflightMessagesPerQueue, Integer pollTimeoutSeconds, Integer minTimeToProcess,
@@ -50,7 +50,7 @@ public class SqsEndpoint extends AbstractEndpoint {
 		this.queuesAttributes = queueAttributesMap;
 		this.maxInflightMessagesPerQueue = maxInflightMessagesPerQueue;
 		this.pollTimeoutSeconds = pollTimeoutSeconds;
-		this.minTimeToProcess = minTimeToProcess;
+		this.minimumVisibility = minTimeToProcess;
 		this.isAsync = isAsync;
 	}
 
@@ -70,8 +70,8 @@ public class SqsEndpoint extends AbstractEndpoint {
 		return this.pollTimeoutSeconds != null ? Duration.ofSeconds(this.pollTimeoutSeconds) : null;
 	}
 
-	public Integer getMinTimeToProcess() {
-		return this.minTimeToProcess;
+	public Integer getMinimumVisibility() {
+		return this.minimumVisibility;
 	}
 
 	public QueueAttributes getAttributesFor(String queueName) {
@@ -96,7 +96,7 @@ public class SqsEndpoint extends AbstractEndpoint {
 
 		private String factoryName;
 
-		private Integer minTimeToProcess;
+		private Integer minimumVisibility;
 
 		private Map<String, QueueAttributes> queuesAttributes;
 
@@ -123,8 +123,8 @@ public class SqsEndpoint extends AbstractEndpoint {
 			return this;
 		}
 
-		public SqsEndpointBuilder<T> minTimeToProcess(Integer minTimeToProcess) {
-			this.minTimeToProcess = minTimeToProcess;
+		public SqsEndpointBuilder<T> minimumVisibility(Integer minimumVisibility) {
+			this.minimumVisibility = minimumVisibility;
 			return this;
 		}
 
@@ -145,7 +145,7 @@ public class SqsEndpoint extends AbstractEndpoint {
 
 		public SqsEndpoint build() {
 			return new SqsEndpoint(this.logicalEndpointNames, this.factoryName, this.maxInflightMessagesPerQueue,
-					this.pollTimeoutSeconds, this.minTimeToProcess, this.queuesAttributes, this.async, this.id);
+					this.pollTimeoutSeconds, this.minimumVisibility, this.queuesAttributes, this.async, this.id);
 		}
 	}
 

@@ -18,6 +18,7 @@ package io.awspring.cloud.sqs.config;
 import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
+import io.awspring.cloud.sqs.listener.interceptor.MessageVisibilityExtenderInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
@@ -37,7 +38,7 @@ public class SqsMessageListenerContainerFactory<T>
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessageListenerContainerFactory.class);
 
-	private final ContainerOptions sqsContainerOptions;
+	private final ContainerOptions containerOptions;
 
 	private Supplier<SqsAsyncClient> sqsAsyncClientSupplier;
 
@@ -46,31 +47,32 @@ public class SqsMessageListenerContainerFactory<T>
 	}
 
 	private SqsMessageListenerContainerFactory(ContainerOptions containerOptions) {
-		super(containerOptions);
-		this.sqsContainerOptions = containerOptions;
+		this.containerOptions = containerOptions;
 	}
 
 	@Override
 	protected SqsMessageListenerContainer<T> createContainerInstance(Endpoint endpoint) {
 		logger.debug("Creating {} for endpoint {}", SqsMessageListenerContainer.class.getSimpleName(), endpoint);
 		Assert.notNull(this.sqsAsyncClientSupplier, "No asyncClient set");
-		return new SqsMessageListenerContainer<>(this.sqsAsyncClientSupplier.get(), createContainerOptions(endpoint));
+		SqsAsyncClient asyncClient = this.sqsAsyncClientSupplier.get();
+		return new SqsMessageListenerContainer<>(asyncClient, createContainerOptions(endpoint));
 	}
 
 	protected ContainerOptions createContainerOptions(Endpoint endpoint) {
-		ContainerOptions options = this.sqsContainerOptions.createCopy();
+		ContainerOptions options = this.containerOptions.createCopy();
 		if (endpoint instanceof SqsEndpoint) {
 			SqsEndpoint sqsEndpoint = (SqsEndpoint) endpoint;
 			ConfigUtils.INSTANCE
-					.acceptIfNotNull(sqsEndpoint.getMinTimeToProcess(), options::minTimeToProcess)
+					.acceptIfNotNull(sqsEndpoint.getMinimumVisibility(), options::minTimeToProcess)
 					.acceptIfNotNull(sqsEndpoint.getMaxInflightMessagesPerQueue(), options::maxInflightMessagesPerQueue)
-					.acceptIfNotNull(sqsEndpoint.getPollTimeout(), options::pollTimeout);
+					.acceptIfNotNull(sqsEndpoint.getPollTimeout(), options::pollTimeout)
+					.acceptIfNotNull(sqsEndpoint.getMinimumVisibility(), this::addVisibilityExtender);
 		}
 		return options;
 	}
 
 	public ContainerOptions getContainerOptions() {
-		return this.sqsContainerOptions;
+		return this.containerOptions;
 	}
 
 	public void setSqsAsyncClientSupplier(Supplier<SqsAsyncClient> sqsAsyncClientSupplier) {
@@ -83,15 +85,10 @@ public class SqsMessageListenerContainerFactory<T>
 		setSqsAsyncClientSupplier(() -> sqsAsyncClient);
 	}
 
-	//		MessagingUtils.INSTANCE.acceptBothIfNoneNull(containerOptions.getMinTimeToProcess(), container,
-//				this::addVisibilityExtender);
-
-
-//	private void addVisibilityExtender(Integer minTimeToProcess, SqsMessageListenerContainer container) {
-//		MessageVisibilityExtenderInterceptor<String> interceptor = new MessageVisibilityExtenderInterceptor<>(
-//				this.sqsContainerOptions.get);
-//		interceptor.setMinTimeToProcessMessage(minTimeToProcess);
-//		container.getContainerOptions().setMessageInterceptor(interceptor);
-//	}
+	private void addVisibilityExtender(Integer minTimeToProcess) {
+		MessageVisibilityExtenderInterceptor<T> interceptor = new MessageVisibilityExtenderInterceptor<>();
+		interceptor.setMinimumVisibility(minTimeToProcess);
+		super.addMessageInterceptor(interceptor);
+	}
 
 }

@@ -82,6 +82,6 @@ public @interface SqsListener {
 
 	String pollTimeoutSeconds() default "";
 
-	String minSecondsToProcess() default "";
+	String minimumVisibility() default "";
 
 }

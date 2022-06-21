@@ -130,6 +130,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 	void resolvesManyParameterTypes() throws Exception {
 		sendMessageTo(RESOLVES_PARAMETER_TYPES_QUEUE_NAME);
 		assertThat(latchContainer.manyParameterTypesLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(latchContainer.manyParameterTypesSecondLatch.await(2, TimeUnit.SECONDS)).isFalse();
 	}
 
 	@Test
@@ -279,16 +280,21 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Autowired
 		LatchContainer latchContainer;
 
-		@SqsListener(queueNames = RESOLVES_PARAMETER_TYPES_QUEUE_NAME, minSecondsToProcess = "20", id = "resolves-parameter")
-		void listen(String message, SqsMessageHeaders headers, AsyncAcknowledgement ack, Visibility visibility,
-				software.amazon.awssdk.services.sqs.model.Message originalMessage) {
+		@SqsListener(queueNames = RESOLVES_PARAMETER_TYPES_QUEUE_NAME, factory = LOW_RESOURCE_FACTORY_NAME,
+			minimumVisibility = "20", id = "resolves-parameter")
+		void listen(Message<String> message, SqsMessageHeaders headers, AsyncAcknowledgement ack, Visibility visibility,
+				software.amazon.awssdk.services.sqs.model.Message originalMessage) throws Exception {
 			Assert.notNull(headers, "Received null SqsMessageHeaders");
 			Assert.notNull(ack, "Received null AsyncAcknowledgement");
 			Assert.notNull(visibility, "Received null Visibility");
 			Assert.notNull(originalMessage, "Received null software.amazon.awssdk.services.sqs.model.Message");
 			Assert.notNull(message, "Received null message");
 			logger.debug("Received message in Listener Method: " + message);
+
+			// Verify VisibilityTimeout extension
+			Thread.sleep(1000);
 			latchContainer.manyParameterTypesLatch.countDown();
+			latchContainer.manyParameterTypesSecondLatch.countDown();
 		}
 	}
 
@@ -414,6 +420,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		final CountDownLatch errorHandlerLatch = new CountDownLatch(2);
 		final CountDownLatch interceptorLatch = new CountDownLatch(2);
 		final CountDownLatch manyParameterTypesLatch = new CountDownLatch(1);
+		final CountDownLatch manyParameterTypesSecondLatch = new CountDownLatch(2);
 		final CountDownLatch resolvesPojoLatch = new CountDownLatch(1);
 		final CountDownLatch manuallyCreatedContainerLatch = new CountDownLatch(1);
 		final CountDownLatch manuallyCreatedFactoryLatch = new CountDownLatch(1);

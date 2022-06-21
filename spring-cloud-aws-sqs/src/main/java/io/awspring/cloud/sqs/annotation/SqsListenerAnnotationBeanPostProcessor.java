@@ -168,10 +168,8 @@ public class SqsListenerAnnotationBeanPostProcessor
 			.id(getEndpointId(sqsListenerAnnotation))
 			.pollTimeoutSeconds(resolveExpression().asInteger(sqsListenerAnnotation.pollTimeoutSeconds(), "pollTimeoutSeconds"))
 			.maxInflightMessagesPerQueue(resolveExpression().asInteger(sqsListenerAnnotation.maxInflightMessagesPerQueue(), "maxInflightMessagesPerQueue"))
-			.minTimeToProcess(resolveExpression().asInteger(sqsListenerAnnotation.minSecondsToProcess(), "minSecondsToProcess"))
+			.minimumVisibility(resolveExpression().asInteger(sqsListenerAnnotation.minimumVisibility(), "minimumVisibility"))
 			.async(CompletionStage.class.isAssignableFrom(method.getReturnType()))
-//			.queuesAttributes(logicalEndpointNames.stream()
-//				.collect(Collectors.toMap(name -> name, this::getQueueAttributes)))
 			.build();
 	}
 
