@@ -20,6 +20,7 @@ import io.awspring.cloud.sqs.ExpressionResolvingHelper;
 import io.awspring.cloud.sqs.config.Endpoint;
 import io.awspring.cloud.sqs.config.EndpointRegistrar;
 import io.awspring.cloud.sqs.config.SqsEndpoint;
+import io.awspring.cloud.sqs.config.SqsListenerCustomizer;
 import io.awspring.cloud.sqs.listener.MessageHeaders;
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
 import io.awspring.cloud.sqs.support.AsyncAcknowledgmentHandlerMethodArgumentResolver;
@@ -30,6 +31,7 @@ import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.core.MethodIntrospector;
@@ -127,8 +129,13 @@ public class SqsListenerAnnotationBeanPostProcessor
 
 	@Override
 	public void afterSingletonsInstantiated() {
+		if (this.beanFactory instanceof ListableBeanFactory) {
+			((ListableBeanFactory) this.beanFactory)
+				.getBeansOfType(SqsListenerCustomizer.class)
+				.values()
+				.forEach(customizer -> customizer.configure(this.endpointRegistrar));
+		}
 		this.endpointRegistrar.setBeanFactory(this.beanFactory);
-		// TODO: Add EndpointRegistrarCustomizer (not that name) interface
 		initializeHandlerMethodFactory();
 		this.endpointRegistrar.afterSingletonsInstantiated();
 	}
@@ -136,15 +143,11 @@ public class SqsListenerAnnotationBeanPostProcessor
 	protected void initializeHandlerMethodFactory() {
 		MessageHandlerMethodFactory handlerMethodFactory = this.endpointRegistrar.getMessageHandlerMethodFactory();
 		if (handlerMethodFactory instanceof DefaultMessageHandlerMethodFactory) {
-			try {
-				DefaultMessageHandlerMethodFactory defaultHandlerMethodFactory =
-					(DefaultMessageHandlerMethodFactory) handlerMethodFactory;
-				defaultHandlerMethodFactory.setArgumentResolvers(createArgumentResolvers(
-						this.endpointRegistrar.getMessageConverters(), this.endpointRegistrar.getObjectMapper()));
-				defaultHandlerMethodFactory.afterPropertiesSet();
-			} catch (Exception e) {
-				throw new IllegalArgumentException("Error initializing MessageHandlerMethodFactory", e);
-			}
+			DefaultMessageHandlerMethodFactory defaultHandlerMethodFactory =
+				(DefaultMessageHandlerMethodFactory) handlerMethodFactory;
+			defaultHandlerMethodFactory.setArgumentResolvers(createArgumentResolvers(
+					this.endpointRegistrar.getMessageConverters(), this.endpointRegistrar.getObjectMapper()));
+			defaultHandlerMethodFactory.afterPropertiesSet();
 		}
 		this.delegatingHandlerMethodFactory.setDelegate(handlerMethodFactory);
 	}

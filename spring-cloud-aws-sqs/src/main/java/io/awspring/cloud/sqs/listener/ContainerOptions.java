@@ -27,15 +27,15 @@ import java.time.Duration;
  */
 public class ContainerOptions {
 
-	private static final int DEFAULT_SIMULTANEOUS_POLL_CALLS = 2;
+	private static final int DEFAULT_MAX_INFLIGHT_MSG_PER_QUEUE = 10;
 
 	private static final int DEFAULT_MESSAGES_PER_POLL = 10;
 
 	private static final Duration DEFAULT_POLL_TIMEOUT = Duration.ofSeconds(10);
 
-	private final Duration DEFAULT_SEMAPHORE_TIMEOUT = Duration.ofSeconds(10);
+	private static final Duration DEFAULT_SEMAPHORE_TIMEOUT = Duration.ofSeconds(10);
 
-	private int maxInflightMessagesPerQueue = DEFAULT_SIMULTANEOUS_POLL_CALLS;
+	private int maxInflightMessagesPerQueue = DEFAULT_MAX_INFLIGHT_MSG_PER_QUEUE;
 
 	private int messagesPerPoll = DEFAULT_MESSAGES_PER_POLL;
 
@@ -93,7 +93,7 @@ public class ContainerOptions {
 	}
 
 	public Duration getSemaphoreAcquireTimeout() {
-		return semaphoreAcquireTimeout;
+		return this.semaphoreAcquireTimeout;
 	}
 
 	/**
