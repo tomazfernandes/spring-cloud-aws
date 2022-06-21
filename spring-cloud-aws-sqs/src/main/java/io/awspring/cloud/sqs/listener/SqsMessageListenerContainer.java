@@ -153,11 +153,11 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 			this.messagePollers.forEach(poller -> {
 				try {
 					if (!acquirePermits()) {
-						logger.warn("Not able to acquire permits in {} seconds. Skipping.", this.semaphoreAcquireTimeout.getSeconds());
+						logger.trace("Not able to acquire permits in {} seconds. Skipping.", this.semaphoreAcquireTimeout.getSeconds());
 						return;
 					}
 					if (!super.isRunning()) {
-						logger.debug("Container not running, returning.");
+						logger.debug("Container not running. Returning.");
 						this.inFlightMessagesSemaphore.release(this.messagesPerPoll);
 						return;
 					}
@@ -169,17 +169,24 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 					pollingFuture.thenRun(() -> this.pollingFutures.remove(pollingFuture));
 				}
 				catch (Exception e) {
-					logger.error("Error in ListenerContainer {}", getId(), e);
+					logger.error("Error in ListenerContainer {}. Resuming.", getId(), e);
 				}
 			});
 		}
+		logger.debug("Execution thread stopped.");
 	}
 
 	private boolean acquirePermits() throws InterruptedException {
-		boolean acquireResult =
+		if (!isRunning()) {
+			return false;
+		}
+		logger.trace("Acquiring {} permits in container {}", this.containerOptions.getMessagesPerPoll(), getId());
+		boolean hasAcquired =
 			this.inFlightMessagesSemaphore.tryAcquire(this.messagesPerPoll, this.semaphoreAcquireTimeout.getSeconds(), TimeUnit.SECONDS);
-		logger.trace("{} permits acquired in container {} ", this.containerOptions.getMessagesPerPoll(), getId());
-		return acquireResult;
+		if (hasAcquired) {
+			logger.trace("{} permits acquired in container {} ", this.containerOptions.getMessagesPerPoll(), getId());
+		}
+		return hasAcquired;
 	}
 
 	private Collection<Message<T>> releaseUnusedPermits(Collection<Message<T>> msgs) {
@@ -246,17 +253,18 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		else {
 			shutdownTaskExecutor();
 		}
+		logger.debug("Container {} stopped", getId());
 	}
 
 	private void waitExistingTasksToFinish() {
 		try {
 			int timeoutSeconds = 20; // TODO: Make timeout configurable
 			int totalPermits = this.maxInFlightMessagesPerQueue * this.messagePollers.size();
-			logger.debug("Waiting up to {} seconds for approx. {} tasks to finish", timeoutSeconds,
-				totalPermits - this.inFlightMessagesSemaphore.availablePermits());
+			logger.debug("Waiting for up to {} seconds for approx. {} tasks to finish on container {}", timeoutSeconds,
+				totalPermits - this.inFlightMessagesSemaphore.availablePermits(), this.getId());
 			boolean tasksFinished =  this.inFlightMessagesSemaphore.tryAcquire(totalPermits, timeoutSeconds, TimeUnit.SECONDS);
 			if (!tasksFinished) {
-				logger.warn("Tasks did not finish in {} seconds, proceeding with container shutdown", timeoutSeconds);
+				logger.warn("Tasks did not finish in {} seconds, proceeding with shutdown for container {}", timeoutSeconds, getId());
 			}
 		}
 		catch (InterruptedException e) {

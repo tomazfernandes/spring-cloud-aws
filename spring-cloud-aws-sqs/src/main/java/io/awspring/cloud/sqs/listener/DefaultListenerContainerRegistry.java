@@ -34,6 +34,8 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 
 	private final Collection<MessageListenerContainer<?>> listenerContainers = new ArrayList<>();
 
+	private boolean isLifecycleParallel = true;
+
 	private final Object lifecycleMonitor = new Object();
 
 	private volatile boolean running = false;
@@ -59,12 +61,20 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 			.filter(container -> container.getId().equals(id)).findFirst().orElse(null);
 	}
 
+	public void setLifecycleParallel(boolean lifecycleParallel) {
+		this.isLifecycleParallel = lifecycleParallel;
+	}
+
 	@Override
 	public void start() {
 		synchronized (this.lifecycleMonitor) {
 			logger.debug("Starting registry {}", this);
 			this.running = true;
-			this.listenerContainers.forEach(MessageListenerContainer::start);
+			if (this.isLifecycleParallel) {
+				this.listenerContainers.parallelStream().forEach(MessageListenerContainer::start);
+			} else {
+				this.listenerContainers.forEach(MessageListenerContainer::start);
+			}
 		}
 	}
 
@@ -73,7 +83,11 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 		synchronized (this.lifecycleMonitor) {
 			logger.debug("Stopping registry {}", this);
 			this.running = false;
-			this.listenerContainers.forEach(MessageListenerContainer::stop);
+			if (this.isLifecycleParallel) {
+				this.listenerContainers.parallelStream().forEach(MessageListenerContainer::stop);
+			} else {
+				this.listenerContainers.forEach(MessageListenerContainer::stop);
+			}
 		}
 	}
 
