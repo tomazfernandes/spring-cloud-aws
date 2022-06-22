@@ -43,11 +43,8 @@ abstract class BaseSqsIntegrationTest {
 	protected static final String DOES_NOT_ACK_ON_ERROR_QUEUE_NAME = "does_not_ack_test_queue";
 	protected static final String RESOLVES_PARAMETER_TYPES_QUEUE_NAME = "resolves_parameter_type_test_queue";
 	protected static final String RESOLVES_POJO_TYPES_QUEUE_NAME = "resolves_pojo_test_queue";
-	protected static final String ORDERED_LOAD_QUEUE_NAME = "ordered_load_test_queue";
 	protected static final String RECEIVE_FROM_MANY_1_QUEUE_NAME = "receive_many_test_queue_1";
 	protected static final String RECEIVE_FROM_MANY_2_QUEUE_NAME = "receive_many_test_queue_2";
-	protected static final String ASYNC_RECEIVE_FROM_MANY_1_QUEUE_NAME = "async_receive_many_test_queue_1";
-	protected static final String ASYNC_RECEIVE_FROM_MANY_2_QUEUE_NAME = "async_receive_many_test_queue_2";
 	protected static final String MANUALLY_CREATE_CONTAINER_QUEUE_NAME = "manually_create_container_test_queue";
 	protected static final String MANUALLY_CREATE_FACTORY_QUEUE_NAME = "manually_create_factory_test_queue";
 
@@ -91,9 +88,6 @@ abstract class BaseSqsIntegrationTest {
 				client.createQueue(req -> req.queueName(RESOLVES_PARAMETER_TYPES_QUEUE_NAME)
 					.attributes(singletonMap(QueueAttributeName.VISIBILITY_TIMEOUT, "1")).build()),
 				client.createQueue(req -> req.queueName(RESOLVES_POJO_TYPES_QUEUE_NAME).build()),
-				client.createQueue(req -> req.queueName(ORDERED_LOAD_QUEUE_NAME).build()),
-				client.createQueue(req -> req.queueName(ASYNC_RECEIVE_FROM_MANY_1_QUEUE_NAME).build()),
-				client.createQueue(req -> req.queueName(ASYNC_RECEIVE_FROM_MANY_2_QUEUE_NAME).build()),
 				client.createQueue(req -> req.queueName(MANUALLY_CREATE_CONTAINER_QUEUE_NAME).build()),
 				client.createQueue(req -> req.queueName(MANUALLY_CREATE_FACTORY_QUEUE_NAME).build()))
 			.join();
@@ -101,8 +95,8 @@ abstract class BaseSqsIntegrationTest {
 
 	protected static SqsAsyncClient createAsyncClient() {
 		return SqsAsyncClient.builder()
-//			.credentialsProvider(credentialsProvider)
-//			.endpointOverride(localstack.getEndpointOverride(SQS)).region(Region.of(localstack.getRegion()))
+			.credentialsProvider(credentialsProvider)
+			.endpointOverride(localstack.getEndpointOverride(SQS)).region(Region.of(localstack.getRegion()))
 			.build();
 	}
 
