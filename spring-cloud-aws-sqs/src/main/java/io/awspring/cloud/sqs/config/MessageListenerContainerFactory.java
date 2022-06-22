@@ -29,8 +29,18 @@ import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 @FunctionalInterface
 public interface MessageListenerContainerFactory<C extends MessageListenerContainer<?>> {
 
-	C createContainer(String... endpointNames);
+	/**
+	 * Create a container instance for the given endpoint names.
+	 * @param logicalEndpointNames the names.
+	 * @return the container instance.
+	 */
+	C createContainer(String... logicalEndpointNames);
 
+	/**
+	 * Create a container instance for the given {@link Endpoint}.
+	 * @param endpoint the endpoint.
+	 * @return the container instance.
+	 */
 	default C createContainer(Endpoint endpoint) {
 		throw new UnsupportedOperationException("This factory is not capable of processing Endpoint instances.");
 	}

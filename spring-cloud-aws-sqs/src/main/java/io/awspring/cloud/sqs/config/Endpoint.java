@@ -16,6 +16,7 @@
 package io.awspring.cloud.sqs.config;
 
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
+import org.springframework.lang.Nullable;
 
 import java.util.Collection;
 
@@ -28,12 +29,29 @@ import java.util.Collection;
  */
 public interface Endpoint {
 
+	/**
+	 * The logical names for this endpoint.
+	 * @return the logical names.
+	 */
 	Collection<String> getLogicalNames();
 
+	/**
+	 * The name of the factory bean that will process this endpoint.
+	 * @return the factory bean name.
+	 */
 	String getListenerContainerFactoryName();
 
+	/**
+	 * An optional id for this endpoint.
+	 * @return the endpoint id.
+	 */
+	@Nullable
 	String getId();
 
+	/**
+	 * Set up the necessary attributes for the container to process this endpoint.
+	 * @param container the container to be configured.
+	 */
 	void setupContainer(MessageListenerContainer<?> container);
 
 }

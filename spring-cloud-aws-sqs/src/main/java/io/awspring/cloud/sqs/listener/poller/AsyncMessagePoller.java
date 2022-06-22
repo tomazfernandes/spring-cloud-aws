@@ -32,6 +32,13 @@ import java.util.concurrent.CompletableFuture;
 @FunctionalInterface
 public interface AsyncMessagePoller<T> {
 
+	/**
+	 * Polls for the specified amount of messages for up to the specified duration.
+	 * @param numberOfMessages the maximum number of messages returned by the poll.
+	 * @param timeout the maximum amount of time to poll for messages.
+	 * @return a completable future containing the batch of polled messages.
+	 */
 	CompletableFuture<Collection<Message<T>>> poll(int numberOfMessages, Duration timeout);
+
 
 }

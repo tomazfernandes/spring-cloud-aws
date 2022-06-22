@@ -37,23 +37,29 @@ public class QueueAttributesResolver {
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessageListenerContainer.class);
 
-	public static QueueAttributes resolveAttributes(String queue, SqsAsyncClient sqsAsyncClient) {
+	/**
+	 * Resolve the attributes for the provided queue.
+	 * @param queueName the queue name.
+	 * @param sqsAsyncClient the client to be used to fetch the attributes.
+	 * @return the attributes.
+	 */
+	public static QueueAttributes resolveAttributes(String queueName, SqsAsyncClient sqsAsyncClient) {
 		try {
-			logger.debug("Fetching attributes for queue " + queue);
-			String queueUrl = sqsAsyncClient.getQueueUrl(req -> req.queueName(queue)).get().queueUrl();
+			logger.debug("Fetching attributes for queue " + queueName);
+			String queueUrl = sqsAsyncClient.getQueueUrl(req -> req.queueName(queueName)).get().queueUrl();
 			GetQueueAttributesResponse getQueueAttributesResponse = sqsAsyncClient
 				.getQueueAttributes(req -> req.queueUrl(queueUrl).attributeNames(QueueAttributeName.ALL)).get();
 			Map<QueueAttributeName, String> attributes = getQueueAttributesResponse.attributes();
 			boolean hasRedrivePolicy = attributes.containsKey(QueueAttributeName.REDRIVE_POLICY);
-			boolean isFifo = queue.endsWith(".fifo");
+			boolean isFifo = queueName.endsWith(".fifo");
 			return new QueueAttributes(queueUrl, hasRedrivePolicy, getVisibility(attributes), isFifo);
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
-			throw new IllegalStateException("Interrupted while fetching attributes for queue " + queue, e);
+			throw new IllegalStateException("Interrupted while fetching attributes for queue " + queueName, e);
 		}
 		catch (ExecutionException e) {
-			throw new IllegalStateException("ExecutionException while fetching attributes for queue " + queue, e);
+			throw new IllegalStateException("ExecutionException while fetching attributes for queue " + queueName, e);
 		}
 	}
 

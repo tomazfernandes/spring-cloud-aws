@@ -61,11 +61,12 @@ public abstract class AbstractMessageSplitter<T> implements AsyncMessageSplitter
 			if (this.isRunning) {
 				return;
 			}
-			this.isRunning = true;
 			this.taskExecutor = createTaskExecutor();
+			this.isRunning = true;
 		}
 	}
 
+	@Override
 	public Collection<CompletableFuture<Void>> splitAndProcess(Collection<Message<T>> messages,
 												  Function<Message<T>, CompletableFuture<Void>> processingPipeline) {
 		if (!this.isRunning) {

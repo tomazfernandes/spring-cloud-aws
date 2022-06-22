@@ -19,6 +19,7 @@ import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
+import io.awspring.cloud.sqs.listener.poller.AbstractMessagePoller;
 import io.awspring.cloud.sqs.listener.poller.AsyncMessagePoller;
 import io.awspring.cloud.sqs.listener.poller.SqsMessagePoller;
 import io.awspring.cloud.sqs.listener.splitter.AbstractMessageSplitter;
@@ -51,9 +52,9 @@ import java.util.stream.Collectors;
 /**
  * {@link MessageListenerContainer} implementation for SQS queues.
  *
- *  All properties are assigned on {@link #start()}, meaning components and
- *  {@link ContainerOptions} can be changed at runtime and such changes will be valid
- *  upon container restart.
+ * All properties are assigned on container {@link #start()}, thus components and
+ * {@link ContainerOptions} can be changed at runtime and such changes will be valid
+ * upon container restart.
  *
  * @author Tomaz Fernandes
  * @since 3.0
@@ -63,8 +64,6 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessageListenerContainer.class);
 
 	private final SqsAsyncClient asyncClient;
-
-	private final ContainerOptions containerOptions;
 
 	private int maxInFlightMessagesPerQueue;
 
@@ -97,30 +96,26 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	public SqsMessageListenerContainer(SqsAsyncClient asyncClient, ContainerOptions options) {
 		super(options);
 		this.asyncClient = asyncClient;
-		this.containerOptions = options;
 	}
 
 	@Override
 	protected void doStart() {
-		this.semaphoreAcquireTimeout = this.containerOptions.getSemaphoreAcquireTimeout();
-		this.messagesPerPoll = this.containerOptions.getMessagesPerPoll();
-		this.pollTimeout = this.containerOptions.getPollTimeout();
+		this.semaphoreAcquireTimeout = super.getContainerOptions().getSemaphoreAcquireTimeout();
+		this.messagesPerPoll = super.getContainerOptions().getMessagesPerPoll();
+		this.pollTimeout = super.getContainerOptions().getPollTimeout();
+		this.maxInFlightMessagesPerQueue = super.getContainerOptions().getMaxInFlightMessagesPerQueue();
 		this.pollingFutures = Collections.synchronizedSet(new HashSet<>());
-		this.messagePollers = super.getMessagePollers() != null
+		this.messagePollers = !super.getMessagePollers().isEmpty()
 			? super.getMessagePollers()
-			: createMessagePollers(super.getQueueNames());
+			: createMessagePollers();
 		this.splitter = super.getSplitter();
 		this.messageListener = super.getMessageListener();
 		this.errorHandler = super.getErrorHandler();
 		this.ackHandler = super.getAckHandler();
 		this.messageInterceptors = super.getMessageInterceptors();
-		 this.maxInFlightMessagesPerQueue = this.containerOptions.getMaxInFlightMessagesPerQueue();
 		this.inFlightMessagesSemaphore = new Semaphore(this.maxInFlightMessagesPerQueue
 			* this.messagePollers.size());
-		Assert.notEmpty(this.messagePollers, () -> "MessagePollers cannot be empty: "
-			+ this.containerOptions);
-		Assert.notNull(this.messageListener, () -> "MessageListener cannot be empty:  "
-			+ this.containerOptions);
+		Assert.notNull(this.messageListener, "MessageListener cannot be null");
 		logger.debug("Starting container {}", super.getId());
 		if (this.taskExecutor == null) {
 			this.taskExecutor = createTaskExecutor();
@@ -138,7 +133,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	private void startSplitter() {
 		if (this.splitter instanceof AbstractMessageSplitter) {
 			((AbstractMessageSplitter<T>) this.splitter)
-				.setCoreSize(this.containerOptions.getMaxInFlightMessagesPerQueue()
+				.setCoreSize(this.maxInFlightMessagesPerQueue
 					* this.messagePollers.size());
 		}
 		if (this.splitter instanceof SmartLifecycle) {
@@ -186,11 +181,11 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		if (!isRunning()) {
 			return false;
 		}
-		logger.trace("Acquiring {} permits in container {}", this.containerOptions.getMessagesPerPoll(), getId());
+		logger.trace("Acquiring {} permits in container {}", this.messagesPerPoll, getId());
 		boolean hasAcquired =
 			this.inFlightMessagesSemaphore.tryAcquire(this.messagesPerPoll, this.semaphoreAcquireTimeout.getSeconds(), TimeUnit.SECONDS);
 		if (hasAcquired) {
-			logger.trace("{} permits acquired in container {} ", this.containerOptions.getMessagesPerPoll(), getId());
+			logger.trace("{} permits acquired in container {} ", this.messagesPerPoll, getId());
 		}
 		return hasAcquired;
 	}
@@ -238,8 +233,8 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		return taskExecutor;
 	}
 
-	private Collection<AsyncMessagePoller<T>> createMessagePollers(Collection<String> queueNames) {
-		return queueNames.stream()
+	private Collection<AsyncMessagePoller<T>> createMessagePollers() {
+		return super.getQueueNames().stream()
 			.map(name -> new SqsMessagePoller<T>(name, this.asyncClient))
 			.collect(Collectors.toList());
 	}

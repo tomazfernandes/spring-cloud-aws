@@ -31,9 +31,25 @@ import java.util.concurrent.CompletableFuture;
 @FunctionalInterface
 public interface AsyncAckHandler<T> {
 
+	/**
+	 * Called by the {@link io.awspring.cloud.sqs.listener.MessageListenerContainer}
+	 * when the {@link Message} is processed successfully by the
+	 * {@link io.awspring.cloud.sqs.listener.AsyncMessageListener}.
+	 * @param message the message.
+	 * @return a completable future.
+	 */
 	CompletableFuture<Void> onSuccess(Message<T> message);
 
+	/**
+	 * Called by the {@link io.awspring.cloud.sqs.listener.MessageListenerContainer}
+	 * when the {@link Message} is processed with an error.
+	 * by the {@link io.awspring.cloud.sqs.listener.AsyncMessageListener}.
+	 * @param message the message.
+	 * @param t the error thrown by the listener.
+	 * @return a completable future.
+	 */
 	default CompletableFuture<Void> onError(Message<T> message, Throwable t) {
 		return CompletableFuture.completedFuture(null);
 	}
+
 }

@@ -66,7 +66,8 @@ import org.springframework.core.annotation.AliasFor;
 public @interface SqsListener {
 
 	/**
-	 * List of queues. Queues can be defined by their logical/physical name or URL.
+	 * List of queue names. The returned queues will be handled by the same
+	 * {@link io.awspring.cloud.sqs.listener.MessageListenerContainer};
 	 * @return list of queues
 	 */
 	String[] value() default {};
@@ -74,14 +75,41 @@ public @interface SqsListener {
 	@AliasFor("value")
 	String[] queueNames() default {};
 
+	/**
+	 * The {@link io.awspring.cloud.sqs.config.MessageListenerContainerFactory}
+	 * bean name to be used to process this endpoint.
+	 * @return the factory bean name.
+	 */
 	String factory() default "";
 
+	/**
+	 * An ID for the {@link io.awspring.cloud.sqs.listener.MessageListenerContainer}
+	 * that will be created to handle this endpoint. If none provided a default ID
+	 * will be used.
+	 * @return the container id.
+	 */
 	String id() default "";
 
+	/**
+	 * The maximum number of inflight messages from each queue in that this endpoint
+	 * should process simultaneously.
+	 * @return the maximum number of inflight messages.
+	 */
 	String maxInflightMessagesPerQueue() default "";
 
+	/**
+	 * The maximum number of seconds to wait for messages in a given poll.
+	 * @return the poll timeout.
+	 */
 	String pollTimeoutSeconds() default "";
 
+	/**
+	 * The minimum amount of seconds a message needs to be processed by this method.
+	 * If by the time the message is processed the remaining visibility is less than
+	 * this value, it will be automatically extended to this value.
+	 * @return the minimum visibility for this endpoint.
+	 * @see io.awspring.cloud.sqs.listener.interceptor.MessageVisibilityExtenderInterceptor
+	 */
 	String minimumVisibility() default "";
 
 }

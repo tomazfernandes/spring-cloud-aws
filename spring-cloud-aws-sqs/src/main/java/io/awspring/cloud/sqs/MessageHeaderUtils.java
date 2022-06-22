@@ -34,11 +34,21 @@ public class MessageHeaderUtils {
 	private MessageHeaderUtils() {
 	}
 
+	/**
+	 * Return the message's ID as {@link String].
+	 * @param message the message.
+	 * @return the ID.
+	 */
 	public static String getId(Message<?> message) {
 		return Objects.requireNonNull(message.getHeaders().get(MessageHeaders.ID, UUID.class),
 			() -> "No ID found for message " + message).toString();
 	}
 
+	/**
+	 * Return the message's {@link AsyncAcknowledgement}
+	 * @param message the message.
+	 * @return the acknowledgement.
+	 */
 	public static AsyncAcknowledgement getAcknowledgement(Message<?> message) {
 		return Objects.requireNonNull(message.getHeaders().get(SqsMessageHeaders.ACKNOWLEDGMENT_HEADER, AsyncAcknowledgement.class),
 			() -> "No Acknowledgment found for message " + message);

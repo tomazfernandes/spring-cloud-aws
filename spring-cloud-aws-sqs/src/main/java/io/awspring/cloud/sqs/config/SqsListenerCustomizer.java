@@ -16,10 +16,9 @@
 package io.awspring.cloud.sqs.config;
 
 /**
- * Beans implementing this interface will be looked up at application
- * bootstrap to allow for configuring the {@link EndpointRegistrar}
- * and change general settings for all {@link io.awspring.cloud.sqs.annotation.SqsListener}
- * annotations.
+ * Beans impplementing this interface can configure the {@link EndpointRegistrar} instance
+ * used to process {@link Endpoint} instances and change general settings for processing all
+ * {@link io.awspring.cloud.sqs.annotation.SqsListener} annotations.
  *
  * @author Tomaz Fernandes
  * @since 3.0
@@ -28,6 +27,11 @@ package io.awspring.cloud.sqs.config;
 @FunctionalInterface
 public interface SqsListenerCustomizer {
 
+	/**
+	 * Configures the {@link EndpointRegistrar} instance that will handle
+	 * the {@link Endpoint} instances.
+	 * @param registrar the registrar instance.
+	 */
 	void configure(EndpointRegistrar registrar);
 
 }

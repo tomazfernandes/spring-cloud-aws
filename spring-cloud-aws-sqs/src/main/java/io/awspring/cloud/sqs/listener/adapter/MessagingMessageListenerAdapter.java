@@ -21,7 +21,7 @@ import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 
 /**
  *
- * Top-level class for invoking a {@link InvocableHandlerMethod}.
+ * Base class for invoking a {@link InvocableHandlerMethod}.
  *
  * @author Tomaz Fernandes
  * @since 3.0

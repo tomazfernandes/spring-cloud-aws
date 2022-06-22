@@ -23,7 +23,7 @@ import org.springframework.messaging.Message;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * {@link AsyncAckHandler} implementation that acknowledges only on success.
+ * Default {@link AsyncAckHandler} implementation that only acknowledges on success.
  *
  * @author Tomaz Fernandes
  * @since 3.0

@@ -76,18 +76,37 @@ public abstract class AbstractEndpoint implements Endpoint {
 		return this.id;
 	}
 
+	/**
+	 * Set the bean instance to be used when handling a message
+	 * for this endpoint.
+	 * @param bean the bean instance.
+	 */
 	public void setBean(Object bean) {
 		this.bean = bean;
 	}
 
+	/**
+	 * Set the method to be used when handling a message
+	 * for this endpoint.
+	 * @param method the method.
+	 */
 	public void setMethod(Method method) {
 		this.method = method;
 	}
 
+	/**
+	 * Set a {@link AsyncMessageSplitter} to handle messages polled from this endpoint.
+	 * If none is provided, one will be created depending on the endpoint's configuration.
+	 * @param messageSplitter the splitter.
+	 */
 	public void setMessageSplitter(AsyncMessageSplitter<?> messageSplitter) {
 		this.messageSplitter = messageSplitter;
 	}
 
+	/**
+	 * Configure the provided container for this endpoint.
+	 * @param container the container to be configured.
+	 */
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	public void setupContainer(MessageListenerContainer container) {
 		container.setMessageListener(createMessageListener());
@@ -102,22 +121,20 @@ public abstract class AbstractEndpoint implements Endpoint {
 			: new FanOutSplitter<>();
 	}
 
-	public AsyncMessageListener<?> createMessageListener() {
+	private AsyncMessageListener<?> createMessageListener() {
 		Assert.notNull(this.handlerMethodFactory, "No handlerMethodFactory has been set");
 		return new AsyncMessagingMessageListenerAdapter<>(
 			this.handlerMethodFactory.createInvocableHandlerMethod(this.bean, this.method));
 	}
 
+	/**
+	 * Set the {@link MessageHandlerMethodFactory} to be used for handling messages
+	 * in this endpoint.
+	 * @param handlerMethodFactory the factory.
+	 */
 	public void setHandlerMethodFactory(MessageHandlerMethodFactory handlerMethodFactory) {
 		Assert.notNull(handlerMethodFactory, "handlerMethodFactory cannot be null");
 		this.handlerMethodFactory = handlerMethodFactory;
 	}
 
-	public Method getMethod() {
-		return this.method;
-	}
-
-	public Object getBean() {
-		return this.bean;
-	}
 }
