@@ -30,6 +30,14 @@ import java.util.concurrent.CompletableFuture;
 @FunctionalInterface
 public interface AsyncErrorHandler<T> {
 
+	/**
+	 * Asynchronously handle the error thrown by the
+	 * {@link io.awspring.cloud.sqs.listener.AsyncMessageListener}
+	 * when processing the given {@link Message}.
+	 * @param message the message.
+	 * @param t the thrown exception.
+	 * @return a completable future.
+	 */
 	CompletableFuture<Void> handleError(Message<T> message, Throwable t);
 
 }

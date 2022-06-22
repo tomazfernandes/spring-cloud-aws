@@ -46,55 +46,79 @@ public class ContainerOptions {
 
 	private Duration semaphoreAcquireTimeout = DEFAULT_SEMAPHORE_TIMEOUT;
 
-	private Integer minTimeToProcess;
-
 	public static ContainerOptions create() {
 		return new ContainerOptions();
 	}
 
-	public ContainerOptions minTimeToProcess(Integer minTimeToProcess) {
-		this.minTimeToProcess = minTimeToProcess;
-		return this;
-	}
-
-	public Integer getMinTimeToProcess() {
-		return minTimeToProcess;
-	}
-
+	/**
+	 * Set the maximum allowed number of inflight messages for each queue.
+	 * @return this instance.
+	 */
 	public ContainerOptions maxInflightMessagesPerQueue(int maxInflightMessagesPerQueue) {
 		this.maxInflightMessagesPerQueue = maxInflightMessagesPerQueue;
 		return this;
 	}
 
+	/**
+	 * Set the maximum time the polling thread should wait for permits.
+	 * @param semaphoreAcquireTimeout the timeout.
+	 * @return this instance.
+	 */
 	public ContainerOptions semaphoreAcquireTimeout(Duration semaphoreAcquireTimeout) {
 		Assert.notNull(semaphoreAcquireTimeout, "semaphoreAcquireTimeout cannot be null");
 		this.semaphoreAcquireTimeout = semaphoreAcquireTimeout;
 		return this;
 	}
 
+	/**
+	 * Set the number of messages that should be returned per poll.
+	 * @param messagesPerPoll the number of messages.
+	 * @return this instance.
+	 */
 	public ContainerOptions messagesPerPoll(int messagesPerPoll) {
 		this.messagesPerPoll = messagesPerPoll;
 		return this;
 	}
 
+	/**
+	 * Set the timeout for polling messages for this endpoint.
+	 * @param pollTimeout the poll timeout.
+	 * @return this instance.
+	 */
 	public ContainerOptions pollTimeout(Duration pollTimeout) {
 		Assert.notNull(pollTimeout, "pollTimeout cannot be null");
 		this.pollTimeout = pollTimeout;
 		return this;
 	}
 
+	/**
+	 * Return the maximum allowed number of inflight messages for each queue.
+	 * @return the number.
+	 */
 	public int getMaxInFlightMessagesPerQueue() {
 		return this.maxInflightMessagesPerQueue;
 	}
 
+	/**
+	 * Return the number of messages that should be returned per poll.
+	 * @return the number.
+	 */
 	public int getMessagesPerPoll() {
 		return this.messagesPerPoll;
 	}
 
+	/**
+	 * Return the timeout for polling messages for this endpoint.
+	 * @return the timeout duration.
+	 */
 	public Duration getPollTimeout() {
 		return this.pollTimeout;
 	}
 
+	/**
+	 * Return the maximum time the polling thread should wait for permits.
+	 * @return the timeout.
+	 */
 	public Duration getSemaphoreAcquireTimeout() {
 		return this.semaphoreAcquireTimeout;
 	}

@@ -47,9 +47,4 @@ public class FanOutSplitter<T> extends AbstractMessageSplitter<T> {
 				.thenCompose(x -> x)).collect(Collectors.toList());
 	}
 
-	@Override
-	public void stop() {
-		super.stop();
-		logger.debug("Cancelling remaining tasks");
-	}
 }

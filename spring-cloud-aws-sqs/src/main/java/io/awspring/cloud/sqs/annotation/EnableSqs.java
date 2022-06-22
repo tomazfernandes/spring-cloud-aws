@@ -16,13 +16,13 @@
 package io.awspring.cloud.sqs.annotation;
 
 import io.awspring.cloud.sqs.config.SqsBootstrapConfiguration;
+import org.springframework.context.annotation.Import;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import org.springframework.context.annotation.Import;
 
 /**
  * @author Tomaz Fernandes
@@ -35,4 +35,4 @@ import org.springframework.context.annotation.Import;
 public @interface EnableSqs {
 }
 
-// TODO: Add autoconfiguration for this
+// TODO: Add autoconfiguration

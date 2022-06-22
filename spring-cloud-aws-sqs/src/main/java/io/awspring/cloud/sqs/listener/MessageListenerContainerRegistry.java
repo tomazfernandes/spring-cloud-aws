@@ -29,10 +29,25 @@ import java.util.Collection;
  */
 public interface MessageListenerContainerRegistry extends SmartLifecycle {
 
+	/**
+	 * Register a {@link MessageListenerContainer} instance with this registry.
+	 * @param listenerContainer the instance.
+	 */
 	void registerListenerContainer(MessageListenerContainer<?> listenerContainer);
 
+	/**
+	 * Return the {@link MessageListenerContainer} instances registered within
+	 * this registry.
+	 * @return the container instances.
+	 */
 	Collection<MessageListenerContainer<?>> getListenerContainers();
 
+	/**
+	 * Return the {@link MessageListenerContainer} instance registered within
+	 * this registry with the provided id, or null if none.
+	 * @param id the id.
+	 * @return the container instance.
+	 */
 	@Nullable
     MessageListenerContainer<?> getContainerById(String id);
 

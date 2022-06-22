@@ -39,54 +39,72 @@ public class SqsEndpoint extends AbstractEndpoint {
 
 	private final Integer minimumVisibility;
 
-	private final Map<String, QueueAttributes> queuesAttributes;
-
 	private final Boolean isAsync;
 
 	private SqsEndpoint(Collection<String> logicalEndpointNames, String listenerContainerFactoryName,
 						Integer maxInflightMessagesPerQueue, Integer pollTimeoutSeconds, Integer minTimeToProcess,
-						Map<String, QueueAttributes> queueAttributesMap, Boolean isAsync, String id) {
+						Boolean isAsync, String id) {
 		super(logicalEndpointNames, listenerContainerFactoryName, id);
-		this.queuesAttributes = queueAttributesMap;
 		this.maxInflightMessagesPerQueue = maxInflightMessagesPerQueue;
 		this.pollTimeoutSeconds = pollTimeoutSeconds;
 		this.minimumVisibility = minTimeToProcess;
 		this.isAsync = isAsync;
 	}
 
-	public static <T> SqsEndpointBuilder<T> from(Collection<String> logicalEndpointNames) {
-		return new SqsEndpointBuilder<>(logicalEndpointNames);
+	/**
+	 * Return a {@link SqsEndpointBuilder} instance with the provided logical endpoint names.
+	 * @param logicalEndpointNames the logical endpoint names for this endpoint.
+	 * @return the builder instance.
+	 */
+	public static SqsEndpointBuilder from(Collection<String> logicalEndpointNames) {
+		return new SqsEndpointBuilder(logicalEndpointNames);
 	}
 
+	/**
+	 * The maximum number of inflight messages each queue in this endpoint can process
+	 * simultaneously.
+	 * @return the maximum number of inflight messages.
+	 */
 	public Integer getMaxInflightMessagesPerQueue() {
 		return this.maxInflightMessagesPerQueue;
 	}
 
+	/**
+	 * The maximum number of seconds to wait for messages in a given poll.
+	 * @return the poll timeout.
+	 */
 	public Integer getPollTimeoutSeconds() {
 		return this.pollTimeoutSeconds;
 	}
 
+	/**
+	 * The maximum duration to wait for messages in a given poll.
+	 * @return the poll timeout.
+	 */
 	public Duration getPollTimeout() {
 		return this.pollTimeoutSeconds != null ? Duration.ofSeconds(this.pollTimeoutSeconds) : null;
 	}
 
+	/**
+	 * The minimum amount of seconds a message needs to be processed by this method.
+	 * If by the time the message is processed the remaining visibility is less than
+	 * this value, it will be automatically extended to this value.
+	 * @return the minimum visibility for this endpoint.
+	 * @see io.awspring.cloud.sqs.listener.interceptor.MessageVisibilityExtenderInterceptor
+	 */
 	public Integer getMinimumVisibility() {
 		return this.minimumVisibility;
 	}
 
-	public QueueAttributes getAttributesFor(String queueName) {
-		return this.queuesAttributes.get(queueName);
-	}
-
-	public Map<String, QueueAttributes> getQueuesAttributes() {
-		return this.queuesAttributes;
-	}
-
+	/**
+	 * Whether this endpoint enables async processing.
+	 * @return true for async processing.
+	 */
 	public boolean isAsync() {
 		return this.isAsync;
 	}
 
-	public static class SqsEndpointBuilder<T> {
+	public static class SqsEndpointBuilder {
 
 		private final Collection<String> logicalEndpointNames;
 
@@ -98,8 +116,6 @@ public class SqsEndpoint extends AbstractEndpoint {
 
 		private Integer minimumVisibility;
 
-		private Map<String, QueueAttributes> queuesAttributes;
-
 		private Boolean async;
 
 		private String id;
@@ -108,44 +124,39 @@ public class SqsEndpoint extends AbstractEndpoint {
 			this.logicalEndpointNames = logicalEndpointNames;
 		}
 
-		public SqsEndpointBuilder<T> factoryBeanName(String factoryName) {
+		public SqsEndpointBuilder factoryBeanName(String factoryName) {
 			this.factoryName = factoryName;
 			return this;
 		}
 
-		public SqsEndpointBuilder<T> maxInflightMessagesPerQueue(Integer maxInflightMessagesPerQueue) {
+		public SqsEndpointBuilder maxInflightMessagesPerQueue(Integer maxInflightMessagesPerQueue) {
 			this.maxInflightMessagesPerQueue = maxInflightMessagesPerQueue;
 			return this;
 		}
 
-		public SqsEndpointBuilder<T> pollTimeoutSeconds(Integer pollTimeoutSeconds) {
+		public SqsEndpointBuilder pollTimeoutSeconds(Integer pollTimeoutSeconds) {
 			this.pollTimeoutSeconds = pollTimeoutSeconds;
 			return this;
 		}
 
-		public SqsEndpointBuilder<T> minimumVisibility(Integer minimumVisibility) {
+		public SqsEndpointBuilder minimumVisibility(Integer minimumVisibility) {
 			this.minimumVisibility = minimumVisibility;
 			return this;
 		}
 
-		public SqsEndpointBuilder<T> queuesAttributes(Map<String, QueueAttributes> queueAttributesMap) {
-			this.queuesAttributes = queueAttributesMap;
-			return this;
-		}
-
-		public SqsEndpointBuilder<T> async(boolean async) {
+		public SqsEndpointBuilder async(boolean async) {
 			this.async = async;
 			return this;
 		}
 
-		public SqsEndpointBuilder<T> id(String id) {
+		public SqsEndpointBuilder id(String id) {
 			this.id = id;
 			return this;
 		}
 
 		public SqsEndpoint build() {
 			return new SqsEndpoint(this.logicalEndpointNames, this.factoryName, this.maxInflightMessagesPerQueue,
-					this.pollTimeoutSeconds, this.minimumVisibility, this.queuesAttributes, this.async, this.id);
+					this.pollTimeoutSeconds, this.minimumVisibility, this.async, this.id);
 		}
 	}
 

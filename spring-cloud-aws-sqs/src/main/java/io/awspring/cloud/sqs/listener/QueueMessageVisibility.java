@@ -21,13 +21,13 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 /**
- * {@link Visibility} implementation for SQS messages.
+ * {@link AsyncVisibility} implementation for SQS messages.
  *
  * @author Szymon Dembek
  * @author Tomaz Fernandes
  * @since 1.3
  */
-public class QueueMessageVisibility implements Visibility {
+public class QueueMessageVisibility implements AsyncVisibility {
 
 	private static final Logger logger = LoggerFactory.getLogger(QueueMessageVisibility.class);
 
@@ -37,6 +37,12 @@ public class QueueMessageVisibility implements Visibility {
 
 	private final String receiptHandle;
 
+	/**
+	 * Create an instance for changing the visibility for the provided queue.
+	 * @param amazonSqsAsync the client to be used.
+	 * @param queueUrl the queue url.
+	 * @param receiptHandle the message receipt handle.
+	 */
 	public QueueMessageVisibility(SqsAsyncClient amazonSqsAsync, String queueUrl, String receiptHandle) {
 		this.sqsAsyncClient = amazonSqsAsync;
 		this.queueUrl = queueUrl;

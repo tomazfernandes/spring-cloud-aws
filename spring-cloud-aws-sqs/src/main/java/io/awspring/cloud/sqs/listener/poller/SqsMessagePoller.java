@@ -45,11 +45,14 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
  * {@link AsyncMessagePoller} implementation for polling messages from
  * a SQS queue and converting them to messaging {@link Message}.
  *
- * Note that currently the payload is not converted here and is returned as String.
+ * <p>A {@link io.awspring.cloud.sqs.listener.MessageListenerContainer} can contain
+ * many pollers, and each poller polls from a single queue.</p>
+ *
+ * <p>Note that currently the payload is not converted here and is returned as String.
  * The actual conversion to the {@link io.awspring.cloud.sqs.annotation.SqsListener}
  * argument type happens on
  * {@link org.springframework.messaging.handler.invocation.InvocableHandlerMethod}
- * invocation.
+ * invocation.</p>
  *
  * @param <T> the {@link Message} payload type.
  *
@@ -66,6 +69,11 @@ public class SqsMessagePoller<T> extends AbstractMessagePoller<T> {
 
 	private String queueUrl;
 
+	/**
+	 * Create an instance to poll the provided logical endpoint name with the provided client.
+	 * @param logicalEndpointName the logical endpoint name to be polled.
+	 * @param sqsClient the client to be used.
+	 */
 	public SqsMessagePoller(String logicalEndpointName, SqsAsyncClient sqsClient) {
 		super(logicalEndpointName);
 		this.sqsAsyncClient = sqsClient;
@@ -74,7 +82,7 @@ public class SqsMessagePoller<T> extends AbstractMessagePoller<T> {
 	@Override
 	protected void doStart() {
 		this.queueAttributes = QueueAttributesResolver.resolveAttributes(super.getLogicalEndpointName(), this.sqsAsyncClient);
-		this.queueUrl = queueAttributes.getDestinationUrl();
+		this.queueUrl = queueAttributes.getQueueUrl();
 	}
 
 	@Override
@@ -83,7 +91,7 @@ public class SqsMessagePoller<T> extends AbstractMessagePoller<T> {
 
 	@Override
 	protected CompletableFuture<Collection<Message<T>>> doPollForMessages(int numberOfMessages, Duration timeout) {
-		logger.trace("Polling queue {}.", this.queueUrl);
+		logger.trace("Polling queue {} for {} messages.", this.queueUrl, numberOfMessages);
 		return sqsAsyncClient
 			.receiveMessage(req -> req.queueUrl(this.queueUrl).maxNumberOfMessages(numberOfMessages)
 				.waitTimeSeconds((int) timeout.getSeconds()))
@@ -97,7 +105,7 @@ public class SqsMessagePoller<T> extends AbstractMessagePoller<T> {
 
 	// TODO: Convert the message payload to type T
 	@SuppressWarnings("unchecked")
-	protected Message<T> createMessage(
+	private Message<T> createMessage(
 		software.amazon.awssdk.services.sqs.model.Message message, Map<String, Object> additionalHeaders) {
 
 		HashMap<String, Object> messageHeaders = new HashMap<>();
@@ -112,10 +120,9 @@ public class SqsMessagePoller<T> extends AbstractMessagePoller<T> {
 		return new GenericMessage<>((T) message.body(), new SqsMessageHeaders(messageHeaders));
 	}
 
-	protected Message<T> convertMessage(final software.amazon.awssdk.services.sqs.model.Message message) {
+	private Message<T> convertMessage(final software.amazon.awssdk.services.sqs.model.Message message) {
 		logger.trace("Converting message {} to messaging message", message.messageId());
 		HashMap<String, Object> additionalHeaders = new HashMap<>();
-		//additionalHeaders.put(SqsMessageHeaders.ID, message.messageId());
 		additionalHeaders.put(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID, getLogicalEndpointName());
 		additionalHeaders.put(SqsMessageHeaders.RECEIVED_AT, Instant.now());
 		additionalHeaders.put(SqsMessageHeaders.QUEUE_VISIBILITY, this.queueAttributes.getVisibilityTimeout());
@@ -124,6 +131,7 @@ public class SqsMessagePoller<T> extends AbstractMessagePoller<T> {
 		return createMessage(message, Collections.unmodifiableMap(additionalHeaders));
 	}
 
+	// TODO: Review this logic using streams
 	private static Map<String, Object> getMessageAttributesAsMessageHeaders(
 			software.amazon.awssdk.services.sqs.model.Message message) {
 

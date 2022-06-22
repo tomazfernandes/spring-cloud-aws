@@ -20,6 +20,7 @@ import io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.LoggingErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
+import io.awspring.cloud.sqs.listener.poller.AbstractMessagePoller;
 import io.awspring.cloud.sqs.listener.poller.AsyncMessagePoller;
 import io.awspring.cloud.sqs.listener.splitter.AsyncMessageSplitter;
 import io.awspring.cloud.sqs.listener.splitter.FanOutSplitter;
@@ -32,7 +33,10 @@ import org.springframework.util.Assert;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Base implementation for {@link MessageListenerContainer} with {@link SmartLifecycle}
@@ -55,15 +59,13 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	private final Object lifecycleMonitor = new Object();
 
-	private final ContainerOptions containerOptions;
-
 	private volatile boolean isRunning;
 
 	private String id;
 
-	private Collection<String> queueNames;
+	private Collection<String> queueNames = new ArrayList<>();
 
-	private Collection<AsyncMessagePoller<T>> messagePollers;
+	private Collection<AsyncMessagePoller<T>> messagePollers = new ArrayList<>();
 
 	private AsyncMessageListener<T> messageListener;
 
@@ -75,31 +77,64 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	private final Collection<AsyncMessageInterceptor<T>> messageInterceptors = new ArrayList<>();
 
-	protected AbstractMessageListenerContainer(ContainerOptions options) {
-		Assert.notNull(options, "options cannot be null");
-		this.containerOptions = options;
+	private final ContainerOptions containerOptions;
+
+	public AbstractMessageListenerContainer(ContainerOptions containerOptions) {
+		Assert.notNull(containerOptions, "containerOptions cannot be null");
+		this.containerOptions = containerOptions;
 	}
 
+	/**
+	 * Set the id for this container instance.
+	 * The id will be used for creating the processing thread name.
+	 * @param id the id.
+	 */
 	public void setId(String id) {
 		Assert.state(this.id == null, () -> "id already set for container " + this.id);
 		this.id = id;
 	}
 
+	/**
+	 * Set the {@link AsyncErrorHandler} instance to be used by this container.
+	 * @param errorHandler the instance.
+	 */
 	public void setErrorHandler(AsyncErrorHandler<T> errorHandler) {
 		Assert.notNull(errorHandler, "errorHandler cannot be null");
 		this.errorHandler = errorHandler;
 	}
 
+	/**
+	 * Add {@link AsyncMessagePoller} instances to be used by this container.
+	 * @param messagePollers the instances.
+	 */
+	public void addMessagePollers(Collection<AsyncMessagePoller<T>> messagePollers) {
+		Assert.notEmpty(messagePollers, "messagePollers cannot be empty");
+		this.messagePollers.addAll(messagePollers);
+	}
+
+	/**
+	 * Set the {@link AsyncAckHandler} instance to be used by this container.
+	 * @param ackHandler the instance.
+	 */
 	public void setAckHandler(AsyncAckHandler<T> ackHandler) {
 		Assert.notNull(ackHandler, "ackHandler cannot be null");
 		this.ackHandler = ackHandler;
 	}
 
+	/**
+	 * Add a collection of interceptors that will intercept the message before processing.
+	 * Interceptors are executed sequentially and in order.
+	 * @param messageInterceptors the interceptor instances.
+	 */
 	public void addMessageInterceptors(Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
 		Assert.notNull(messageInterceptors, "messageInterceptors cannot be null");
 		this.messageInterceptors.addAll(messageInterceptors);
 	}
 
+	/**
+	 * Set the {@link AsyncMessageSplitter} instance to be used by this container.
+	 * @param splitter the instance.
+	 */
 	public void setMessageSplitter(AsyncMessageSplitter<T> splitter) {
 		Assert.notNull(splitter, "splitter cannot be null");
 		this.splitter = splitter;
@@ -110,28 +145,61 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 		this.messageListener = asyncMessageListener;
 	}
 
-	protected Collection<AsyncMessagePoller<T>> getMessagePollers() {
+	/**
+	 * Returns the {@link ContainerOptions} instance for this container.
+	 * Changed options will take effect on container restart.
+	 * @return the container options.
+	 */
+	public ContainerOptions getContainerOptions() {
+		return this.containerOptions;
+	}
+
+	/**
+	 * Return the {@link AsyncMessagePoller} instances used by this container.
+	 * @return the instances.
+	 */
+	public Collection<AsyncMessagePoller<T>> getMessagePollers() {
 		return this.messagePollers;
 	}
 
+	/**
+	 * Return the {@link AsyncMessageListener} instance used by this container.
+	 * @return the instance.
+	 */
 	public AsyncMessageListener<T> getMessageListener() {
 		return this.messageListener;
 	}
 
+	/**
+	 * Return the {@link AsyncErrorHandler} instance used by this container.
+	 * @return the instance.
+	 */
 	public AsyncErrorHandler<T> getErrorHandler() {
 		return this.errorHandler;
 	}
 
+	/**
+	 * Return the {@link AsyncAckHandler} instance used by this container.
+	 * @return the instance.
+	 */
 	public AsyncAckHandler<T> getAckHandler() {
 		return this.ackHandler;
 	}
 
+	/**
+	 * Return the {@link AsyncMessageSplitter} instances used by this container.
+	 * @return the instance.
+	 */
 	public AsyncMessageSplitter<T> getSplitter() {
 		return this.splitter;
 	}
 
+	/**
+	 * Return the {@link AsyncMessageInterceptor} instances used by this container.
+	 * @return the instances.
+	 */
 	public Collection<AsyncMessageInterceptor<T>> getMessageInterceptors() {
-		return this.messageInterceptors;
+		return Collections.unmodifiableCollection(this.messageInterceptors);
 	}
 
 	@Override
@@ -139,12 +207,33 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 		return this.id;
 	}
 
+	/**
+	 * Set the queue logical names that will be handled by the container.
+	 * Required for container start.
+	 * @param queueNames the queue names.
+	 */
 	public void setQueueNames(Collection<String> queueNames) {
+		Assert.notEmpty(queueNames, "queueNames cannot be empty");
 		this.queueNames = queueNames;
 	}
 
+	/**
+	 * Set the queue logical names that will be handled by the container.
+	 * Required for container start.
+	 * @param queueNames the queue names.
+	 */
 	public void setQueueNames(String... queueNames) {
 		setQueueNames(Arrays.asList(queueNames));
+	}
+
+	/**
+	 * Return the queue names assigned to this container.
+	 * May be empty if custom {@link AsyncMessagePoller}
+	 * instances are provided.
+	 * @return the queue names.
+	 */
+	public Collection<String> getQueueNames() {
+		return Collections.unmodifiableCollection(this.queueNames);
 	}
 
 	@Override
@@ -158,14 +247,29 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 			return;
 		}
 		synchronized (this.lifecycleMonitor) {
+			Assert.state(!this.queueNames.isEmpty() || !this.messagePollers.isEmpty(),
+				"Either queue logical names or message pollers must be set");
+			if (this.queueNames.isEmpty()) {
+				assignQueueNamesFromPollers();
+			}
 			this.isRunning = true;
 			if (this.id == null) {
 				this.id = resolveContainerId();
 			}
-			Assert.notEmpty(this.queueNames, "No endpoint names set");
 			doStart();
 		}
 		logger.debug("Container started {}", this.id);
+	}
+
+	private void assignQueueNamesFromPollers() {
+		List<String> queueNames = this.messagePollers.stream()
+			.filter(poller -> AbstractMessagePoller.class.isAssignableFrom(poller.getClass()))
+			.map(AbstractMessagePoller.class::cast)
+			.map(AbstractMessagePoller::getLogicalEndpointName)
+			.collect(Collectors.toList());
+		if (!queueNames.isEmpty()) {
+			setQueueNames(queueNames);
+		}
 	}
 
 	private String resolveContainerId() {
@@ -194,7 +298,4 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	protected void doStop() {
 	}
 
-	protected Collection<String> getQueueNames() {
-		return this.queueNames;
-	}
 }

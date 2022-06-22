@@ -30,6 +30,11 @@ import java.util.concurrent.CompletableFuture;
 @FunctionalInterface
 public interface AsyncMessageListener<T> {
 
+	/**
+	 * Process the provided message asynchronously.
+	 * @param message the message.
+	 * @return a completable future.
+	 */
 	CompletableFuture<Void> onMessage(Message<T> message);
 
 }

@@ -20,7 +20,6 @@ import io.awspring.cloud.sqs.listener.AbstractMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
-import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
@@ -34,6 +33,8 @@ import java.util.Collection;
 
 /**
  * Base implementation for a {@link MessageListenerContainerFactory}.
+ * Contains the components and {@link ContainerOptions} that will be
+ * used by {@link MessageListenerContainer} instances created by this factory.
  *
  * @param <T> the {@link Message} type to be consumed by the {@link AbstractMessageListenerContainer}
  * @param <C> the {@link AbstractMessageListenerContainer} type.
@@ -43,6 +44,8 @@ import java.util.Collection;
  */
 public abstract class AbstractMessageListenerContainerFactory<T, C extends AbstractMessageListenerContainer<T>>
 		implements MessageListenerContainerFactory<C> {
+
+	private final ContainerOptions containerOptions;
 
 	private AsyncErrorHandler<T> errorHandler;
 
@@ -54,40 +57,89 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 
 	private AsyncMessageListener<T> messageListener;
 
+	public AbstractMessageListenerContainerFactory(ContainerOptions containerOptions) {
+		Assert.notNull(containerOptions, "containerOptions cannot be null");
+		this.containerOptions = containerOptions.createCopy();
+	}
+
+	/**
+	 * Set the {@link AsyncErrorHandler} instance to be used by containers created with this factory.
+	 * If none is provided, a default {@link io.awspring.cloud.sqs.listener.errorhandler.LoggingErrorHandler}
+	 * is used.
+	 * @param errorHandler the error handler instance.
+	 */
 	public void setErrorHandler(AsyncErrorHandler<T> errorHandler) {
 		Assert.notNull(errorHandler, "errorHandler cannot be null");
 		this.errorHandler = errorHandler;
 	}
 
+	/**
+	 * Set the {@link AsyncAckHandler} instance to be used by containers created with this factory.
+	 * If none is provided, a default {@link io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler}
+	 * is used.
+	 * @param ackHandler the acknowledgement handler instance.
+	 */
 	public void setAckHandler(AsyncAckHandler<T> ackHandler) {
 		Assert.notNull(ackHandler, "ackHandler cannot be null");
 		this.ackHandler = ackHandler;
 	}
 
+	/**
+	 * Add a {@link AsyncMessageInterceptor} to be used by containers created with this factory.
+	 * Interceptors will be applied just before method invocation.
+	 * @param messageInterceptor the message interceptor instance.
+	 */
 	public void addMessageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
 		Assert.notNull(messageInterceptor, "messageInterceptor cannot be null");
 		this.messageInterceptors.add(messageInterceptor);
 	}
 
+	/**
+	 * Add {@link AsyncMessageInterceptor} instances to be used by containers created with this factory.
+	 * Interceptors will be applied just before method invocation.
+	 * @param messageInterceptors the message interceptor instances.
+	 */
 	public void addMessageInterceptors(Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
 		Assert.notEmpty(messageInterceptors, "messageInterceptors cannot be null");
 		this.messageInterceptors.addAll(messageInterceptors);
 	}
 
+	/**
+	 * Set the {@link AsyncMessageSplitter} instance to be used by containers created with this factory.
+	 * If none is provided, a default will be instantiated according to each endpoint's configuration.
+	 * Message splitters handle the batch of messages returned by the
+	 * {@link io.awspring.cloud.sqs.listener.poller.AsyncMessagePoller} and feeds the
+	 * messages to the container processing pipeline.
+	 * @param messageSplitter the message splitter instance.
+	 */
 	public void setMessageSplitter(AsyncMessageSplitter<T> messageSplitter) {
 		Assert.notNull(messageSplitter, "messageSplitter cannot be null");
 		this.messageSplitter = messageSplitter;
 	}
 
+	/**
+	 * Set the {@link AsyncMessageListener} instance to be used by containers created with this factory.
+	 * If none is provided, a default one will be created according to the endpoint's configuration.
+	 * @param messageListener the message listener instance.
+	 */
 	public void setMessageListener(AsyncMessageListener<T> messageListener) {
 		Assert.notNull(messageListener, "messageListener cannot be null");
 		this.messageListener = messageListener;
 	}
 
+	/**
+	 * Return the {@link ContainerOptions} instance that will be used for configuring
+	 * the {@link MessageListenerContainer} instances created by this factory.
+	 * @return the container options instance.
+	 */
+	public ContainerOptions getContainerOptions() {
+		return this.containerOptions;
+	}
+
 	@Override
 	public C createContainer(Endpoint endpoint) {
 		Assert.notNull(endpoint, "endpoint cannot be null");
-		C container = createContainerInstance(endpoint);
+		C container = createContainerInstance(endpoint, this.containerOptions.createCopy());
 		if (endpoint instanceof AbstractEndpoint) {
 			configureEndpoint((AbstractEndpoint) endpoint);
 		}
@@ -97,9 +149,10 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	}
 
 	@Override
-	public C createContainer(String... endpointNames) {
-		Assert.notEmpty(endpointNames, "endpointNames cannot be empty");
-		return createContainer(new AbstractEndpoint(Arrays.asList(endpointNames), null, null) {
+	public C createContainer(String... logicalEndpointNames) {
+		Assert.notEmpty(logicalEndpointNames, "endpointNames cannot be empty");
+		return createContainer(new AbstractEndpoint(Arrays.asList(logicalEndpointNames), null, null) {
+			@SuppressWarnings("rawtypes")
 			@Override
 			public void setupContainer(MessageListenerContainer container) {
 			}
@@ -110,7 +163,7 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 		ConfigUtils.INSTANCE.acceptIfNotNull(this.messageSplitter, endpoint::setMessageSplitter);
 	}
 
-	protected void configureContainer(AbstractMessageListenerContainer<T> container, Endpoint endpoint) {
+	private void configureContainer(AbstractMessageListenerContainer<T> container, Endpoint endpoint) {
 		container.setId(endpoint.getId());
 		container.setQueueNames(endpoint.getLogicalNames());
 		ConfigUtils.INSTANCE
@@ -121,6 +174,6 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 			.acceptIfNotNull(this.messageInterceptors, container::addMessageInterceptors);
 	}
 
-	protected abstract C createContainerInstance(Endpoint endpoint);
+	protected abstract C createContainerInstance(Endpoint endpoint, ContainerOptions containerOptions);
 
 }

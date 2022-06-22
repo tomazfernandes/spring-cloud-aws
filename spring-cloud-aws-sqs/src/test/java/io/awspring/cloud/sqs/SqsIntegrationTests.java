@@ -18,7 +18,6 @@ package io.awspring.cloud.sqs;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sqs.config.SqsListenerCustomizer;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
-import io.awspring.cloud.sqs.listener.DefaultListenerContainerRegistry;
 import io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
@@ -31,10 +30,11 @@ import io.awspring.cloud.sqs.annotation.SqsListener;
 import io.awspring.cloud.sqs.config.SqsMessageListenerContainerFactory;
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
 import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
-import io.awspring.cloud.sqs.listener.Visibility;
+import io.awspring.cloud.sqs.listener.AsyncVisibility;
 import io.awspring.cloud.sqs.listener.splitter.OrderedSplitter;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,11 +73,13 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.parallel.ExecutionMode.CONCURRENT;
 
 /**
  * @author Tomaz Fernandes
  * @since 3.0
  */
+@Execution(CONCURRENT)
 @SpringBootTest
 @DirtiesContext
 @TestPropertySource(properties = { "spring.cloud.aws.credentials.access-key=noop",
@@ -135,7 +137,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 	void resolvesManyParameterTypes() throws Exception {
 		sendMessageTo(RESOLVES_PARAMETER_TYPES_QUEUE_NAME);
 		assertThat(latchContainer.manyParameterTypesLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(latchContainer.manyParameterTypesSecondLatch.await(2, TimeUnit.SECONDS)).isFalse();
+		assertThat(latchContainer.manyParameterTypesSecondLatch.await(1, TimeUnit.SECONDS)).isFalse();
 	}
 
 	@Test
@@ -287,7 +289,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 
 		@SqsListener(queueNames = RESOLVES_PARAMETER_TYPES_QUEUE_NAME, factory = LOW_RESOURCE_FACTORY_NAME,
 			minimumVisibility = "20", id = "resolves-parameter")
-		void listen(Message<String> message, SqsMessageHeaders headers, AsyncAcknowledgement ack, Visibility visibility,
+		void listen(Message<String> message, SqsMessageHeaders headers, AsyncAcknowledgement ack, AsyncVisibility visibility,
 				software.amazon.awssdk.services.sqs.model.Message originalMessage) throws Exception {
 			Assert.notNull(headers, "Received null SqsMessageHeaders");
 			Assert.notNull(ack, "Received null AsyncAcknowledgement");
@@ -539,16 +541,13 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 
 		@Bean
 		SqsListenerCustomizer customizer() {
-			return registrar -> {
-				registrar.setMessageHandlerMethodFactory(new DefaultMessageHandlerMethodFactory() {
-					@Override
-					public InvocableHandlerMethod createInvocableHandlerMethod(Object bean, Method method) {
-						latchContainer.invocableHandlerMethodLatch.countDown();
-						return super.createInvocableHandlerMethod(bean, method);
-					}
-				});
-				registrar.setParallelLifecycleManagement(false);
-			};
+			return registrar -> registrar.setMessageHandlerMethodFactory(new DefaultMessageHandlerMethodFactory() {
+				@Override
+				public InvocableHandlerMethod createInvocableHandlerMethod(Object bean, Method method) {
+					latchContainer.invocableHandlerMethodLatch.countDown();
+					return super.createInvocableHandlerMethod(bean, method);
+				}
+			});
 		}
 
 		@Bean

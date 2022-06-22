@@ -25,6 +25,10 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface AsyncAcknowledgement {
 
+	/**
+	 * Acknowledge the message asynchronously.
+	 * @return a completable future.
+	 */
 	CompletableFuture<Void> acknowledge();
 
 }

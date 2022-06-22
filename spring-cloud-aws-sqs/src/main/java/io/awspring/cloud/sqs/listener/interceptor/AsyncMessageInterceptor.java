@@ -30,6 +30,11 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface AsyncMessageInterceptor<T> {
 
+	/**
+	 * Intercept the message before processing.
+	 * @param message the message to be intercepted.
+	 * @return a completable future containing the resulting message.
+	 */
 	CompletableFuture<Message<T>> intercept(Message<T> message);
 
 }

@@ -24,6 +24,7 @@ import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 /**
  * {@link AsyncAcknowledgement} implementation for Sqs messages.
+ * Acknowledges by deleting the message from the queue.
  *
  * @author Tomaz Fernandes
  * @since 3.0
@@ -38,6 +39,12 @@ public class SqsAcknowledge implements AsyncAcknowledgement {
 
 	private final String receiptHandle;
 
+	/**
+	 * Create an instance with the supplied parameters.
+	 * @param sqsAsyncClient the {@link SqsAsyncClient} to be used to acknowledge the message.
+	 * @param queueUrl the url for the queue containing the message.
+	 * @param receiptHandle the handle for the SQS message to be deleted.
+	 */
 	public SqsAcknowledge(SqsAsyncClient sqsAsyncClient, String queueUrl, String receiptHandle) {
 		Assert.notNull(sqsAsyncClient, "sqsAsyncClient cannot be null");
 		Assert.notNull(queueUrl, "queueUrl cannot be null");

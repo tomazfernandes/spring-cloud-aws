@@ -23,7 +23,7 @@ import org.springframework.messaging.Message;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * {@link AsyncErrorHandler} implementation that logs errors.
+ * Default {@link AsyncErrorHandler} implementation that logs errors.
  *
  * @param <T> the {@link Message} payload type.
  *
