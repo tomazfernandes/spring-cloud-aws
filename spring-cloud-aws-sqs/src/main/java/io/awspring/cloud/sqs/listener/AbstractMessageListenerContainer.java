@@ -79,7 +79,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	private final ContainerOptions containerOptions;
 
-	public AbstractMessageListenerContainer(ContainerOptions containerOptions) {
+	protected AbstractMessageListenerContainer(ContainerOptions containerOptions) {
 		Assert.notNull(containerOptions, "containerOptions cannot be null");
 		this.containerOptions = containerOptions;
 	}
@@ -249,9 +249,6 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 		synchronized (this.lifecycleMonitor) {
 			Assert.state(!this.queueNames.isEmpty() || !this.messagePollers.isEmpty(),
 				"Either queue logical names or message pollers must be set");
-			if (this.queueNames.isEmpty()) {
-				assignQueueNamesFromPollers();
-			}
 			this.isRunning = true;
 			if (this.id == null) {
 				this.id = resolveContainerId();
@@ -259,17 +256,6 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 			doStart();
 		}
 		logger.debug("Container started {}", this.id);
-	}
-
-	private void assignQueueNamesFromPollers() {
-		List<String> queueNames = this.messagePollers.stream()
-			.filter(poller -> AbstractMessagePoller.class.isAssignableFrom(poller.getClass()))
-			.map(AbstractMessagePoller.class::cast)
-			.map(AbstractMessagePoller::getLogicalEndpointName)
-			.collect(Collectors.toList());
-		if (!queueNames.isEmpty()) {
-			setQueueNames(queueNames);
-		}
 	}
 
 	private String resolveContainerId() {

@@ -93,7 +93,7 @@ public class ExpressionResolvingHelper implements BeanFactoryAware {
 	}
 
 	private String resolve(String value) {
-		if (this.beanFactory != null && this.beanFactory instanceof ConfigurableBeanFactory) {
+		if (this.beanFactory instanceof ConfigurableBeanFactory) {
 			return ((ConfigurableBeanFactory) this.beanFactory).resolveEmbeddedValue(value);
 		}
 		return value;

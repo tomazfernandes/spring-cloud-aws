@@ -35,7 +35,7 @@ public class QueueAttributesResolver {
 	private QueueAttributesResolver() {
 	}
 
-	private static final Logger logger = LoggerFactory.getLogger(SqsMessageListenerContainer.class);
+	private static final Logger logger = LoggerFactory.getLogger(QueueAttributesResolver.class);
 
 	/**
 	 * Resolve the attributes for the provided queue.
@@ -45,7 +45,7 @@ public class QueueAttributesResolver {
 	 */
 	public static QueueAttributes resolveAttributes(String queueName, SqsAsyncClient sqsAsyncClient) {
 		try {
-			logger.debug("Fetching attributes for queue " + queueName);
+			logger.debug("Fetching attributes for queue {}", queueName);
 			String queueUrl = sqsAsyncClient.getQueueUrl(req -> req.queueName(queueName)).get().queueUrl();
 			GetQueueAttributesResponse getQueueAttributesResponse = sqsAsyncClient
 				.getQueueAttributes(req -> req.queueUrl(queueUrl).attributeNames(QueueAttributeName.ALL)).get();

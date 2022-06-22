@@ -16,11 +16,9 @@
 package io.awspring.cloud.sqs.config;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
-import io.awspring.cloud.sqs.listener.QueueAttributes;
 
 import java.time.Duration;
 import java.util.Collection;
-import java.util.Map;
 
 /**
  * {@link Endpoint} implementation for SQS endpoints.

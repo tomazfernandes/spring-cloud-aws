@@ -105,12 +105,12 @@ public abstract class AbstractMessageSplitter<T> implements AsyncMessageSplitter
 	}
 
 	protected TaskExecutor createTaskExecutor() {
-		ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
-		taskExecutor.setMaxPoolSize(this.coreSize);
-		taskExecutor.setCorePoolSize(this.coreSize);
-		taskExecutor.setThreadNamePrefix(this.getClass().getSimpleName().toLowerCase() + "-");
-		taskExecutor.afterPropertiesSet();
-		return taskExecutor;
+		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+		executor.setMaxPoolSize(this.coreSize);
+		executor.setCorePoolSize(this.coreSize);
+		executor.setThreadNamePrefix(this.getClass().getSimpleName().toLowerCase() + "-");
+		executor.afterPropertiesSet();
+		return executor;
 	}
 
 }

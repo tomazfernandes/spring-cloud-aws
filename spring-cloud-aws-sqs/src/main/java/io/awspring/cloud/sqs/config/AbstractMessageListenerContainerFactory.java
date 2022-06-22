@@ -57,7 +57,7 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 
 	private AsyncMessageListener<T> messageListener;
 
-	public AbstractMessageListenerContainerFactory(ContainerOptions containerOptions) {
+	protected AbstractMessageListenerContainerFactory(ContainerOptions containerOptions) {
 		Assert.notNull(containerOptions, "containerOptions cannot be null");
 		this.containerOptions = containerOptions.createCopy();
 	}
@@ -151,12 +151,7 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	@Override
 	public C createContainer(String... logicalEndpointNames) {
 		Assert.notEmpty(logicalEndpointNames, "endpointNames cannot be empty");
-		return createContainer(new AbstractEndpoint(Arrays.asList(logicalEndpointNames), null, null) {
-			@SuppressWarnings("rawtypes")
-			@Override
-			public void setupContainer(MessageListenerContainer container) {
-			}
-		});
+		return createContainer(new EndpointAdapter(Arrays.asList(logicalEndpointNames)));
 	}
 
 	private void configureEndpoint(AbstractEndpoint endpoint) {
@@ -176,4 +171,16 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 
 	protected abstract C createContainerInstance(Endpoint endpoint, ContainerOptions containerOptions);
 
+	private static class EndpointAdapter extends AbstractEndpoint {
+
+		protected EndpointAdapter(Collection<String> logicalNames) {
+			super(logicalNames, null, null);
+		}
+
+		@SuppressWarnings("rawtypes")
+		@Override
+		public void setupContainer(MessageListenerContainer container) {
+			// No ops - container should be setup manually.
+		}
+	}
 }

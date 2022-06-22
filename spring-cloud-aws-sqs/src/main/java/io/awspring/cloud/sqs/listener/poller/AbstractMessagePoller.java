@@ -44,7 +44,7 @@ public abstract class AbstractMessagePoller<T> implements AsyncMessagePoller<T>,
 
 	private final Object lifecycleMonitor = new Object();
 
-	public AbstractMessagePoller(String logicalEndpointName) {
+	protected AbstractMessagePoller(String logicalEndpointName) {
 		this.logicalEndpointName = logicalEndpointName;
 	}
 

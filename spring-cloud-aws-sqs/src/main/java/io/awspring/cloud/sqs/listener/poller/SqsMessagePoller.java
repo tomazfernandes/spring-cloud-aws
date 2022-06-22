@@ -86,10 +86,6 @@ public class SqsMessagePoller<T> extends AbstractMessagePoller<T> {
 	}
 
 	@Override
-	protected void doStop() {
-	}
-
-	@Override
 	protected CompletableFuture<Collection<Message<T>>> doPollForMessages(int numberOfMessages, Duration timeout) {
 		logger.trace("Polling queue {} for {} messages.", this.queueUrl, numberOfMessages);
 		return sqsAsyncClient

@@ -115,11 +115,9 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		this.messageInterceptors = super.getMessageInterceptors();
 		this.inFlightMessagesSemaphore = new Semaphore(this.maxInFlightMessagesPerQueue
 			* this.messagePollers.size());
+		this.taskExecutor = createTaskExecutor();
 		Assert.notNull(this.messageListener, "MessageListener cannot be null");
 		logger.debug("Starting container {}", super.getId());
-		if (this.taskExecutor == null) {
-			this.taskExecutor = createTaskExecutor();
-		}
 		managePollersLifecycle(Lifecycle::start);
 		startSplitter();
 		if (this.taskExecutor instanceof AsyncListenableTaskExecutor) {
@@ -168,6 +166,10 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 							.forEach(this::releasePermitAndHandleResult));
 					this.pollingFutures.add(pollingFuture);
 					pollingFuture.thenRun(() -> this.pollingFutures.remove(pollingFuture));
+				}
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					throw new IllegalStateException("Container thread interrupted", e);
 				}
 				catch (Exception e) {
 					logger.error("Error in ListenerContainer {}. Resuming.", getId(), e);
@@ -228,9 +230,9 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	}
 
 	protected TaskExecutor createTaskExecutor() {
-		SimpleAsyncTaskExecutor taskExecutor = new SimpleAsyncTaskExecutor();
-		taskExecutor.setThreadNamePrefix(this.getId() + "-");
-		return taskExecutor;
+		SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor();
+		executor.setThreadNamePrefix(this.getId() + "-");
+		return executor;
 	}
 
 	private Collection<AsyncMessagePoller<T>> createMessagePollers() {
