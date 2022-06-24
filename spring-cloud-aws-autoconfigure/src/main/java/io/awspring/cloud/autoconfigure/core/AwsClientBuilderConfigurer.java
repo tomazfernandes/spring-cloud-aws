@@ -22,6 +22,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.awscore.client.builder.AwsAsyncClientBuilder;
 import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.regions.Region;
@@ -31,6 +32,7 @@ import software.amazon.awssdk.regions.providers.AwsRegionProvider;
  * Provides a convenience method to apply common configuration to any {@link AwsClientBuilder}.
  *
  * @author Maciej Walkowiak
+ * @author Tomaz Fernandes
  * @since 3.0
  */
 public class AwsClientBuilderConfigurer {
@@ -56,6 +58,27 @@ public class AwsClientBuilderConfigurer {
 		Assert.notNull(builder, "builder is required");
 		Assert.notNull(clientProperties, "clientProperties are required");
 
+		applyProperties(builder, clientProperties);
+		if (customizer != null) {
+			AwsClientCustomizer.apply(customizer, builder);
+		}
+		return builder;
+	}
+
+	public <T extends AwsClientBuilder<?, ?> & AwsAsyncClientBuilder<?, ?>> T configure(T builder,
+			@Nullable AwsClientProperties clientProperties, @Nullable AwsAsyncClientCustomizer<T> customizer) {
+		Assert.notNull(builder, "builder is required");
+		Assert.notNull(builder, "clientProperties are required");
+
+		applyProperties(builder, clientProperties);
+		if (customizer != null) {
+			AwsAsyncClientCustomizer.apply(customizer, builder);
+		}
+		return builder;
+	}
+
+	private <T extends AwsClientBuilder<?, ?>> void applyProperties(T builder,
+			@Nullable AwsClientProperties clientProperties) {
 		builder.credentialsProvider(this.credentialsProvider).region(resolveRegion(clientProperties))
 				.overrideConfiguration(this.clientOverrideConfiguration);
 		Optional.ofNullable(this.awsProperties.getEndpoint()).ifPresent(builder::endpointOverride);
@@ -65,10 +88,6 @@ public class AwsClientBuilderConfigurer {
 		Optional.ofNullable(this.awsProperties.getDefaultsMode()).ifPresent(builder::defaultsMode);
 		Optional.ofNullable(this.awsProperties.getFipsEnabled()).ifPresent(builder::fipsEnabled);
 		Optional.ofNullable(this.awsProperties.getDualstackEnabled()).ifPresent(builder::dualstackEnabled);
-		if (customizer != null) {
-			AwsClientCustomizer.apply(customizer, builder);
-		}
-		return builder;
 	}
 
 	public Region resolveRegion(@Nullable AwsClientProperties clientProperties) {

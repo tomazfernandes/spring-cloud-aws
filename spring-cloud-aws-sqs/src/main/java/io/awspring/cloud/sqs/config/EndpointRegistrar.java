@@ -46,7 +46,7 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 
 	private static final Logger logger = LoggerFactory.getLogger(EndpointRegistrar.class);
 
-	public static final String DEFAULT_LISTENER_CONTAINER_FACTORY_BEAN_NAME = "defaultListenerContainerFactory";
+	public static final String DEFAULT_LISTENER_CONTAINER_FACTORY_BEAN_NAME = "defaultSqsListenerContainerFactory";
 
 	private BeanFactory beanFactory;
 

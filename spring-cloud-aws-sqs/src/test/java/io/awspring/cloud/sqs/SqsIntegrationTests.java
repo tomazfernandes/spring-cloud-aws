@@ -349,7 +349,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 	static class SQSConfiguration {
 
 		@Bean
-		public SqsMessageListenerContainerFactory<String> defaultListenerContainerFactory() {
+		public SqsMessageListenerContainerFactory<String> defaultSqsListenerContainerFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions().semaphoreAcquireTimeout(Duration.ofSeconds(1))
 					.pollTimeout(Duration.ofSeconds(1));
