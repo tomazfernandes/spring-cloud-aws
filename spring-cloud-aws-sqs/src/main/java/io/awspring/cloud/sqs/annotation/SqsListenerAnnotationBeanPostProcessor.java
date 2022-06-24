@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,18 @@ import io.awspring.cloud.sqs.support.AsyncAcknowledgmentHandlerMethodArgumentRes
 import io.awspring.cloud.sqs.support.SqsHeadersMethodArgumentResolver;
 import io.awspring.cloud.sqs.support.SqsMessageMethodArgumentResolver;
 import io.awspring.cloud.sqs.support.VisibilityHandlerMethodArgumentResolver;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
@@ -50,30 +62,15 @@ import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-
-
 /**
- * {@link BeanPostProcessor} implementation that scans the bean
- * for an {@link SqsListener @SqsListener} annotation, extracts information
- * to an {@link SqsEndpoint}, and registers it in the {@link EndpointRegistrar}.
+ * {@link BeanPostProcessor} implementation that scans the bean for an {@link SqsListener @SqsListener} annotation,
+ * extracts information to an {@link SqsEndpoint}, and registers it in the {@link EndpointRegistrar}.
  *
  * @author Tomaz Fernandes
  * @since 3.0
  */
 public class SqsListenerAnnotationBeanPostProcessor
-	implements BeanPostProcessor, BeanFactoryAware, SmartInitializingSingleton {
+		implements BeanPostProcessor, BeanFactoryAware, SmartInitializingSingleton {
 
 	private final Collection<Class<?>> nonAnnotatedClasses = Collections.synchronizedSet(new HashSet<>());
 
@@ -94,18 +91,16 @@ public class SqsListenerAnnotationBeanPostProcessor
 
 		Class<?> targetClass = AopUtils.getTargetClass(bean);
 		Map<Method, SqsListener> annotatedMethods = MethodIntrospector.selectMethods(targetClass,
-			(MethodIntrospector.MetadataLookup<SqsListener>) method ->
-				AnnotatedElementUtils.findMergedAnnotation(method, SqsListener.class));
+				(MethodIntrospector.MetadataLookup<SqsListener>) method -> AnnotatedElementUtils
+						.findMergedAnnotation(method, SqsListener.class));
 
 		if (annotatedMethods.isEmpty()) {
 			this.nonAnnotatedClasses.add(bean.getClass());
 		}
 
-		annotatedMethods
-			.entrySet()
-			.stream()
-			.map(entry -> createEndpointFromAnnotation(bean, entry.getKey(), entry.getValue()))
-			.forEach(this.endpointRegistrar::registerEndpoint);
+		annotatedMethods.entrySet().stream()
+				.map(entry -> createEndpointFromAnnotation(bean, entry.getKey(), entry.getValue()))
+				.forEach(this.endpointRegistrar::registerEndpoint);
 
 		return bean;
 	}
@@ -125,10 +120,8 @@ public class SqsListenerAnnotationBeanPostProcessor
 	@Override
 	public void afterSingletonsInstantiated() {
 		if (this.beanFactory instanceof ListableBeanFactory) {
-			((ListableBeanFactory) this.beanFactory)
-				.getBeansOfType(SqsListenerCustomizer.class)
-				.values()
-				.forEach(customizer -> customizer.configure(this.endpointRegistrar));
+			((ListableBeanFactory) this.beanFactory).getBeansOfType(SqsListenerCustomizer.class).values()
+					.forEach(customizer -> customizer.configure(this.endpointRegistrar));
 		}
 		this.endpointRegistrar.setBeanFactory(this.beanFactory);
 		initializeHandlerMethodFactory();
@@ -138,8 +131,7 @@ public class SqsListenerAnnotationBeanPostProcessor
 	protected void initializeHandlerMethodFactory() {
 		MessageHandlerMethodFactory handlerMethodFactory = this.endpointRegistrar.getMessageHandlerMethodFactory();
 		if (handlerMethodFactory instanceof DefaultMessageHandlerMethodFactory) {
-			DefaultMessageHandlerMethodFactory defaultHandlerMethodFactory =
-				(DefaultMessageHandlerMethodFactory) handlerMethodFactory;
+			DefaultMessageHandlerMethodFactory defaultHandlerMethodFactory = (DefaultMessageHandlerMethodFactory) handlerMethodFactory;
 			defaultHandlerMethodFactory.setArgumentResolvers(createArgumentResolvers(
 					this.endpointRegistrar.getMessageConverters(), this.endpointRegistrar.getObjectMapper()));
 			defaultHandlerMethodFactory.afterPropertiesSet();
@@ -157,15 +149,18 @@ public class SqsListenerAnnotationBeanPostProcessor
 
 	private final AtomicInteger counter = new AtomicInteger();
 
-	protected SqsEndpoint doCreateEndpointFromAnnotation(Object bean, Method method, SqsListener sqsListenerAnnotation) {
+	protected SqsEndpoint doCreateEndpointFromAnnotation(Object bean, Method method,
+			SqsListener sqsListenerAnnotation) {
 		return SqsEndpoint.from(resolveDestinationNames(sqsListenerAnnotation.value()))
-			.factoryBeanName(resolveExpression().asString(sqsListenerAnnotation.factory(), "factory"))
-			.id(getEndpointId(sqsListenerAnnotation))
-			.pollTimeoutSeconds(resolveExpression().asInteger(sqsListenerAnnotation.pollTimeoutSeconds(), "pollTimeoutSeconds"))
-			.maxInflightMessagesPerQueue(resolveExpression().asInteger(sqsListenerAnnotation.maxInflightMessagesPerQueue(), "maxInflightMessagesPerQueue"))
-			.minimumVisibility(resolveExpression().asInteger(sqsListenerAnnotation.minimumVisibility(), "minimumVisibility"))
-			.async(CompletionStage.class.isAssignableFrom(method.getReturnType()))
-			.build();
+				.factoryBeanName(resolveExpression().asString(sqsListenerAnnotation.factory(), "factory"))
+				.id(getEndpointId(sqsListenerAnnotation))
+				.pollTimeoutSeconds(
+						resolveExpression().asInteger(sqsListenerAnnotation.pollTimeoutSeconds(), "pollTimeoutSeconds"))
+				.maxInflightMessagesPerQueue(resolveExpression()
+						.asInteger(sqsListenerAnnotation.maxInflightMessagesPerQueue(), "maxInflightMessagesPerQueue"))
+				.minimumVisibility(
+						resolveExpression().asInteger(sqsListenerAnnotation.minimumVisibility(), "minimumVisibility"))
+				.async(CompletionStage.class.isAssignableFrom(method.getReturnType())).build();
 	}
 
 	private String getEndpointId(SqsListener kafkaListener) {
@@ -178,26 +173,26 @@ public class SqsListenerAnnotationBeanPostProcessor
 	}
 
 	private Set<String> resolveDestinationNames(String[] destinationNames) {
-		return Arrays
-			.stream(destinationNames)
-			.map(destinationName -> resolveExpression().asString(destinationName, "queueNames"))
-			.collect(Collectors.toSet());
+		return Arrays.stream(destinationNames)
+				.map(destinationName -> resolveExpression().asString(destinationName, "queueNames"))
+				.collect(Collectors.toSet());
 	}
 
-	protected List<HandlerMethodArgumentResolver> createArgumentResolvers(Collection<MessageConverter> messageConverters, ObjectMapper objectMapper) {
-		return Arrays.asList(
-			new SqsHeadersMethodArgumentResolver(),
-			new AsyncAcknowledgmentHandlerMethodArgumentResolver(SqsMessageHeaders.ACKNOWLEDGMENT_HEADER),
-			new VisibilityHandlerMethodArgumentResolver(SqsMessageHeaders.VISIBILITY),
-			new SqsMessageMethodArgumentResolver(),
-			new HeaderMethodArgumentResolver(new GenericConversionService(), null),
-			new MessageMethodArgumentResolver(messageConverters.isEmpty() ? new StringMessageConverter()
-				: new CompositeMessageConverter(messageConverters)),
-			new PayloadMethodArgumentResolver(createPayloadArgumentCompositeConverter(messageConverters, objectMapper))
-		);
+	protected List<HandlerMethodArgumentResolver> createArgumentResolvers(
+			Collection<MessageConverter> messageConverters, ObjectMapper objectMapper) {
+		return Arrays.asList(new SqsHeadersMethodArgumentResolver(),
+				new AsyncAcknowledgmentHandlerMethodArgumentResolver(SqsMessageHeaders.ACKNOWLEDGMENT_HEADER),
+				new VisibilityHandlerMethodArgumentResolver(SqsMessageHeaders.VISIBILITY),
+				new SqsMessageMethodArgumentResolver(),
+				new HeaderMethodArgumentResolver(new GenericConversionService(), null),
+				new MessageMethodArgumentResolver(messageConverters.isEmpty() ? new StringMessageConverter()
+						: new CompositeMessageConverter(messageConverters)),
+				new PayloadMethodArgumentResolver(
+						createPayloadArgumentCompositeConverter(messageConverters, objectMapper)));
 	}
 
-	protected CompositeMessageConverter createPayloadArgumentCompositeConverter(Collection<MessageConverter> messageConverters, ObjectMapper objectMapper) {
+	protected CompositeMessageConverter createPayloadArgumentCompositeConverter(
+			Collection<MessageConverter> messageConverters, ObjectMapper objectMapper) {
 		List<MessageConverter> payloadArgumentConverters = new ArrayList<>(messageConverters);
 		payloadArgumentConverters.add(getDefaultMappingJackson2MessageConverter(objectMapper));
 		payloadArgumentConverters.add(new SimpleMessageConverter());

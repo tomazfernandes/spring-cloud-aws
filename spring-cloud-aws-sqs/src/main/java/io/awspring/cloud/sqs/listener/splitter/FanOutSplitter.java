@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,18 +15,16 @@
  */
 package io.awspring.cloud.sqs.listener.splitter;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.messaging.Message;
-
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.messaging.Message;
 
 /**
- * {@link AsyncMessageSplitter} implementation that processes all messages from the
- * provided batch in parallel.
+ * {@link AsyncMessageSplitter} implementation that processes all messages from the provided batch in parallel.
  *
  * @param <T> the {@link Message} payload type.
  *
@@ -39,12 +37,13 @@ public class FanOutSplitter<T> extends AbstractMessageSplitter<T> {
 
 	@Override
 	protected Collection<CompletableFuture<Void>> doSplitAndProcessMessages(Collection<Message<T>> messages,
-																			Function<Message<T>, CompletableFuture<Void>> processingPipeline) {
+			Function<Message<T>, CompletableFuture<Void>> processingPipeline) {
 
 		logger.trace("Splitting {} messages", messages.size());
-		return messages.stream()
-			.map(msg -> CompletableFuture.supplyAsync(() -> processingPipeline.apply(msg), super.getTaskExecutor())
-				.thenCompose(x -> x)).collect(Collectors.toList());
+		return messages
+				.stream().map(msg -> CompletableFuture
+						.supplyAsync(() -> processingPipeline.apply(msg), super.getTaskExecutor()).thenCompose(x -> x))
+				.collect(Collectors.toList());
 	}
 
 }

@@ -15,13 +15,11 @@
  */
 package io.awspring.cloud.sqs.listener.acknowledgement;
 
+import java.util.concurrent.CompletableFuture;
 import org.springframework.messaging.Message;
 
-import java.util.concurrent.CompletableFuture;
-
 /**
- * Interface for managing acknowledgement in success
- * and failure scenarios.
+ * Interface for managing acknowledgement in success and failure scenarios.
  *
  * @param <T> the {@link Message} payload type.
  *
@@ -32,18 +30,16 @@ import java.util.concurrent.CompletableFuture;
 public interface AsyncAckHandler<T> {
 
 	/**
-	 * Called by the {@link io.awspring.cloud.sqs.listener.MessageListenerContainer}
-	 * when the {@link Message} is processed successfully by the
-	 * {@link io.awspring.cloud.sqs.listener.AsyncMessageListener}.
+	 * Called by the {@link io.awspring.cloud.sqs.listener.MessageListenerContainer} when the {@link Message} is
+	 * processed successfully by the {@link io.awspring.cloud.sqs.listener.AsyncMessageListener}.
 	 * @param message the message.
 	 * @return a completable future.
 	 */
 	CompletableFuture<Void> onSuccess(Message<T> message);
 
 	/**
-	 * Called by the {@link io.awspring.cloud.sqs.listener.MessageListenerContainer}
-	 * when the {@link Message} is processed with an error.
-	 * by the {@link io.awspring.cloud.sqs.listener.AsyncMessageListener}.
+	 * Called by the {@link io.awspring.cloud.sqs.listener.MessageListenerContainer} when the {@link Message} is
+	 * processed with an error. by the {@link io.awspring.cloud.sqs.listener.AsyncMessageListener}.
 	 * @param message the message.
 	 * @param t the error thrown by the listener.
 	 * @return a completable future.

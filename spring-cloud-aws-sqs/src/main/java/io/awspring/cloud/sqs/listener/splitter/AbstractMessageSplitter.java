@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,20 +15,19 @@
  */
 package io.awspring.cloud.sqs.listener.splitter;
 
+import java.util.Collection;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.messaging.Message;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
-import java.util.Collection;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
 /**
- * Base implementation for {@link AsyncMessageSplitter} containing
- * {@link SmartLifecycle} features and {@link TaskExecutor} management.
+ * Base implementation for {@link AsyncMessageSplitter} containing {@link SmartLifecycle} features and
+ * {@link TaskExecutor} management.
  *
  * @param <T> the {@link Message} payload type.
  *
@@ -68,7 +67,7 @@ public abstract class AbstractMessageSplitter<T> implements AsyncMessageSplitter
 
 	@Override
 	public Collection<CompletableFuture<Void>> splitAndProcess(Collection<Message<T>> messages,
-												  Function<Message<T>, CompletableFuture<Void>> processingPipeline) {
+			Function<Message<T>, CompletableFuture<Void>> processingPipeline) {
 		if (!this.isRunning) {
 			return returnCompletedVoidFutures(messages);
 		}
@@ -76,11 +75,12 @@ public abstract class AbstractMessageSplitter<T> implements AsyncMessageSplitter
 	}
 
 	protected Collection<CompletableFuture<Void>> returnCompletedVoidFutures(Collection<Message<T>> messages) {
-		return messages.stream().map(msg -> CompletableFuture.<Void>completedFuture(null)).collect(Collectors.toList());
+		return messages.stream().map(msg -> CompletableFuture.<Void> completedFuture(null))
+				.collect(Collectors.toList());
 	}
 
 	protected abstract Collection<CompletableFuture<Void>> doSplitAndProcessMessages(Collection<Message<T>> messages,
-																					 Function<Message<T>, CompletableFuture<Void>> processingPipeline);
+			Function<Message<T>, CompletableFuture<Void>> processingPipeline);
 
 	@Override
 	public void stop() {
@@ -92,7 +92,8 @@ public abstract class AbstractMessageSplitter<T> implements AsyncMessageSplitter
 			if (this.taskExecutor instanceof DisposableBean) {
 				try {
 					((DisposableBean) this.taskExecutor).destroy();
-				} catch (Exception e) {
+				}
+				catch (Exception e) {
 					throw new IllegalStateException("Error shutting down executor", e);
 				}
 			}

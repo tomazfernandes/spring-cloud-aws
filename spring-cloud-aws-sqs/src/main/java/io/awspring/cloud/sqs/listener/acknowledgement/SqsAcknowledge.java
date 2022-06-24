@@ -16,15 +16,13 @@
 package io.awspring.cloud.sqs.listener.acknowledgement;
 
 import java.util.concurrent.CompletableFuture;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 /**
- * {@link AsyncAcknowledgement} implementation for Sqs messages.
- * Acknowledges by deleting the message from the queue.
+ * {@link AsyncAcknowledgement} implementation for Sqs messages. Acknowledges by deleting the message from the queue.
  *
  * @author Tomaz Fernandes
  * @since 3.0
@@ -57,6 +55,7 @@ public class SqsAcknowledge implements AsyncAcknowledgement {
 	@Override
 	public CompletableFuture<Void> acknowledge() {
 		return this.sqsAsyncClient.deleteMessage(req -> req.queueUrl(this.queueUrl).receiptHandle(this.receiptHandle))
-			.thenRun(() -> logger.trace("Acknowledged message with handle {} from queue {}", this.receiptHandle, this.queueUrl));
+				.thenRun(() -> logger.trace("Acknowledged message with handle {} from queue {}", this.receiptHandle,
+						this.queueUrl));
 	}
 }

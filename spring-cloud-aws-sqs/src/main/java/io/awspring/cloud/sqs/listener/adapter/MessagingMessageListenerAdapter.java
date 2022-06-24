@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,8 @@ public abstract class MessagingMessageListenerAdapter {
 	protected final Object invokeHandler(Message<?> message) {
 		try {
 			return handlerMethod.invoke(message);
-		} catch (Exception ex) {
+		}
+		catch (Exception ex) {
 			throw new ListenerExecutionFailedException("Listener failed to process message", ex);
 		}
 	}

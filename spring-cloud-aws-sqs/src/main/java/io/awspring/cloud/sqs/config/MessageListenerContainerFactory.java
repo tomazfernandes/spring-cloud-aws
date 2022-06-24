@@ -18,8 +18,7 @@ package io.awspring.cloud.sqs.config;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 
 /**
- * Creates {@link MessageListenerContainer} instances for given
- * {@link Endpoint} instances or endpoint names.
+ * Creates {@link MessageListenerContainer} instances for given {@link Endpoint} instances or endpoint names.
  *
  * @param <C> the {@link MessageListenerContainer} type.
  *

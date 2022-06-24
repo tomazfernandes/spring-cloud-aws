@@ -16,9 +16,8 @@
 package io.awspring.cloud.sqs.listener.interceptor;
 
 import io.awspring.cloud.sqs.MessageHeaderUtils;
-import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
 import io.awspring.cloud.sqs.listener.AsyncVisibility;
-
+import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -28,8 +27,8 @@ import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
 /**
- * {@link AsyncMessageInterceptor} implementation for automatically extending
- * the message's visibility in case it's less than the minimum required for processing.
+ * {@link AsyncMessageInterceptor} implementation for automatically extending the message's visibility in case it's less
+ * than the minimum required for processing.
  *
  * @param <T> the {@link Message} payload type.
  *
@@ -58,12 +57,13 @@ public class MessageVisibilityExtenderInterceptor<T> implements AsyncMessageInte
 		int queueVisibility = queueVisibilityObject != null ? (int) queueVisibilityObject : DEFAULT_QUEUE_VISIBILITY;
 
 		return Instant.now().plusSeconds(this.minimumVisibility).isAfter(receivedAt.plusSeconds(queueVisibility))
-						? doChangeVisibility(message)
-						: forwardMessage(message);
+				? doChangeVisibility(message)
+				: forwardMessage(message);
 	}
 
 	private CompletableFuture<Message<T>> doChangeVisibility(Message<T> message) {
-		logger.debug("Changing visibility of message {} to {}", MessageHeaderUtils.getId(message), this.minimumVisibility);
+		logger.debug("Changing visibility of message {} to {}", MessageHeaderUtils.getId(message),
+				this.minimumVisibility);
 		return ((AsyncVisibility) Objects.requireNonNull(message.getHeaders().get(SqsMessageHeaders.VISIBILITY),
 				"No Visibility found in " + message)).changeTo(this.minimumVisibility).thenApply(res -> message);
 	}

@@ -20,27 +20,23 @@ import io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.LoggingErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
-import io.awspring.cloud.sqs.listener.poller.AbstractMessagePoller;
 import io.awspring.cloud.sqs.listener.poller.AsyncMessagePoller;
 import io.awspring.cloud.sqs.listener.splitter.AsyncMessageSplitter;
 import io.awspring.cloud.sqs.listener.splitter.FanOutSplitter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
 /**
- * Base implementation for {@link MessageListenerContainer} with {@link SmartLifecycle}
- * and component management capabilities.
+ * Base implementation for {@link MessageListenerContainer} with {@link SmartLifecycle} and component management
+ * capabilities.
  *
  * @param <T> the {@link Message} type to be consumed by the {@link AbstractMessageListenerContainer}
  *
@@ -85,8 +81,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	/**
-	 * Set the id for this container instance.
-	 * The id will be used for creating the processing thread name.
+	 * Set the id for this container instance. The id will be used for creating the processing thread name.
 	 * @param id the id.
 	 */
 	public void setId(String id) {
@@ -122,8 +117,8 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	/**
-	 * Add a collection of interceptors that will intercept the message before processing.
-	 * Interceptors are executed sequentially and in order.
+	 * Add a collection of interceptors that will intercept the message before processing. Interceptors are executed
+	 * sequentially and in order.
 	 * @param messageInterceptors the interceptor instances.
 	 */
 	public void addMessageInterceptors(Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
@@ -146,8 +141,8 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	/**
-	 * Returns the {@link ContainerOptions} instance for this container.
-	 * Changed options will take effect on container restart.
+	 * Returns the {@link ContainerOptions} instance for this container. Changed options will take effect on container
+	 * restart.
 	 * @return the container options.
 	 */
 	public ContainerOptions getContainerOptions() {
@@ -208,8 +203,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	/**
-	 * Set the queue logical names that will be handled by the container.
-	 * Required for container start.
+	 * Set the queue logical names that will be handled by the container. Required for container start.
 	 * @param queueNames the queue names.
 	 */
 	public void setQueueNames(Collection<String> queueNames) {
@@ -218,8 +212,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	/**
-	 * Set the queue logical names that will be handled by the container.
-	 * Required for container start.
+	 * Set the queue logical names that will be handled by the container. Required for container start.
 	 * @param queueNames the queue names.
 	 */
 	public void setQueueNames(String... queueNames) {
@@ -227,9 +220,8 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	/**
-	 * Return the queue names assigned to this container.
-	 * May be empty if custom {@link AsyncMessagePoller}
-	 * instances are provided.
+	 * Return the queue names assigned to this container. May be empty if custom {@link AsyncMessagePoller} instances
+	 * are provided.
 	 * @return the queue names.
 	 */
 	public Collection<String> getQueueNames() {
@@ -248,7 +240,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 		}
 		synchronized (this.lifecycleMonitor) {
 			Assert.state(!this.queueNames.isEmpty() || !this.messagePollers.isEmpty(),
-				"Either queue logical names or message pollers must be set");
+					"Either queue logical names or message pollers must be set");
 			this.isRunning = true;
 			if (this.id == null) {
 				this.id = resolveContainerId();
@@ -259,10 +251,8 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	private String resolveContainerId() {
-		return "io.awspring.cloud.sqs.sqsListenerEndpointContainer#" +
-			this.queueNames.stream()
-				.findFirst()
-				.orElseGet(() -> UUID.randomUUID().toString());
+		return "io.awspring.cloud.sqs.sqsListenerEndpointContainer#"
+				+ this.queueNames.stream().findFirst().orElseGet(() -> UUID.randomUUID().toString());
 	}
 
 	protected void doStart() {

@@ -15,10 +15,9 @@
  */
 package io.awspring.cloud.sqs.listener;
 
+import java.util.Collection;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.lang.Nullable;
-
-import java.util.Collection;
 
 /**
  * Interface for registering and looking up containers at startup and runtime.
@@ -36,19 +35,18 @@ public interface MessageListenerContainerRegistry extends SmartLifecycle {
 	void registerListenerContainer(MessageListenerContainer<?> listenerContainer);
 
 	/**
-	 * Return the {@link MessageListenerContainer} instances registered within
-	 * this registry.
+	 * Return the {@link MessageListenerContainer} instances registered within this registry.
 	 * @return the container instances.
 	 */
 	Collection<MessageListenerContainer<?>> getListenerContainers();
 
 	/**
-	 * Return the {@link MessageListenerContainer} instance registered within
-	 * this registry with the provided id, or null if none.
+	 * Return the {@link MessageListenerContainer} instance registered within this registry with the provided id, or
+	 * null if none.
 	 * @param id the id.
 	 * @return the container instance.
 	 */
 	@Nullable
-    MessageListenerContainer<?> getContainerById(String id);
+	MessageListenerContainer<?> getContainerById(String id);
 
 }

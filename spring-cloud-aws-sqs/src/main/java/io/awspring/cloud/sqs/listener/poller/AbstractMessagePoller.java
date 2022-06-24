@@ -15,19 +15,16 @@
  */
 package io.awspring.cloud.sqs.listener.poller;
 
+import java.time.Duration;
+import java.util.Collection;
+import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.messaging.Message;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.concurrent.CompletableFuture;
-
 /**
- * Base implementation of {@link AsyncMessagePoller} with {@link SmartLifecycle}
- * capabilities.
+ * Base implementation of {@link AsyncMessagePoller} with {@link SmartLifecycle} capabilities.
  *
  * @param <T> the {@link Message} payload type.
  *
@@ -57,7 +54,8 @@ public abstract class AbstractMessagePoller<T> implements AsyncMessagePoller<T>,
 		return doPollForMessages(numberOfMessages, timeout);
 	}
 
-	protected abstract CompletableFuture<Collection<Message<T>>> doPollForMessages(int numberOfMessages, Duration timeout);
+	protected abstract CompletableFuture<Collection<Message<T>>> doPollForMessages(int numberOfMessages,
+			Duration timeout);
 
 	@Override
 	public void start() {

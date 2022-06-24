@@ -19,8 +19,7 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.messaging.Message;
 
 /**
- * Interface representing a container for a {@link AsyncMessageListener}
- * with {@link SmartLifecycle} capabilities.
+ * Interface representing a container for a {@link AsyncMessageListener} with {@link SmartLifecycle} capabilities.
  *
  * @param <T> the {@link Message} payload type.
  *
@@ -33,7 +32,7 @@ public interface MessageListenerContainer<T> extends SmartLifecycle {
 	 * Get the container id.
 	 * @return the id.
 	 */
-    String getId();
+	String getId();
 
 	/**
 	 * Set the listener to be used to process messages asynchronously.

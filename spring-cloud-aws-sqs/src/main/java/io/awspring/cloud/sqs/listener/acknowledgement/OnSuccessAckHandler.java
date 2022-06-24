@@ -16,11 +16,10 @@
 package io.awspring.cloud.sqs.listener.acknowledgement;
 
 import io.awspring.cloud.sqs.MessageHeaderUtils;
+import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
-
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Default {@link AsyncAckHandler} implementation that only acknowledges on success.
@@ -35,10 +34,9 @@ public class OnSuccessAckHandler<T> implements AsyncAckHandler<T> {
 	@Override
 	public CompletableFuture<Void> onSuccess(Message<T> message) {
 		logger.trace("Acknowledging message {}", MessageHeaderUtils.getId(message));
-		return MessageHeaderUtils.getAcknowledgement(message)
-			.acknowledge()
-			.thenRun(() -> logger.trace("Message {} acknowledged.", MessageHeaderUtils.getId(message)))
-			.exceptionally(t -> logError(message, t));
+		return MessageHeaderUtils.getAcknowledgement(message).acknowledge()
+				.thenRun(() -> logger.trace("Message {} acknowledged.", MessageHeaderUtils.getId(message)))
+				.exceptionally(t -> logError(message, t));
 	}
 
 	private Void logError(Message<T> message, Throwable t) {

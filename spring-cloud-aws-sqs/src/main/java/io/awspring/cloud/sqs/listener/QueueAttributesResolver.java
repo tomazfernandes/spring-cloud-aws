@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,13 @@
  */
 package io.awspring.cloud.sqs.listener;
 
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.GetQueueAttributesResponse;
 import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
-
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
 
 /**
  * Utility class for retrieving {@link QueueAttributes} for a given queue.
@@ -48,7 +47,7 @@ public class QueueAttributesResolver {
 			logger.debug("Fetching attributes for queue {}", queueName);
 			String queueUrl = sqsAsyncClient.getQueueUrl(req -> req.queueName(queueName)).get().queueUrl();
 			GetQueueAttributesResponse getQueueAttributesResponse = sqsAsyncClient
-				.getQueueAttributes(req -> req.queueUrl(queueUrl).attributeNames(QueueAttributeName.ALL)).get();
+					.getQueueAttributes(req -> req.queueUrl(queueUrl).attributeNames(QueueAttributeName.ALL)).get();
 			Map<QueueAttributeName, String> attributes = getQueueAttributesResponse.attributes();
 			boolean hasRedrivePolicy = attributes.containsKey(QueueAttributeName.REDRIVE_POLICY);
 			boolean isFifo = queueName.endsWith(".fifo");

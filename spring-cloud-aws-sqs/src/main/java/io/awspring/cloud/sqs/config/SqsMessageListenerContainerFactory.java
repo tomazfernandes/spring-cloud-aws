@@ -19,17 +19,15 @@ import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.interceptor.MessageVisibilityExtenderInterceptor;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
-import java.util.function.Supplier;
-
 /**
- * {@link MessageListenerContainerFactory} implementation for creating
- * {@link SqsMessageListenerContainer} instances.
+ * {@link MessageListenerContainerFactory} implementation for creating {@link SqsMessageListenerContainer} instances.
  *
  * @param <T> the {@link Message} payload type.
  *
@@ -51,9 +49,8 @@ public class SqsMessageListenerContainerFactory<T>
 	}
 
 	/**
-	 * Create an instance with the provided {@link ContainerOptions}.
-	 * Note that a copy of these options will be made, so any further change
-	 * to the original options will have no effect on this factory.
+	 * Create an instance with the provided {@link ContainerOptions}. Note that a copy of these options will be made, so
+	 * any further change to the original options will have no effect on this factory.
 	 * @param containerOptions the container options instance.
 	 */
 	private SqsMessageListenerContainerFactory(ContainerOptions containerOptions) {
@@ -61,7 +58,8 @@ public class SqsMessageListenerContainerFactory<T>
 	}
 
 	@Override
-	protected SqsMessageListenerContainer<T> createContainerInstance(Endpoint endpoint, ContainerOptions containerOptions) {
+	protected SqsMessageListenerContainer<T> createContainerInstance(Endpoint endpoint,
+			ContainerOptions containerOptions) {
 		logger.debug("Creating {} for endpoint {}", SqsMessageListenerContainer.class.getSimpleName(), endpoint);
 		Assert.notNull(this.sqsAsyncClientSupplier, "No asyncClient set");
 		SqsAsyncClient asyncClient = this.sqsAsyncClientSupplier.get();
@@ -80,9 +78,9 @@ public class SqsMessageListenerContainerFactory<T>
 	}
 
 	/**
-	 * Set a supplier for {@link SqsAsyncClient} instances. A new instance will be used
-	 * for each container created by this factory. Useful for high throughput containers
-	 * where sharing an {@link SqsAsyncClient} would be harmful to performance.
+	 * Set a supplier for {@link SqsAsyncClient} instances. A new instance will be used for each container created by
+	 * this factory. Useful for high throughput containers where sharing an {@link SqsAsyncClient} would be harmful to
+	 * performance.
 	 *
 	 * @param sqsAsyncClientSupplier the supplier.
 	 */
@@ -92,9 +90,8 @@ public class SqsMessageListenerContainerFactory<T>
 	}
 
 	/**
-	 * Set the {@link SqsAsyncClient} instance to be shared by the containers. Useful
-	 * for not-so-high throughput scenarios or when the client is tuned for more than the
-	 * default maximum connections.
+	 * Set the {@link SqsAsyncClient} instance to be shared by the containers. Useful for not-so-high throughput
+	 * scenarios or when the client is tuned for more than the default maximum connections.
 	 * @param sqsAsyncClient the client instance.
 	 */
 	public void setSqsAsyncClient(SqsAsyncClient sqsAsyncClient) {

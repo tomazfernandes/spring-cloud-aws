@@ -15,9 +15,8 @@
  */
 package io.awspring.cloud.sqs.listener.interceptor;
 
-import org.springframework.messaging.Message;
-
 import java.util.concurrent.CompletableFuture;
+import org.springframework.messaging.Message;
 
 /**
  * Interface for intercepting messages before being sent to the

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,13 @@
 package io.awspring.cloud.sqs.config;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
-
 import java.time.Duration;
 import java.util.Collection;
 
 /**
  * {@link Endpoint} implementation for SQS endpoints.
  *
- * Contains properties that should be mapped from {@link SqsListener @SqsListener}
- * annotations.
+ * Contains properties that should be mapped from {@link SqsListener @SqsListener} annotations.
  *
  * @author Tomaz Fernandes
  * @since 3.0
@@ -40,8 +38,8 @@ public class SqsEndpoint extends AbstractEndpoint {
 	private final Boolean isAsync;
 
 	private SqsEndpoint(Collection<String> logicalEndpointNames, String listenerContainerFactoryName,
-						Integer maxInflightMessagesPerQueue, Integer pollTimeoutSeconds, Integer minTimeToProcess,
-						Boolean isAsync, String id) {
+			Integer maxInflightMessagesPerQueue, Integer pollTimeoutSeconds, Integer minTimeToProcess, Boolean isAsync,
+			String id) {
 		super(logicalEndpointNames, listenerContainerFactoryName, id);
 		this.maxInflightMessagesPerQueue = maxInflightMessagesPerQueue;
 		this.pollTimeoutSeconds = pollTimeoutSeconds;
@@ -59,8 +57,7 @@ public class SqsEndpoint extends AbstractEndpoint {
 	}
 
 	/**
-	 * The maximum number of inflight messages each queue in this endpoint can process
-	 * simultaneously.
+	 * The maximum number of inflight messages each queue in this endpoint can process simultaneously.
 	 * @return the maximum number of inflight messages.
 	 */
 	public Integer getMaxInflightMessagesPerQueue() {
@@ -84,9 +81,8 @@ public class SqsEndpoint extends AbstractEndpoint {
 	}
 
 	/**
-	 * The minimum amount of seconds a message needs to be processed by this method.
-	 * If by the time the message is processed the remaining visibility is less than
-	 * this value, it will be automatically extended to this value.
+	 * The minimum amount of seconds a message needs to be processed by this method. If by the time the message is
+	 * processed the remaining visibility is less than this value, it will be automatically extended to this value.
 	 * @return the minimum visibility for this endpoint.
 	 * @see io.awspring.cloud.sqs.listener.interceptor.MessageVisibilityExtenderInterceptor
 	 */

@@ -15,13 +15,12 @@
  */
 package io.awspring.cloud.sqs;
 
-import org.springframework.util.CollectionUtils;
-
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import org.springframework.util.CollectionUtils;
 
 /**
  * Utilities class for conditional configurations.

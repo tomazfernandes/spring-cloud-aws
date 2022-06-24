@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,8 +59,8 @@ public class ExpressionResolvingHelper implements BeanFactoryAware {
 			return (String) resolved;
 		}
 		else if (resolved != null) {
-			throw new IllegalStateException(THE_LEFT + attribute + "] must resolve to a String. "
-				+ RESOLVED_TO_LEFT + resolved.getClass() + RIGHT_FOR_LEFT + value + "]");
+			throw new IllegalStateException(THE_LEFT + attribute + "] must resolve to a String. " + RESOLVED_TO_LEFT
+					+ resolved.getClass() + RIGHT_FOR_LEFT + value + "]");
 		}
 		return null;
 	}
@@ -78,12 +78,13 @@ public class ExpressionResolvingHelper implements BeanFactoryAware {
 		Object resolved = resolveExpression(value);
 		if (resolved instanceof Integer) {
 			return (Integer) resolved;
-		} else if (resolved instanceof String) {
+		}
+		else if (resolved instanceof String) {
 			return Integer.parseInt((String) resolved);
 		}
 		else if (resolved != null) {
-			throw new IllegalStateException(THE_LEFT + attribute + "] must resolve to Integer. "
-				+ RESOLVED_TO_LEFT + resolved.getClass() + RIGHT_FOR_LEFT + value + "]");
+			throw new IllegalStateException(THE_LEFT + attribute + "] must resolve to Integer. " + RESOLVED_TO_LEFT
+					+ resolved.getClass() + RIGHT_FOR_LEFT + value + "]");
 		}
 		return null;
 	}
@@ -104,8 +105,7 @@ public class ExpressionResolvingHelper implements BeanFactoryAware {
 		this.beanFactory = beanFactory;
 		if (beanFactory instanceof ConfigurableListableBeanFactory) {
 			this.resolver = ((ConfigurableListableBeanFactory) beanFactory).getBeanExpressionResolver();
-			this.expressionContext = new BeanExpressionContext((ConfigurableListableBeanFactory) beanFactory,
-				null);
+			this.expressionContext = new BeanExpressionContext((ConfigurableListableBeanFactory) beanFactory, null);
 		}
 	}
 

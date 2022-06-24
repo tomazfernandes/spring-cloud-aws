@@ -15,9 +15,8 @@
  */
 package io.awspring.cloud.sqs.listener.errorhandler;
 
-import org.springframework.messaging.Message;
-
 import java.util.concurrent.CompletableFuture;
+import org.springframework.messaging.Message;
 
 /**
  * Functional interface for handling message processing errors.
@@ -31,9 +30,8 @@ import java.util.concurrent.CompletableFuture;
 public interface AsyncErrorHandler<T> {
 
 	/**
-	 * Asynchronously handle the error thrown by the
-	 * {@link io.awspring.cloud.sqs.listener.AsyncMessageListener}
-	 * when processing the given {@link Message}.
+	 * Asynchronously handle the error thrown by the {@link io.awspring.cloud.sqs.listener.AsyncMessageListener} when
+	 * processing the given {@link Message}.
 	 * @param message the message.
 	 * @param t the thrown exception.
 	 * @return a completable future.

@@ -15,11 +15,10 @@
  */
 package io.awspring.cloud.sqs.listener.poller;
 
-import org.springframework.messaging.Message;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
+import org.springframework.messaging.Message;
 
 /**
  * Interface for polling a resource and returning {@link Message} instances.
@@ -39,6 +38,5 @@ public interface AsyncMessagePoller<T> {
 	 * @return a completable future containing the batch of polled messages.
 	 */
 	CompletableFuture<Collection<Message<T>>> poll(int numberOfMessages, Duration timeout);
-
 
 }

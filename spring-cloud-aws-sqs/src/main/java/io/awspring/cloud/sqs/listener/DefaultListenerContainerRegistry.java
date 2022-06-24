@@ -15,26 +15,25 @@
  */
 package io.awspring.cloud.sqs.listener;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-
 /**
- * {@link MessageListenerContainerRegistry} implementation that registers the
- * {@link MessageListenerContainer} instances and automatically manage their lifecycle.
+ * {@link MessageListenerContainerRegistry} implementation that registers the {@link MessageListenerContainer} instances
+ * and automatically manage their lifecycle.
  *
- * This bean can be autowired and used to lookup container instances at runtime
- * as well as manually manage their lifecycle.
+ * This bean can be autowired and used to lookup container instances at runtime as well as manually manage their
+ * lifecycle.
  *
  * Supports starting and stopping the container instances sequentially or in parallel.
  *
- * Note that only containers created via {@link io.awspring.cloud.sqs.annotation.SqsListener}
- * annotations are registered automatically.
+ * Note that only containers created via {@link io.awspring.cloud.sqs.annotation.SqsListener} annotations are registered
+ * automatically.
  *
  * @author Tomaz Fernandes
  * @since 3.0
@@ -55,7 +54,7 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 	public void registerListenerContainer(MessageListenerContainer<?> listenerContainer) {
 		logger.debug("Registering listener container {}", listenerContainer);
 		Assert.state(getContainerById(listenerContainer.getId()) == null,
-			() -> "Already registered container with id " + listenerContainer.getId());
+				() -> "Already registered container with id " + listenerContainer.getId());
 		this.listenerContainers.add(listenerContainer);
 	}
 
@@ -68,13 +67,13 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 	@Override
 	public MessageListenerContainer<?> getContainerById(String id) {
 		Assert.notNull(id, "id cannot be null.");
-		return this.listenerContainers.stream()
-			.filter(container -> container.getId().equals(id)).findFirst().orElse(null);
+		return this.listenerContainers.stream().filter(container -> container.getId().equals(id)).findFirst()
+				.orElse(null);
 	}
 
 	/**
-	 * Set to false if {@link org.springframework.context.SmartLifecycle} management
-	 * should be made sequentially rather than in parallel.
+	 * Set to false if {@link org.springframework.context.SmartLifecycle} management should be made sequentially rather
+	 * than in parallel.
 	 * @param parallelLifecycleManagement the value.
 	 */
 	public void setParallelLifecycleManagement(boolean parallelLifecycleManagement) {
@@ -88,7 +87,8 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 			this.running = true;
 			if (this.isParallelLifecycleManagement) {
 				this.listenerContainers.parallelStream().forEach(MessageListenerContainer::start);
-			} else {
+			}
+			else {
 				this.listenerContainers.forEach(MessageListenerContainer::start);
 			}
 		}
@@ -101,7 +101,8 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 			this.running = false;
 			if (this.isParallelLifecycleManagement) {
 				this.listenerContainers.parallelStream().forEach(MessageListenerContainer::stop);
-			} else {
+			}
+			else {
 				this.listenerContainers.forEach(MessageListenerContainer::stop);
 			}
 		}

@@ -16,11 +16,10 @@
 package io.awspring.cloud.sqs.listener.errorhandler;
 
 import io.awspring.cloud.sqs.MessageHeaderUtils;
+import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
-
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Default {@link AsyncErrorHandler} implementation that logs errors.

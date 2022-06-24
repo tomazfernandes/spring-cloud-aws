@@ -27,14 +27,14 @@ public class SqsBeanNames {
 	}
 
 	/**
-	 * The bean name of the {@link io.awspring.cloud.sqs.listener.DefaultListenerContainerRegistry}
-	 * registered by {@link SqsBootstrapConfiguration}.
+	 * The bean name of the {@link io.awspring.cloud.sqs.listener.DefaultListenerContainerRegistry} registered by
+	 * {@link SqsBootstrapConfiguration}.
 	 */
 	public static final String ENDPOINT_REGISTRY_BEAN_NAME = "io.awspring.cloud.messaging.internalEndpointRegistryBeanName";
 
 	/**
-	 * The bean name of the {@link io.awspring.cloud.sqs.annotation.SqsListenerAnnotationBeanPostProcessor}
-	 * registered by {@link SqsBootstrapConfiguration}.
+	 * The bean name of the {@link io.awspring.cloud.sqs.annotation.SqsListenerAnnotationBeanPostProcessor} registered
+	 * by {@link SqsBootstrapConfiguration}.
 	 */
 	public static final String SQS_LISTENER_ANNOTATION_BEAN_POST_PROCESSOR_BEAN_NAME = "io.awspring.cloud.messaging.internalSqsListenerAnnotationBeanPostProcessor";
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,17 +21,15 @@ import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.adapter.AsyncMessagingMessageListenerAdapter;
 import io.awspring.cloud.sqs.listener.splitter.AsyncMessageSplitter;
 import io.awspring.cloud.sqs.listener.splitter.FanOutSplitter;
+import java.lang.reflect.Method;
+import java.util.Collection;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.util.Assert;
 
-import java.lang.reflect.Method;
-import java.util.Collection;
-
 /**
- * Base class for implementing an {@link Endpoint}. Contains properties that
- * should be common to all endpoints to be handled by an
- * {@link AbstractMessageListenerContainerFactory}.
+ * Base class for implementing an {@link Endpoint}. Contains properties that should be common to all endpoints to be
+ * handled by an {@link AbstractMessageListenerContainerFactory}.
  *
  * @author Tomaz Fernandes
  * @since 3.0
@@ -52,9 +50,8 @@ public abstract class AbstractEndpoint implements Endpoint {
 
 	private AsyncMessageSplitter<?> messageSplitter;
 
-	protected AbstractEndpoint(Collection<String> logicalNames,
-							   @Nullable String listenerContainerFactoryName,
-							   String id) {
+	protected AbstractEndpoint(Collection<String> logicalNames, @Nullable String listenerContainerFactoryName,
+			String id) {
 		Assert.notEmpty(logicalNames, "logicalNames cannot be empty.");
 		this.logicalNames = logicalNames;
 		this.listenerContainerFactoryName = listenerContainerFactoryName;
@@ -77,8 +74,7 @@ public abstract class AbstractEndpoint implements Endpoint {
 	}
 
 	/**
-	 * Set the bean instance to be used when handling a message
-	 * for this endpoint.
+	 * Set the bean instance to be used when handling a message for this endpoint.
 	 * @param bean the bean instance.
 	 */
 	public void setBean(Object bean) {
@@ -86,8 +82,7 @@ public abstract class AbstractEndpoint implements Endpoint {
 	}
 
 	/**
-	 * Set the method to be used when handling a message
-	 * for this endpoint.
+	 * Set the method to be used when handling a message for this endpoint.
 	 * @param method the method.
 	 */
 	public void setMethod(Method method) {
@@ -95,8 +90,8 @@ public abstract class AbstractEndpoint implements Endpoint {
 	}
 
 	/**
-	 * Set a {@link AsyncMessageSplitter} to handle messages polled from this endpoint.
-	 * If none is provided, one will be created depending on the endpoint's configuration.
+	 * Set a {@link AsyncMessageSplitter} to handle messages polled from this endpoint. If none is provided, one will be
+	 * created depending on the endpoint's configuration.
 	 * @param messageSplitter the splitter.
 	 */
 	public void setMessageSplitter(AsyncMessageSplitter<?> messageSplitter) {
@@ -107,7 +102,7 @@ public abstract class AbstractEndpoint implements Endpoint {
 	 * Configure the provided container for this endpoint.
 	 * @param container the container to be configured.
 	 */
-	@SuppressWarnings({"rawtypes", "unchecked"})
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public void setupContainer(MessageListenerContainer container) {
 		container.setMessageListener(createMessageListener());
 		if (container instanceof AbstractMessageListenerContainer) {
@@ -116,20 +111,17 @@ public abstract class AbstractEndpoint implements Endpoint {
 	}
 
 	private AsyncMessageSplitter<?> createOrGetMessageSplitter() {
-		return this.messageSplitter != null
-			? this.messageSplitter
-			: new FanOutSplitter<>();
+		return this.messageSplitter != null ? this.messageSplitter : new FanOutSplitter<>();
 	}
 
 	private AsyncMessageListener<?> createMessageListener() {
 		Assert.notNull(this.handlerMethodFactory, "No handlerMethodFactory has been set");
 		return new AsyncMessagingMessageListenerAdapter<>(
-			this.handlerMethodFactory.createInvocableHandlerMethod(this.bean, this.method));
+				this.handlerMethodFactory.createInvocableHandlerMethod(this.bean, this.method));
 	}
 
 	/**
-	 * Set the {@link MessageHandlerMethodFactory} to be used for handling messages
-	 * in this endpoint.
+	 * Set the {@link MessageHandlerMethodFactory} to be used for handling messages in this endpoint.
 	 * @param handlerMethodFactory the factory.
 	 */
 	public void setHandlerMethodFactory(MessageHandlerMethodFactory handlerMethodFactory) {

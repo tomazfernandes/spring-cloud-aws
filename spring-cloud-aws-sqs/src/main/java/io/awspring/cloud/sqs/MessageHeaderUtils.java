@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,10 @@ package io.awspring.cloud.sqs;
 
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
 import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAcknowledgement;
-import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageHeaders;
-
 import java.util.Objects;
 import java.util.UUID;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
 
 /**
  * Utility class for extracting {@link MessageHeaders} from a {@link Message}.
@@ -41,7 +40,7 @@ public class MessageHeaderUtils {
 	 */
 	public static String getId(Message<?> message) {
 		return Objects.requireNonNull(message.getHeaders().get(MessageHeaders.ID, UUID.class),
-			() -> "No ID found for message " + message).toString();
+				() -> "No ID found for message " + message).toString();
 	}
 
 	/**
@@ -50,8 +49,9 @@ public class MessageHeaderUtils {
 	 * @return the acknowledgement.
 	 */
 	public static AsyncAcknowledgement getAcknowledgement(Message<?> message) {
-		return Objects.requireNonNull(message.getHeaders().get(SqsMessageHeaders.ACKNOWLEDGMENT_HEADER, AsyncAcknowledgement.class),
-			() -> "No Acknowledgment found for message " + message);
+		return Objects.requireNonNull(
+				message.getHeaders().get(SqsMessageHeaders.ACKNOWLEDGMENT_HEADER, AsyncAcknowledgement.class),
+				() -> "No Acknowledgment found for message " + message);
 	}
 
 }

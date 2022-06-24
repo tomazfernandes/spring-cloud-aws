@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,21 +16,20 @@
 package io.awspring.cloud.sqs.listener.adapter;
 
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
+import java.util.concurrent.CompletableFuture;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 
-import java.util.concurrent.CompletableFuture;
-
 /**
- * {@link AsyncMessageListener} implementation to handle a message by
- * invoking a method handler.
+ * {@link AsyncMessageListener} implementation to handle a message by invoking a method handler.
  *
  * @param <T> the {@link Message} payload type.
  *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class AsyncMessagingMessageListenerAdapter<T> extends MessagingMessageListenerAdapter implements AsyncMessageListener<T> {
+public class AsyncMessagingMessageListenerAdapter<T> extends MessagingMessageListenerAdapter
+		implements AsyncMessageListener<T> {
 
 	public AsyncMessagingMessageListenerAdapter(InvocableHandlerMethod handlerMethod) {
 		super(handlerMethod);
@@ -40,10 +39,10 @@ public class AsyncMessagingMessageListenerAdapter<T> extends MessagingMessageLis
 	public CompletableFuture<Void> onMessage(Message<T> message) {
 		try {
 			Object result = super.invokeHandler(message);
-			return result instanceof CompletableFuture
-				? ((CompletableFuture<?>) result).thenRun(() -> {})
-				: CompletableFuture.completedFuture(null);
-		} catch (Exception e) {
+			return result instanceof CompletableFuture ? ((CompletableFuture<?>) result).thenRun(() -> {
+			}) : CompletableFuture.completedFuture(null);
+		}
+		catch (Exception e) {
 			CompletableFuture<Void> future = new CompletableFuture<>();
 			future.completeExceptionally(e);
 			return future;

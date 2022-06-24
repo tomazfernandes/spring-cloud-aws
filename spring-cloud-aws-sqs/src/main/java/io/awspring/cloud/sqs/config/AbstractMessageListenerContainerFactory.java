@@ -23,18 +23,19 @@ import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
+import io.awspring.cloud.sqs.listener.poller.AsyncMessagePoller;
 import io.awspring.cloud.sqs.listener.splitter.AsyncMessageSplitter;
-import org.springframework.messaging.Message;
-import org.springframework.util.Assert;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedList;
+
+import org.springframework.messaging.Message;
+import org.springframework.util.Assert;
 
 /**
- * Base implementation for a {@link MessageListenerContainerFactory}.
- * Contains the components and {@link ContainerOptions} that will be
- * used by {@link MessageListenerContainer} instances created by this factory.
+ * Base implementation for a {@link MessageListenerContainerFactory}. Contains the components and
+ * {@link ContainerOptions} that will be used by {@link MessageListenerContainer} instances created by this factory.
  *
  * @param <T> the {@link Message} type to be consumed by the {@link AbstractMessageListenerContainer}
  * @param <C> the {@link AbstractMessageListenerContainer} type.
@@ -53,9 +54,11 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 
 	private AsyncMessageSplitter<T> messageSplitter;
 
+	private AsyncMessageListener<T> messageListener;
+
 	private final Collection<AsyncMessageInterceptor<T>> messageInterceptors = new ArrayList<>();
 
-	private AsyncMessageListener<T> messageListener;
+	private final Collection<AsyncMessagePoller<T>> messagePollers = new ArrayList<>();
 
 	protected AbstractMessageListenerContainerFactory(ContainerOptions containerOptions) {
 		Assert.notNull(containerOptions, "containerOptions cannot be null");
@@ -63,9 +66,8 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	}
 
 	/**
-	 * Set the {@link AsyncErrorHandler} instance to be used by containers created with this factory.
-	 * If none is provided, a default {@link io.awspring.cloud.sqs.listener.errorhandler.LoggingErrorHandler}
-	 * is used.
+	 * Set the {@link AsyncErrorHandler} instance to be used by containers created with this factory. If none is
+	 * provided, a default {@link io.awspring.cloud.sqs.listener.errorhandler.LoggingErrorHandler} is used.
 	 * @param errorHandler the error handler instance.
 	 */
 	public void setErrorHandler(AsyncErrorHandler<T> errorHandler) {
@@ -74,9 +76,8 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	}
 
 	/**
-	 * Set the {@link AsyncAckHandler} instance to be used by containers created with this factory.
-	 * If none is provided, a default {@link io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler}
-	 * is used.
+	 * Set the {@link AsyncAckHandler} instance to be used by containers created with this factory. If none is provided,
+	 * a default {@link io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler} is used.
 	 * @param ackHandler the acknowledgement handler instance.
 	 */
 	public void setAckHandler(AsyncAckHandler<T> ackHandler) {
@@ -85,8 +86,8 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	}
 
 	/**
-	 * Add a {@link AsyncMessageInterceptor} to be used by containers created with this factory.
-	 * Interceptors will be applied just before method invocation.
+	 * Add a {@link AsyncMessageInterceptor} to be used by containers created with this factory. Interceptors will be
+	 * applied just before method invocation.
 	 * @param messageInterceptor the message interceptor instance.
 	 */
 	public void addMessageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
@@ -95,8 +96,8 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	}
 
 	/**
-	 * Add {@link AsyncMessageInterceptor} instances to be used by containers created with this factory.
-	 * Interceptors will be applied just before method invocation.
+	 * Add {@link AsyncMessageInterceptor} instances to be used by containers created with this factory. Interceptors
+	 * will be applied just before method invocation.
 	 * @param messageInterceptors the message interceptor instances.
 	 */
 	public void addMessageInterceptors(Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
@@ -105,10 +106,9 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	}
 
 	/**
-	 * Set the {@link AsyncMessageSplitter} instance to be used by containers created with this factory.
-	 * If none is provided, a default will be instantiated according to each endpoint's configuration.
-	 * Message splitters handle the batch of messages returned by the
-	 * {@link io.awspring.cloud.sqs.listener.poller.AsyncMessagePoller} and feeds the
+	 * Set the {@link AsyncMessageSplitter} instance to be used by containers created with this factory. If none is
+	 * provided, a default will be instantiated according to each endpoint's configuration. Message splitters handle the
+	 * batch of messages returned by the {@link io.awspring.cloud.sqs.listener.poller.AsyncMessagePoller} and feeds the
 	 * messages to the container processing pipeline.
 	 * @param messageSplitter the message splitter instance.
 	 */
@@ -118,8 +118,8 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	}
 
 	/**
-	 * Set the {@link AsyncMessageListener} instance to be used by containers created with this factory.
-	 * If none is provided, a default one will be created according to the endpoint's configuration.
+	 * Set the {@link AsyncMessageListener} instance to be used by containers created with this factory. If none is
+	 * provided, a default one will be created according to the endpoint's configuration.
 	 * @param messageListener the message listener instance.
 	 */
 	public void setMessageListener(AsyncMessageListener<T> messageListener) {
@@ -128,8 +128,8 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	}
 
 	/**
-	 * Return the {@link ContainerOptions} instance that will be used for configuring
-	 * the {@link MessageListenerContainer} instances created by this factory.
+	 * Return the {@link ContainerOptions} instance that will be used for configuring the
+	 * {@link MessageListenerContainer} instances created by this factory.
 	 * @return the container options instance.
 	 */
 	public ContainerOptions getContainerOptions() {
@@ -161,12 +161,11 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	private void configureContainer(AbstractMessageListenerContainer<T> container, Endpoint endpoint) {
 		container.setId(endpoint.getId());
 		container.setQueueNames(endpoint.getLogicalNames());
-		ConfigUtils.INSTANCE
-			.acceptIfNotNull(this.messageSplitter, container::setMessageSplitter)
-			.acceptIfNotNull(this.messageListener, container::setMessageListener)
-			.acceptIfNotNull(this.errorHandler, container::setErrorHandler)
-			.acceptIfNotNull(this.ackHandler, container::setAckHandler)
-			.acceptIfNotNull(this.messageInterceptors, container::addMessageInterceptors);
+		ConfigUtils.INSTANCE.acceptIfNotNull(this.messageSplitter, container::setMessageSplitter)
+				.acceptIfNotNull(this.messageListener, container::setMessageListener)
+				.acceptIfNotNull(this.errorHandler, container::setErrorHandler)
+				.acceptIfNotNull(this.ackHandler, container::setAckHandler)
+				.acceptIfNotNull(this.messageInterceptors, container::addMessageInterceptors);
 	}
 
 	protected abstract C createContainerInstance(Endpoint endpoint, ContainerOptions containerOptions);

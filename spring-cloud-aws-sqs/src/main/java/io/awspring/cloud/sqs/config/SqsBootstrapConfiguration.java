@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,7 @@ import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.type.AnnotationMetadata;
 
 /**
- * Registers the {@link DefaultListenerContainerRegistry} and
- * {@link EndpointRegistrar} that will be used to bootstrap
+ * Registers the {@link DefaultListenerContainerRegistry} and {@link EndpointRegistrar} that will be used to bootstrap
  * the AWS SQS integration.
  *
  * @author Tomaz Fernandes

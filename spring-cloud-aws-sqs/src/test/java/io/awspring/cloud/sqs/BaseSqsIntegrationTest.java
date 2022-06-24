@@ -21,8 +21,6 @@ import static org.testcontainers.containers.localstack.LocalStackContainer.Servi
 import com.amazonaws.auth.AWSCredentials;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-
 import org.junit.jupiter.api.BeforeAll;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -77,27 +75,23 @@ abstract class BaseSqsIntegrationTest {
 		registry.add("spring.cloud.aws.endpoint", () -> localstack.getEndpointOverride(SQS).toString());
 	}
 
-
 	private static void createQueues(SqsAsyncClient client) {
-		CompletableFuture.allOf(
-				client.createQueue(req -> req.queueName(RECEIVES_MESSAGE_QUEUE_NAME).build()),
+		CompletableFuture.allOf(client.createQueue(req -> req.queueName(RECEIVES_MESSAGE_QUEUE_NAME).build()),
 				client.createQueue(req -> req.queueName(DOES_NOT_ACK_ON_ERROR_QUEUE_NAME)
-					.attributes(singletonMap(QueueAttributeName.VISIBILITY_TIMEOUT, "1")).build()),
+						.attributes(singletonMap(QueueAttributeName.VISIBILITY_TIMEOUT, "1")).build()),
 				client.createQueue(req -> req.queueName(RECEIVE_FROM_MANY_1_QUEUE_NAME).build()),
 				client.createQueue(req -> req.queueName(RECEIVE_FROM_MANY_2_QUEUE_NAME).build()),
 				client.createQueue(req -> req.queueName(RESOLVES_PARAMETER_TYPES_QUEUE_NAME)
-					.attributes(singletonMap(QueueAttributeName.VISIBILITY_TIMEOUT, "1")).build()),
+						.attributes(singletonMap(QueueAttributeName.VISIBILITY_TIMEOUT, "1")).build()),
 				client.createQueue(req -> req.queueName(RESOLVES_POJO_TYPES_QUEUE_NAME).build()),
 				client.createQueue(req -> req.queueName(MANUALLY_CREATE_CONTAINER_QUEUE_NAME).build()),
-				client.createQueue(req -> req.queueName(MANUALLY_CREATE_FACTORY_QUEUE_NAME).build()))
-			.join();
+				client.createQueue(req -> req.queueName(MANUALLY_CREATE_FACTORY_QUEUE_NAME).build())).join();
 	}
 
 	protected static SqsAsyncClient createAsyncClient() {
-		return SqsAsyncClient.builder()
-			.credentialsProvider(credentialsProvider)
-			.endpointOverride(localstack.getEndpointOverride(SQS)).region(Region.of(localstack.getRegion()))
-			.build();
+		return SqsAsyncClient.builder().credentialsProvider(credentialsProvider)
+				.endpointOverride(localstack.getEndpointOverride(SQS)).region(Region.of(localstack.getRegion()))
+				.build();
 	}
 
 }

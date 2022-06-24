@@ -18,7 +18,6 @@ package io.awspring.cloud.sqs.listener;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-
 import org.springframework.messaging.MessageHeaders;
 
 /**

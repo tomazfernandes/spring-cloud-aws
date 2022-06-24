@@ -22,8 +22,7 @@ import org.springframework.messaging.handler.invocation.HandlerMethodArgumentRes
 import org.springframework.util.ClassUtils;
 
 /**
- * {@link HandlerMethodArgumentResolver} for {@link AsyncAcknowledgement}
- * method parameters.
+ * {@link HandlerMethodArgumentResolver} for {@link AsyncAcknowledgement} method parameters.
  *
  * @author Alain Sahli
  * @author Tomaz Fernandes

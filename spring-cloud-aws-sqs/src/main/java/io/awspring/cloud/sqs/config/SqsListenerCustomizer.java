@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 package io.awspring.cloud.sqs.config;
 
 /**
- * Beans impplementing this interface can configure the {@link EndpointRegistrar} instance
- * used to process {@link Endpoint} instances and change general settings for processing all
+ * Beans impplementing this interface can configure the {@link EndpointRegistrar} instance used to process
+ * {@link Endpoint} instances and change general settings for processing all
  * {@link io.awspring.cloud.sqs.annotation.SqsListener} annotations.
  *
  * @author Tomaz Fernandes
@@ -28,8 +28,7 @@ package io.awspring.cloud.sqs.config;
 public interface SqsListenerCustomizer {
 
 	/**
-	 * Configures the {@link EndpointRegistrar} instance that will handle
-	 * the {@link Endpoint} instances.
+	 * Configures the {@link EndpointRegistrar} instance that will handle the {@link Endpoint} instances.
 	 * @param registrar the registrar instance.
 	 */
 	void configure(EndpointRegistrar registrar);

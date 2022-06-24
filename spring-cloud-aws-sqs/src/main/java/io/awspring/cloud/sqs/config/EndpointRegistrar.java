@@ -19,6 +19,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sqs.listener.DefaultListenerContainerRegistry;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.MessageListenerContainerRegistry;
+import java.util.ArrayList;
+import java.util.Collection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
@@ -32,13 +34,10 @@ import org.springframework.messaging.handler.annotation.support.MessageHandlerMe
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Collection;
-
 /**
- * Processes the registered {@link Endpoint} instances using the appropriate
- * {@link MessageListenerContainerFactory} to create {@link MessageListenerContainer} instances,
- * which will then be registered in the {@link MessageListenerContainerRegistry}.
+ * Processes the registered {@link Endpoint} instances using the appropriate {@link MessageListenerContainerFactory} to
+ * create {@link MessageListenerContainer} instances, which will then be registered in the
+ * {@link MessageListenerContainerRegistry}.
  *
  * @author Tomaz Fernandes
  * @since 3.0
@@ -76,8 +75,8 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 	}
 
 	/**
-	 * Return the {@link MessageHandlerMethodFactory} to be used to create
-	 * {@link MessageHandler} instances for the {@link Endpoint}s.
+	 * Return the {@link MessageHandlerMethodFactory} to be used to create {@link MessageHandler} instances for the
+	 * {@link Endpoint}s.
 	 * @return the factory instance.
 	 */
 	public MessageHandlerMethodFactory getMessageHandlerMethodFactory() {
@@ -113,9 +112,9 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 	}
 
 	/**
-	 * Set to false if {@link org.springframework.context.SmartLifecycle} management
-	 * by the {@link io.awspring.cloud.sqs.listener.DefaultListenerContainerRegistry}
-	 * should be made sequentially rather than in parallel.
+	 * Set to false if {@link org.springframework.context.SmartLifecycle} management by the
+	 * {@link io.awspring.cloud.sqs.listener.DefaultListenerContainerRegistry} should be made sequentially rather than
+	 * in parallel.
 	 * @param parallelLifecycleManagement the value.
 	 */
 	public void setParallelLifecycleManagement(boolean parallelLifecycleManagement) {
@@ -133,12 +132,12 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 	@Override
 	public void afterSingletonsInstantiated() {
 		if (this.listenerContainerRegistry == null) {
-			this.listenerContainerRegistry = beanFactory.getBean(
-				this.messageListenerContainerRegistryBeanName, MessageListenerContainerRegistry.class);
+			this.listenerContainerRegistry = beanFactory.getBean(this.messageListenerContainerRegistryBeanName,
+					MessageListenerContainerRegistry.class);
 		}
 		if (this.listenerContainerRegistry instanceof DefaultListenerContainerRegistry) {
 			((DefaultListenerContainerRegistry) this.listenerContainerRegistry)
-				.setParallelLifecycleManagement(this.isParallelLifecycleManagement);
+					.setParallelLifecycleManagement(this.isParallelLifecycleManagement);
 		}
 		this.endpoints.forEach(this::process);
 	}
@@ -154,7 +153,7 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 		Assert.isTrue(this.beanFactory.containsBean(factoryBeanName),
 				() -> "No factory bean with name " + factoryBeanName + " found for endpoint " + endpoint.getId());
 		return this.beanFactory.getBean(factoryBeanName, MessageListenerContainerFactory.class)
-			.createContainer(endpoint);
+				.createContainer(endpoint);
 	}
 
 	private String getListenerContainerFactoryName(Endpoint endpoint) {
