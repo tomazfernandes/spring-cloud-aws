@@ -19,7 +19,6 @@ import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
-import io.awspring.cloud.sqs.listener.poller.AbstractMessagePoller;
 import io.awspring.cloud.sqs.listener.poller.AsyncMessagePoller;
 import io.awspring.cloud.sqs.listener.poller.SqsMessagePoller;
 import io.awspring.cloud.sqs.listener.splitter.AbstractMessageSplitter;
@@ -38,7 +37,6 @@ import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -152,20 +150,18 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 			this.messagePollers.forEach(poller -> {
 				try {
 					if (!acquirePermits()) {
-						logger.trace("Not able to acquire permits in {} seconds. Skipping.", this.semaphoreAcquireTimeout.getSeconds());
 						return;
 					}
 					if (!super.isRunning()) {
 						logger.debug("Container not running. Returning.");
-						this.inFlightMessagesSemaphore.release(this.messagesPerPoll);
+						releasePermits();
 						return;
 					}
-					CompletableFuture<Void> pollingFuture = poller.poll(this.messagesPerPoll, this.pollTimeout)
+					manageFutureFrom(poller.poll(this.messagesPerPoll, this.pollTimeout)
+						.exceptionally(this::handlePollingException)
 						.thenApply(this::releaseUnusedPermits)
 						.thenAccept(msgs -> this.splitter.splitAndProcess(msgs, this::processMessage)
-							.forEach(this::releasePermitAndHandleResult));
-					this.pollingFutures.add(pollingFuture);
-					pollingFuture.thenRun(() -> this.pollingFutures.remove(pollingFuture));
+							.forEach(this::releasePermitAndHandleResult)));
 				}
 				catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
@@ -179,6 +175,15 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		logger.debug("Execution thread stopped.");
 	}
 
+	private void releasePermits() {
+		this.inFlightMessagesSemaphore.release(this.messagesPerPoll);
+	}
+
+	private void manageFutureFrom(CompletableFuture<Void> pollingFuture) {
+		this.pollingFutures.add(pollingFuture);
+		pollingFuture.thenRun(() -> this.pollingFutures.remove(pollingFuture));
+	}
+
 	private boolean acquirePermits() throws InterruptedException {
 		if (!isRunning()) {
 			return false;
@@ -188,6 +193,8 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 			this.inFlightMessagesSemaphore.tryAcquire(this.messagesPerPoll, this.semaphoreAcquireTimeout.getSeconds(), TimeUnit.SECONDS);
 		if (hasAcquired) {
 			logger.trace("{} permits acquired in container {} ", this.messagesPerPoll, getId());
+		} else {
+			logger.trace("Not able to acquire permits in {} seconds. Skipping.", this.semaphoreAcquireTimeout.getSeconds());
 		}
 		return hasAcquired;
 	}
@@ -199,6 +206,11 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	private void releasePermitAndHandleResult(CompletableFuture<Void> processingPipelineFuture) {
 		processingPipelineFuture.handle(this::handleProcessingResult);
+	}
+
+	protected Collection<Message<T>> handlePollingException(Throwable t) {
+		logger.error("Error polling for messages", t);
+		return Collections.emptyList();
 	}
 
 	private CompletableFuture<Void> processMessage(Message<T> message) {

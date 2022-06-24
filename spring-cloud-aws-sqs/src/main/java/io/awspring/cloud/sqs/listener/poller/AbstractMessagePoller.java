@@ -54,13 +54,7 @@ public abstract class AbstractMessagePoller<T> implements AsyncMessagePoller<T>,
 			logger.debug("Producer not running, returning.");
 			return CompletableFuture.completedFuture(null);
 		}
-		return doPollForMessages(numberOfMessages, timeout)
-			.exceptionally(this::handleException);
-	}
-
-	protected Collection<Message<T>> handleException(Throwable t) {
-		logger.error("Error producing messages", t);
-		return Collections.emptyList();
+		return doPollForMessages(numberOfMessages, timeout);
 	}
 
 	protected abstract CompletableFuture<Collection<Message<T>>> doPollForMessages(int numberOfMessages, Duration timeout);
