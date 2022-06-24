@@ -118,9 +118,8 @@ class SqsAutoConfigurationTest {
 					assertThat(context).hasSingleBean(SqsMessageListenerContainerFactory.class);
 					SqsMessageListenerContainerFactory<?> factory = context
 							.getBean(SqsMessageListenerContainerFactory.class);
-					ContainerOptions containerOptions = (ContainerOptions) ReflectionTestUtils.getField(factory, "containerOptions");
-					assertThat(containerOptions).isNotNull()
-						.extracting(ContainerOptions::getMaxInFlightMessagesPerQueue).isEqualTo(19);
+					assertThat(ReflectionTestUtils.getField(factory, "containerOptions")).isNotNull()
+						.extracting("maxInflightMessagesPerQueue").isEqualTo(19);
 					assertThat(ReflectionTestUtils.getField(factory, "errorHandler")).isNotNull();
 					assertThat(ReflectionTestUtils.getField(factory, "ackHandler")).isNotNull();
 					assertThat(ReflectionTestUtils.getField(factory, "messageSplitter")).isNotNull();

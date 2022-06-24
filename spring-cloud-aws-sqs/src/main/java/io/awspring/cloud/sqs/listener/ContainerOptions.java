@@ -93,7 +93,7 @@ public class ContainerOptions {
 	 * Return the maximum allowed number of inflight messages for each queue.
 	 * @return the number.
 	 */
-	public int getMaxInFlightMessagesPerQueue() {
+	int getMaxInFlightMessagesPerQueue() {
 		return this.maxInflightMessagesPerQueue;
 	}
 
@@ -101,7 +101,7 @@ public class ContainerOptions {
 	 * Return the number of messages that should be returned per poll.
 	 * @return the number.
 	 */
-	public int getMessagesPerPoll() {
+	int getMessagesPerPoll() {
 		return this.messagesPerPoll;
 	}
 
@@ -109,7 +109,7 @@ public class ContainerOptions {
 	 * Return the timeout for polling messages for this endpoint.
 	 * @return the timeout duration.
 	 */
-	public Duration getPollTimeout() {
+	Duration getPollTimeout() {
 		return this.pollTimeout;
 	}
 
@@ -117,7 +117,7 @@ public class ContainerOptions {
 	 * Return the maximum time the polling thread should wait for permits.
 	 * @return the timeout.
 	 */
-	public Duration getSemaphoreAcquireTimeout() {
+	Duration getSemaphoreAcquireTimeout() {
 		return this.semaphoreAcquireTimeout;
 	}
 
