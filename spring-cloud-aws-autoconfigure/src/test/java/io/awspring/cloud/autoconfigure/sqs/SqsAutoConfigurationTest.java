@@ -18,8 +18,8 @@ package io.awspring.cloud.autoconfigure.sqs;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.awspring.cloud.autoconfigure.ConfiguredAwsClient;
-import io.awspring.cloud.autoconfigure.core.AwsAsyncClientCustomizer;
 import io.awspring.cloud.autoconfigure.core.AwsAutoConfiguration;
+import io.awspring.cloud.autoconfigure.core.AwsClientCustomizer;
 import io.awspring.cloud.autoconfigure.core.CredentialsProviderAutoConfiguration;
 import io.awspring.cloud.autoconfigure.core.RegionProviderAutoConfiguration;
 import io.awspring.cloud.sqs.config.SqsMessageListenerContainerFactory;
@@ -35,7 +35,6 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -161,8 +160,8 @@ class SqsAutoConfigurationTest {
 	static class CustomAwsAsyncClientConfig {
 
 		@Bean
-		AwsAsyncClientCustomizer<SqsAsyncClientBuilder> sqsClientBuilderAwsClientConfigurer() {
-			return new AwsAsyncClientCustomizer<SqsAsyncClientBuilder>() {
+		AwsClientCustomizer<SqsAsyncClientBuilder> sqsClientBuilderAwsClientConfigurer() {
+			return new AwsClientCustomizer<SqsAsyncClientBuilder>() {
 				@Override
 				@Nullable
 				public ClientOverrideConfiguration overrideConfiguration() {

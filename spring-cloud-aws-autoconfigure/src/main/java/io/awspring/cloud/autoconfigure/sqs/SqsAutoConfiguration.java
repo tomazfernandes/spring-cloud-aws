@@ -15,8 +15,8 @@
  */
 package io.awspring.cloud.autoconfigure.sqs;
 
-import io.awspring.cloud.autoconfigure.core.AwsAsyncClientCustomizer;
 import io.awspring.cloud.autoconfigure.core.AwsClientBuilderConfigurer;
+import io.awspring.cloud.autoconfigure.core.AwsClientCustomizer;
 import io.awspring.cloud.autoconfigure.core.CredentialsProviderAutoConfiguration;
 import io.awspring.cloud.autoconfigure.core.RegionProviderAutoConfiguration;
 import io.awspring.cloud.sqs.config.SqsBootstrapConfiguration;
@@ -59,7 +59,7 @@ public class SqsAutoConfiguration {
 	@Bean
 	public SqsAsyncClient sqsAsyncClient(SqsProperties properties,
 			AwsClientBuilderConfigurer awsClientBuilderConfigurer,
-			ObjectProvider<AwsAsyncClientCustomizer<SqsAsyncClientBuilder>> configurer) {
+			ObjectProvider<AwsClientCustomizer<SqsAsyncClientBuilder>> configurer) {
 		return awsClientBuilderConfigurer.configure(SqsAsyncClient.builder(), properties, configurer.getIfAvailable())
 				.build();
 	}
