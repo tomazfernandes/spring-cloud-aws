@@ -13,37 +13,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener.splitter;
+package io.awspring.cloud.sqs.listener.sink;
 
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 
 /**
- * {@link AsyncMessageSplitter} implementation that processes provided messages sequentially and in order.
+ * {@link MessageSink} implementation that processes provided messages sequentially and in order.
  *
  * @param <T> the {@link Message} payload type.
  *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class OrderedSplitter<T> extends AbstractMessageSplitter<T> {
+public class OrderedMessageSink<T> extends AbstractMessageListeningSink<T> {
 
-	Logger logger = LoggerFactory.getLogger(OrderedSplitter.class);
+	Logger logger = LoggerFactory.getLogger(OrderedMessageSink.class);
 
 	@Override
-	protected Collection<CompletableFuture<Void>> doSplitAndProcessMessages(Collection<Message<T>> messages,
-			Function<Message<T>, CompletableFuture<Void>> processingPipeline) {
+	protected Collection<CompletableFuture<Void>> doEmit(Collection<Message<T>> messages) {
 		logger.debug("Splitting {} messages", messages.size());
 		CompletableFuture<Void> identity = new CompletableFuture<>();
 		identity.complete(null);
 		CompletableFuture.supplyAsync(() -> messages.stream().reduce(identity,
-				(voidFuture, msg) -> voidFuture.thenCompose(theVoid -> processingPipeline.apply(msg)), (a, b) -> b),
+				(voidFuture, msg) -> voidFuture.thenCompose(theVoid -> super.getMessageListener().onMessage(msg)), (a, b) -> b),
 				getTaskExecutor()).join();
-		return super.returnCompletedVoidFutures(messages);
+		return messages.stream().map(msg -> CompletableFuture.<Void>completedFuture(null)).collect(Collectors.toList());
 	}
 
 }

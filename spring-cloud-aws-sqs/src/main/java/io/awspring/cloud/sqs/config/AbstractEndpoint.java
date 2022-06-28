@@ -19,8 +19,8 @@ import io.awspring.cloud.sqs.listener.AbstractMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.adapter.AsyncMessagingMessageListenerAdapter;
-import io.awspring.cloud.sqs.listener.splitter.AsyncMessageSplitter;
-import io.awspring.cloud.sqs.listener.splitter.FanOutSplitter;
+import io.awspring.cloud.sqs.listener.sink.MessageSink;
+import io.awspring.cloud.sqs.listener.sink.FanOutMessageSink;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import org.springframework.lang.Nullable;
@@ -48,7 +48,7 @@ public abstract class AbstractEndpoint implements Endpoint {
 
 	private MessageHandlerMethodFactory handlerMethodFactory;
 
-	private AsyncMessageSplitter<?> messageSplitter;
+	private MessageSink<?> messageSink;
 
 	protected AbstractEndpoint(Collection<String> logicalNames, @Nullable String listenerContainerFactoryName,
 			String id) {
@@ -90,12 +90,12 @@ public abstract class AbstractEndpoint implements Endpoint {
 	}
 
 	/**
-	 * Set a {@link AsyncMessageSplitter} to handle messages polled from this endpoint. If none is provided, one will be
+	 * Set a {@link MessageSink} to handle messages polled from this endpoint. If none is provided, one will be
 	 * created depending on the endpoint's configuration.
-	 * @param messageSplitter the splitter.
+	 * @param messageSink the sink.
 	 */
-	public void setMessageSplitter(AsyncMessageSplitter<?> messageSplitter) {
-		this.messageSplitter = messageSplitter;
+	public void setMessageSink(MessageSink<?> messageSink) {
+		this.messageSink = messageSink;
 	}
 
 	/**
@@ -106,12 +106,12 @@ public abstract class AbstractEndpoint implements Endpoint {
 	public void setupContainer(MessageListenerContainer container) {
 		container.setMessageListener(createMessageListener());
 		if (container instanceof AbstractMessageListenerContainer) {
-			((AbstractMessageListenerContainer) container).setMessageSplitter(createOrGetMessageSplitter());
+			((AbstractMessageListenerContainer) container).setMessageSink(createOrGetMessageSplitter());
 		}
 	}
 
-	private AsyncMessageSplitter<?> createOrGetMessageSplitter() {
-		return this.messageSplitter != null ? this.messageSplitter : new FanOutSplitter<>();
+	private MessageSink<?> createOrGetMessageSplitter() {
+		return this.messageSink != null ? this.messageSink : new FanOutMessageSink<>();
 	}
 
 	private AsyncMessageListener<?> createMessageListener() {

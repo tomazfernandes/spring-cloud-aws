@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener.poller;
+package io.awspring.cloud.sqs.listener.source;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -24,43 +24,67 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.messaging.Message;
 
 /**
- * Base implementation of {@link AsyncMessagePoller} with {@link SmartLifecycle} capabilities.
+ * Base implementation of {@link MessageSource} with {@link SmartLifecycle} capabilities.
  *
  * @param <T> the {@link Message} payload type.
  *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractMessagePoller<T> implements AsyncMessagePoller<T>, SmartLifecycle {
+public abstract class AbstractPollableMessageSource<T> implements PollableMessageSource<T>, SmartLifecycle {
 
-	private static final Logger logger = LoggerFactory.getLogger(AbstractMessagePoller.class);
-
-	private final String logicalEndpointName;
+	private static final Logger logger = LoggerFactory.getLogger(AbstractPollableMessageSource.class);
 
 	private volatile boolean running;
 
 	private final Object lifecycleMonitor = new Object();
 
-	protected AbstractMessagePoller(String logicalEndpointName) {
-		this.logicalEndpointName = logicalEndpointName;
+	private int numberOfMessagesPerPoll;
+
+	private final String pollingEndpointName;
+
+	private Duration pollTimeout;
+
+	protected AbstractPollableMessageSource(String pollingEndpointName) {
+		this.pollingEndpointName = pollingEndpointName;
+	}
+
+	public void setNumberOfMessagesPerPoll(int numberOfMessagesPerPoll) {
+		this.numberOfMessagesPerPoll = numberOfMessagesPerPoll;
+	}
+
+	public void setPollTimeout(Duration pollTimeout) {
+		this.pollTimeout = pollTimeout;
+	}
+
+	protected int getNumberOfMessagesPerPoll() {
+		return this.numberOfMessagesPerPoll;
+	}
+
+	protected String getPollingEndpointName() {
+		return this.pollingEndpointName;
+	}
+
+	protected Duration getPollTimeout() {
+		return this.pollTimeout;
 	}
 
 	@Override
-	public CompletableFuture<Collection<Message<T>>> poll(int numberOfMessages, Duration timeout) {
+	public CompletableFuture<Collection<Message<T>>> receive() {
 		if (!this.isRunning()) {
 			logger.debug("Producer not running, returning.");
 			return CompletableFuture.completedFuture(null);
 		}
-		return doPollForMessages(numberOfMessages, timeout);
+		return doPollForMessages();
 	}
 
-	protected abstract CompletableFuture<Collection<Message<T>>> doPollForMessages(int numberOfMessages,
-			Duration timeout);
+
+	protected abstract CompletableFuture<Collection<Message<T>>> doPollForMessages();
 
 	@Override
 	public void start() {
 		synchronized (this.lifecycleMonitor) {
-			logger.debug("Starting SqsMessageProducer for {}", this.logicalEndpointName);
+			logger.debug("Starting SqsMessageProducer for {}", this.pollingEndpointName);
 			this.running = true;
 			doStart();
 		}
@@ -72,7 +96,7 @@ public abstract class AbstractMessagePoller<T> implements AsyncMessagePoller<T>,
 	@Override
 	public void stop() {
 		synchronized (this.lifecycleMonitor) {
-			logger.debug("Stopping SqsMessageProducer for {}", this.logicalEndpointName);
+			logger.debug("Stopping SqsMessageProducer for {}", this.pollingEndpointName);
 			this.running = false;
 			doStop();
 		}
@@ -87,6 +111,7 @@ public abstract class AbstractMessagePoller<T> implements AsyncMessagePoller<T>,
 	}
 
 	public String getLogicalEndpointName() {
-		return this.logicalEndpointName;
+		return this.pollingEndpointName;
 	}
+
 }

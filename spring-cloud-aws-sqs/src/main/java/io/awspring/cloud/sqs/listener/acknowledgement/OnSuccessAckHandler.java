@@ -22,12 +22,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 
 /**
- * Default {@link AsyncAckHandler} implementation that only acknowledges on success.
+ * Default {@link AckHandler} implementation that only acknowledges on success.
  *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class OnSuccessAckHandler<T> implements AsyncAckHandler<T> {
+public class OnSuccessAckHandler<T> implements AckHandler<T> {
 
 	private static final Logger logger = LoggerFactory.getLogger(OnSuccessAckHandler.class);
 

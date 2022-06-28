@@ -29,16 +29,16 @@ import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.MessageListenerContainerRegistry;
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
 import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
-import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAckHandler;
+import io.awspring.cloud.sqs.listener.acknowledgement.AckHandler;
 import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAcknowledgement;
 import io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
-import io.awspring.cloud.sqs.listener.splitter.OrderedSplitter;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -49,6 +49,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
+
+import io.awspring.cloud.sqs.listener.sink.FanOutMessageSink;
+import io.awspring.cloud.sqs.listener.source.MessageSource;
+import io.awspring.cloud.sqs.listener.source.SqsMessageSourceFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.slf4j.Logger;
@@ -153,6 +157,8 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 	void manuallyCreatesFactory() throws Exception {
 		sendMessageTo(MANUALLY_CREATE_FACTORY_QUEUE_NAME, "MyTest");
 		assertThat(latchContainer.manuallyCreatedFactoryLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(latchContainer.manuallyCreatedFactorySourceFactoryLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(latchContainer.manuallyCreatedFactorySinkLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	final int outerBatchSize = 1; // 50;
@@ -333,6 +339,8 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		final CountDownLatch manyParameterTypesSecondLatch = new CountDownLatch(2);
 		final CountDownLatch resolvesPojoLatch = new CountDownLatch(1);
 		final CountDownLatch manuallyCreatedContainerLatch = new CountDownLatch(1);
+		final CountDownLatch manuallyCreatedFactorySourceFactoryLatch = new CountDownLatch(1);
+		final CountDownLatch manuallyCreatedFactorySinkLatch = new CountDownLatch(1);
 		final CountDownLatch manuallyCreatedFactoryLatch = new CountDownLatch(1);
 		final CountDownLatch invocableHandlerMethodLatch = new CountDownLatch(1);
 
@@ -372,7 +380,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions().maxInflightMessagesPerQueue(10).pollTimeout(Duration.ofSeconds(1))
 					.messagesPerPoll(1).semaphoreAcquireTimeout(Duration.ofSeconds(1));
-			factory.setMessageSplitter(new OrderedSplitter<>());
+			//factory.setMessageSplitter(new OrderedMessageSink<>());
 			factory.setAckHandler(testAckHandler());
 			factory.setErrorHandler(testErrorHandler());
 			factory.addMessageInterceptors(Arrays.asList(testInterceptor(), testInterceptor()));
@@ -399,6 +407,20 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			factory.getContainerOptions().maxInflightMessagesPerQueue(1).pollTimeout(Duration.ofSeconds(2))
 					.messagesPerPoll(1).semaphoreAcquireTimeout(Duration.ofSeconds(1))
 					.pollTimeout(Duration.ofSeconds(1));
+			factory.setMessageSourceFactory(new SqsMessageSourceFactory<String>(){
+				@Override
+				public MessageSource<String> create(String endpointName) {
+					latchContainer.manuallyCreatedFactorySourceFactoryLatch.countDown();
+					return super.create(endpointName);
+				}
+			});
+			factory.setMessageSink(new FanOutMessageSink<String>() {
+				@Override
+				public Collection<CompletableFuture<Void>> emit(Collection<Message<String>> collection) {
+					latchContainer.manuallyCreatedFactorySinkLatch.countDown();
+					return super.emit(collection);
+				}
+			});
 			factory.setSqsAsyncClient(BaseSqsIntegrationTest.createAsyncClient());
 			factory.setMessageListener(msg -> {
 				latchContainer.manuallyCreatedFactoryLatch.countDown();
@@ -481,7 +503,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			};
 		}
 
-		private AsyncAckHandler<String> testAckHandler() {
+		private AckHandler<String> testAckHandler() {
 			return new OnSuccessAckHandler<String>() {
 				@Override
 				public CompletableFuture<Void> onSuccess(Message<String> message) {

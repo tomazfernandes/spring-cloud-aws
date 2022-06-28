@@ -24,10 +24,10 @@ import io.awspring.cloud.autoconfigure.core.CredentialsProviderAutoConfiguration
 import io.awspring.cloud.autoconfigure.core.RegionProviderAutoConfiguration;
 import io.awspring.cloud.sqs.config.SqsMessageListenerContainerFactory;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
-import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAckHandler;
+import io.awspring.cloud.sqs.listener.acknowledgement.AckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
-import io.awspring.cloud.sqs.listener.splitter.AsyncMessageSplitter;
+
 import java.net.URI;
 import java.time.Duration;
 import java.util.Map;
@@ -35,12 +35,14 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.Nullable;
+import org.springframework.messaging.Message;
 import org.springframework.test.util.ReflectionTestUtils;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.client.config.SdkClientOption;
@@ -121,7 +123,7 @@ class SqsAutoConfigurationTest {
 						.extracting("maxInflightMessagesPerQueue").isEqualTo(19);
 					assertThat(ReflectionTestUtils.getField(factory, "errorHandler")).isNotNull();
 					assertThat(ReflectionTestUtils.getField(factory, "ackHandler")).isNotNull();
-					assertThat(ReflectionTestUtils.getField(factory, "messageSplitter")).isNotNull();
+					assertThat(ReflectionTestUtils.getField(factory, "messageSink")).isNotNull();
 					assertThat(ReflectionTestUtils.getField(factory, "messageInterceptors")).asList().isNotEmpty();
 				});
 	}
@@ -135,13 +137,13 @@ class SqsAutoConfigurationTest {
 		}
 
 		@Bean
-		AsyncAckHandler<Object> asyncAckHandler() {
+		AckHandler<Object> ackHandler() {
 			return (msg) -> CompletableFuture.completedFuture(null);
 		}
 
 		@Bean
-		AsyncMessageSplitter<Object> asyncMessageSplitter() {
-			return (msgs, func) -> msgs.stream().map(func).collect(Collectors.toList());
+		MessageSink<Object> messageSink() {
+			return msgs -> msgs.stream().map(msg -> CompletableFuture.<Void>completedFuture(null)).collect(Collectors.toList());
 		}
 
 		@Bean

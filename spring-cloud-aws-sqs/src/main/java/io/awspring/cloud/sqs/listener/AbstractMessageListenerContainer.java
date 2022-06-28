@@ -15,19 +15,21 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAckHandler;
+import io.awspring.cloud.sqs.listener.acknowledgement.AckHandler;
 import io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.LoggingErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
-import io.awspring.cloud.sqs.listener.poller.AsyncMessagePoller;
-import io.awspring.cloud.sqs.listener.splitter.AsyncMessageSplitter;
-import io.awspring.cloud.sqs.listener.splitter.FanOutSplitter;
+import io.awspring.cloud.sqs.listener.source.MessageSource;
+import io.awspring.cloud.sqs.listener.sink.MessageSink;
+import io.awspring.cloud.sqs.listener.sink.FanOutMessageSink;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.UUID;
+
+import io.awspring.cloud.sqs.listener.source.MessageSourceFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
@@ -51,7 +53,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	private final OnSuccessAckHandler<T> DEFAULT_ACK_HANDLER = new OnSuccessAckHandler<>();
 
-	private final FanOutSplitter<T> DEFAULT_MESSAGE_SPLITTER = new FanOutSplitter<>();
+	private final FanOutMessageSink<T> DEFAULT_MESSAGE_SINK = new FanOutMessageSink<>();
 
 	private final Object lifecycleMonitor = new Object();
 
@@ -61,15 +63,15 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	private Collection<String> queueNames = new ArrayList<>();
 
-	private Collection<AsyncMessagePoller<T>> messagePollers = new ArrayList<>();
+	private MessageSourceFactory<T> messageSourceFactory;
 
 	private AsyncMessageListener<T> messageListener;
 
 	private AsyncErrorHandler<T> errorHandler = DEFAULT_ERROR_HANDLER;
 
-	private AsyncAckHandler<T> ackHandler = DEFAULT_ACK_HANDLER;
+	private AckHandler<T> ackHandler = DEFAULT_ACK_HANDLER;
 
-	private AsyncMessageSplitter<T> splitter = DEFAULT_MESSAGE_SPLITTER;
+	private MessageSink<T> messageSink = DEFAULT_MESSAGE_SINK;
 
 	private final Collection<AsyncMessageInterceptor<T>> messageInterceptors = new ArrayList<>();
 
@@ -98,20 +100,19 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 		this.errorHandler = errorHandler;
 	}
 
-	/**
-	 * Add {@link AsyncMessagePoller} instances to be used by this container.
-	 * @param messagePollers the instances.
-	 */
-	public void addMessagePollers(Collection<AsyncMessagePoller<T>> messagePollers) {
-		Assert.notEmpty(messagePollers, "messagePollers cannot be empty");
-		this.messagePollers.addAll(messagePollers);
+	public void setMessageSourceFactory(MessageSourceFactory<T> messageSourceFactory) {
+		this.messageSourceFactory = messageSourceFactory;
+	}
+
+	public void setMessageSink(MessageSink<T> messageSink) {
+		this.messageSink = messageSink;
 	}
 
 	/**
-	 * Set the {@link AsyncAckHandler} instance to be used by this container.
+	 * Set the {@link AckHandler} instance to be used by this container.
 	 * @param ackHandler the instance.
 	 */
-	public void setAckHandler(AsyncAckHandler<T> ackHandler) {
+	public void setAckHandler(AckHandler<T> ackHandler) {
 		Assert.notNull(ackHandler, "ackHandler cannot be null");
 		this.ackHandler = ackHandler;
 	}
@@ -124,15 +125,6 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	public void addMessageInterceptors(Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
 		Assert.notNull(messageInterceptors, "messageInterceptors cannot be null");
 		this.messageInterceptors.addAll(messageInterceptors);
-	}
-
-	/**
-	 * Set the {@link AsyncMessageSplitter} instance to be used by this container.
-	 * @param splitter the instance.
-	 */
-	public void setMessageSplitter(AsyncMessageSplitter<T> splitter) {
-		Assert.notNull(splitter, "splitter cannot be null");
-		this.splitter = splitter;
 	}
 
 	@Override
@@ -150,11 +142,11 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	/**
-	 * Return the {@link AsyncMessagePoller} instances used by this container.
+	 * Return the {@link MessageSource} instances used by this container.
 	 * @return the instances.
 	 */
-	public Collection<AsyncMessagePoller<T>> getMessagePollers() {
-		return this.messagePollers;
+	public MessageSourceFactory<T> getMessageSourceFactory() {
+		return this.messageSourceFactory;
 	}
 
 	/**
@@ -174,19 +166,19 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	/**
-	 * Return the {@link AsyncAckHandler} instance used by this container.
+	 * Return the {@link AckHandler} instance used by this container.
 	 * @return the instance.
 	 */
-	public AsyncAckHandler<T> getAckHandler() {
+	public AckHandler<T> getAckHandler() {
 		return this.ackHandler;
 	}
 
 	/**
-	 * Return the {@link AsyncMessageSplitter} instances used by this container.
+	 * Return the {@link MessageSink} instances used by this container.
 	 * @return the instance.
 	 */
-	public AsyncMessageSplitter<T> getSplitter() {
-		return this.splitter;
+	public MessageSink<T> getMessageSink() {
+		return this.messageSink;
 	}
 
 	/**
@@ -220,7 +212,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	/**
-	 * Return the queue names assigned to this container. May be empty if custom {@link AsyncMessagePoller} instances
+	 * Return the queue names assigned to this container. May be empty if custom {@link MessageSource} instances
 	 * are provided.
 	 * @return the queue names.
 	 */
@@ -239,8 +231,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 			return;
 		}
 		synchronized (this.lifecycleMonitor) {
-			Assert.state(!this.queueNames.isEmpty() || !this.messagePollers.isEmpty(),
-					"Either queue logical names or message pollers must be set");
+			Assert.state(!this.queueNames.isEmpty(), "Queue logical names not set");
 			this.isRunning = true;
 			if (this.id == null) {
 				this.id = resolveContainerId();

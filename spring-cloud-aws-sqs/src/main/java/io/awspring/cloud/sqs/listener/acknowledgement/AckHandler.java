@@ -27,7 +27,7 @@ import org.springframework.messaging.Message;
  * @since 3.0
  */
 @FunctionalInterface
-public interface AsyncAckHandler<T> {
+public interface AckHandler<T> {
 
 	/**
 	 * Called by the {@link io.awspring.cloud.sqs.listener.MessageListenerContainer} when the {@link Message} is

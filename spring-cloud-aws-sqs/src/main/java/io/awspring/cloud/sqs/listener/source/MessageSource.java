@@ -13,34 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener.splitter;
+package io.awspring.cloud.sqs.listener.source;
 
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
 import org.springframework.messaging.Message;
 
 /**
- * Interface for splitting the message batch returned by the
- * {@link io.awspring.cloud.sqs.listener.poller.AsyncMessagePoller} and sending the {@link Message}s to a processing
- * pipeline according to the implementation's strategy.
- *
  * @param <T> the {@link Message} payload type.
  *
  * @author Tomaz Fernandes
  * @since 3.0
  */
 @FunctionalInterface
-public interface AsyncMessageSplitter<T> {
+public interface MessageSource<T> {
 
 	/**
-	 * Split the message batch and feed the messages to the processing pipeline.
-	 * @param messages the message batch.
-	 * @param processingPipeline the processing pipeline.
-	 * @return a collection of completable futures where each future represents the processing of one message from the
-	 * batch.
 	 */
-	Collection<CompletableFuture<Void>> splitAndProcess(Collection<Message<T>> messages,
-			Function<Message<T>, CompletableFuture<Void>> processingPipeline);
+	CompletableFuture<Collection<Message<T>>> receive();
 
 }

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener.poller;
+package io.awspring.cloud.sqs.listener.source;
 
 import io.awspring.cloud.sqs.listener.QueueAttributes;
 import io.awspring.cloud.sqs.listener.QueueAttributesResolver;
@@ -34,13 +34,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.GenericMessage;
+import org.springframework.util.Assert;
 import org.springframework.util.MimeType;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 
 /**
- * {@link AsyncMessagePoller} implementation for polling messages from a SQS queue and converting them to messaging
+ * {@link MessageSource} implementation for polling messages from a SQS queue and converting them to messaging
  * {@link Message}.
  *
  * <p>
@@ -59,11 +60,11 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SqsMessagePoller<T> extends AbstractMessagePoller<T> {
+public class SqsMessageSource<T> extends AbstractPollableMessageSource<T> {
 
-	private static final Logger logger = LoggerFactory.getLogger(SqsMessagePoller.class);
+	private static final Logger logger = LoggerFactory.getLogger(SqsMessageSource.class);
 
-	private final SqsAsyncClient sqsAsyncClient;
+	private SqsAsyncClient sqsAsyncClient;
 
 	private QueueAttributes queueAttributes;
 
@@ -72,26 +73,30 @@ public class SqsMessagePoller<T> extends AbstractMessagePoller<T> {
 	/**
 	 * Create an instance to poll the provided logical endpoint name with the provided client.
 	 * @param logicalEndpointName the logical endpoint name to be polled.
-	 * @param sqsClient the client to be used.
 	 */
-	public SqsMessagePoller(String logicalEndpointName, SqsAsyncClient sqsClient) {
+	public SqsMessageSource(String logicalEndpointName) {
 		super(logicalEndpointName);
-		this.sqsAsyncClient = sqsClient;
+	}
+
+	public void setSqsAsyncClient(SqsAsyncClient sqsAsyncClient) {
+		Assert.notNull(sqsAsyncClient, "sqsAsyncClient cannot be null.");
+		this.sqsAsyncClient = sqsAsyncClient;
 	}
 
 	@Override
 	protected void doStart() {
+		Assert.state(this.sqsAsyncClient != null, "sqsAsyncClient not set");
 		this.queueAttributes = QueueAttributesResolver.resolveAttributes(super.getLogicalEndpointName(),
 				this.sqsAsyncClient);
 		this.queueUrl = queueAttributes.getQueueUrl();
 	}
 
 	@Override
-	protected CompletableFuture<Collection<Message<T>>> doPollForMessages(int numberOfMessages, Duration timeout) {
-		logger.trace("Polling queue {} for {} messages.", this.queueUrl, numberOfMessages);
+	protected CompletableFuture<Collection<Message<T>>> doPollForMessages() {
+		logger.trace("Polling queue {} for {} messages.", this.queueUrl, super.getNumberOfMessagesPerPoll());
 		return sqsAsyncClient
-				.receiveMessage(req -> req.queueUrl(this.queueUrl).maxNumberOfMessages(numberOfMessages)
-						.waitTimeSeconds((int) timeout.getSeconds()))
+				.receiveMessage(req -> req.queueUrl(this.queueUrl).maxNumberOfMessages(getNumberOfMessagesPerPoll())
+						.waitTimeSeconds((int) getPollTimeout().getSeconds()))
 				.thenApply(ReceiveMessageResponse::messages).thenApply(this::convertMessages);
 	}
 

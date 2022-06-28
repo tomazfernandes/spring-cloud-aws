@@ -13,30 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener.poller;
+package io.awspring.cloud.sqs.listener.sink;
 
-import java.time.Duration;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
+
+import io.awspring.cloud.sqs.listener.source.MessageSource;
+import org.springframework.context.SmartLifecycle;
 import org.springframework.messaging.Message;
 
 /**
- * Interface for polling a resource and returning {@link Message} instances.
  *
  * @param <T> the {@link Message} payload type.
  *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-@FunctionalInterface
-public interface AsyncMessagePoller<T> {
+public interface MessageSink<T> {
 
-	/**
-	 * Polls for the specified amount of messages for up to the specified duration.
-	 * @param numberOfMessages the maximum number of messages returned by the poll.
-	 * @param timeout the maximum amount of time to poll for messages.
-	 * @return a completable future containing the batch of polled messages.
-	 */
-	CompletableFuture<Collection<Message<T>>> poll(int numberOfMessages, Duration timeout);
+	Collection<CompletableFuture<Void>> emit(Collection<Message<T>> messages);
 
 }
