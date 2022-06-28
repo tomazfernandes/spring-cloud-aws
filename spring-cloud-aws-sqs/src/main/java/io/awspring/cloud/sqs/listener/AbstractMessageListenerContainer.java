@@ -18,10 +18,12 @@ package io.awspring.cloud.sqs.listener;
 import io.awspring.cloud.sqs.listener.acknowledgement.AckHandler;
 import io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
+import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.LoggingErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
+import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
-import io.awspring.cloud.sqs.listener.sink.MessageSink;
+import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
 import io.awspring.cloud.sqs.listener.sink.FanOutMessageSink;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -71,7 +73,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	private AckHandler<T> ackHandler = DEFAULT_ACK_HANDLER;
 
-	private MessageSink<T> messageSink = DEFAULT_MESSAGE_SINK;
+	private MessageListeningSink<T> messageSink = DEFAULT_MESSAGE_SINK;
 
 	private final Collection<AsyncMessageInterceptor<T>> messageInterceptors = new ArrayList<>();
 
@@ -92,20 +94,51 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	/**
+	 * Set the {@link ErrorHandler} instance to be used by this container.
+	 * The component will be adapted to an {@link AsyncErrorHandler}.
+	 * @param errorHandler the instance.
+	 */
+	public void setErrorHandler(ErrorHandler<T> errorHandler) {
+		Assert.notNull(errorHandler, "errorHandler cannot be null");
+		this.errorHandler = AsyncComponentAdapters.adapt(errorHandler);
+	}
+
+	/**
 	 * Set the {@link AsyncErrorHandler} instance to be used by this container.
 	 * @param errorHandler the instance.
 	 */
-	public void setErrorHandler(AsyncErrorHandler<T> errorHandler) {
+	public void setAsyncErrorHandler(AsyncErrorHandler<T> errorHandler) {
 		Assert.notNull(errorHandler, "errorHandler cannot be null");
 		this.errorHandler = errorHandler;
 	}
 
-	public void setMessageSourceFactory(MessageSourceFactory<T> messageSourceFactory) {
-		this.messageSourceFactory = messageSourceFactory;
+	/**
+	 * Add a collection of interceptors that will intercept the message before processing. Interceptors are executed
+	 * sequentially and in order.
+	 * @param messageInterceptor the interceptor instances.
+	 */
+	public void addMessageInterceptor(MessageInterceptor<T> messageInterceptor) {
+		Assert.notNull(messageInterceptor, "messageInterceptors cannot be null");
+		this.messageInterceptors.add(AsyncComponentAdapters.adapt(messageInterceptor));
 	}
 
-	public void setMessageSink(MessageSink<T> messageSink) {
-		this.messageSink = messageSink;
+	/**
+	 * Add an interceptor that will intercept the message before processing. Interceptors are executed
+	 * sequentially and in order.
+	 * @param messageInterceptor the interceptor instances.
+	 */
+	public void addAsyncMessageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
+		Assert.notNull(messageInterceptor, "messageInterceptors cannot be null");
+		this.messageInterceptors.add(messageInterceptor);
+	}
+
+	public void setMessageListener(MessageListener<T> messageListener) {
+		this.messageListener = AsyncComponentAdapters.adapt(messageListener);
+	}
+
+	@Override
+	public void setAsyncMessageListener(AsyncMessageListener<T> asyncMessageListener) {
+		this.messageListener = asyncMessageListener;
 	}
 
 	/**
@@ -117,19 +150,12 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 		this.ackHandler = ackHandler;
 	}
 
-	/**
-	 * Add a collection of interceptors that will intercept the message before processing. Interceptors are executed
-	 * sequentially and in order.
-	 * @param messageInterceptors the interceptor instances.
-	 */
-	public void addMessageInterceptors(Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
-		Assert.notNull(messageInterceptors, "messageInterceptors cannot be null");
-		this.messageInterceptors.addAll(messageInterceptors);
+	public void setMessageSourceFactory(MessageSourceFactory<T> messageSourceFactory) {
+		this.messageSourceFactory = messageSourceFactory;
 	}
 
-	@Override
-	public void setMessageListener(AsyncMessageListener<T> asyncMessageListener) {
-		this.messageListener = asyncMessageListener;
+	public void setMessageSink(MessageListeningSink<T> messageSink) {
+		this.messageSink = messageSink;
 	}
 
 	/**
@@ -174,10 +200,10 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	/**
-	 * Return the {@link MessageSink} instances used by this container.
+	 * Return the {@link MessageListeningSink} instances used by this container.
 	 * @return the instance.
 	 */
-	public MessageSink<T> getMessageSink() {
+	public MessageListeningSink<T> getMessageSink() {
 		return this.messageSink;
 	}
 

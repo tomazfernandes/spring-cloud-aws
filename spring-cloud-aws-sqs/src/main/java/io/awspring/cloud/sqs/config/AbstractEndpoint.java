@@ -19,7 +19,7 @@ import io.awspring.cloud.sqs.listener.AbstractMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.adapter.AsyncMessagingMessageListenerAdapter;
-import io.awspring.cloud.sqs.listener.sink.MessageSink;
+import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
 import io.awspring.cloud.sqs.listener.sink.FanOutMessageSink;
 import java.lang.reflect.Method;
 import java.util.Collection;
@@ -48,7 +48,7 @@ public abstract class AbstractEndpoint implements Endpoint {
 
 	private MessageHandlerMethodFactory handlerMethodFactory;
 
-	private MessageSink<?> messageSink;
+	private MessageListeningSink<?> messageSink;
 
 	protected AbstractEndpoint(Collection<String> logicalNames, @Nullable String listenerContainerFactoryName,
 			String id) {
@@ -90,11 +90,11 @@ public abstract class AbstractEndpoint implements Endpoint {
 	}
 
 	/**
-	 * Set a {@link MessageSink} to handle messages polled from this endpoint. If none is provided, one will be
+	 * Set a {@link MessageListeningSink} to handle messages polled from this endpoint. If none is provided, one will be
 	 * created depending on the endpoint's configuration.
 	 * @param messageSink the sink.
 	 */
-	public void setMessageSink(MessageSink<?> messageSink) {
+	public void setMessageSink(MessageListeningSink<?> messageSink) {
 		this.messageSink = messageSink;
 	}
 
@@ -104,13 +104,13 @@ public abstract class AbstractEndpoint implements Endpoint {
 	 */
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public void setupContainer(MessageListenerContainer container) {
-		container.setMessageListener(createMessageListener());
+		container.setAsyncMessageListener(createMessageListener());
 		if (container instanceof AbstractMessageListenerContainer) {
 			((AbstractMessageListenerContainer) container).setMessageSink(createOrGetMessageSplitter());
 		}
 	}
 
-	private MessageSink<?> createOrGetMessageSplitter() {
+	private MessageListeningSink<?> createOrGetMessageSplitter() {
 		return this.messageSink != null ? this.messageSink : new FanOutMessageSink<>();
 	}
 

@@ -19,12 +19,13 @@ import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 
 /**
- * {@link MessageSink} implementation that processes provided messages sequentially and in order.
+ * {@link MessageListeningSink} implementation that processes provided messages sequentially and in order.
  *
  * @param <T> the {@link Message} payload type.
  *
@@ -36,14 +37,14 @@ public class OrderedMessageSink<T> extends AbstractMessageListeningSink<T> {
 	Logger logger = LoggerFactory.getLogger(OrderedMessageSink.class);
 
 	@Override
-	protected Collection<CompletableFuture<Void>> doEmit(Collection<Message<T>> messages) {
+	protected Collection<CompletableFuture<Void>> doEmit(Collection<Message<T>> messages, AsyncMessageListener<T> messageListener) {
 		logger.debug("Splitting {} messages", messages.size());
 		CompletableFuture<Void> identity = new CompletableFuture<>();
 		identity.complete(null);
 		CompletableFuture.supplyAsync(() -> messages.stream().reduce(identity,
-				(voidFuture, msg) -> voidFuture.thenCompose(theVoid -> super.getMessageListener().onMessage(msg)), (a, b) -> b),
+				(voidFuture, msg) -> voidFuture.thenCompose(theVoid -> messageListener.onMessage(msg)), (a, b) -> b),
 				getTaskExecutor()).join();
-		return messages.stream().map(msg -> CompletableFuture.<Void>completedFuture(null)).collect(Collectors.toList());
+		return super.returnVoidFutures(messages);
 	}
 
 }

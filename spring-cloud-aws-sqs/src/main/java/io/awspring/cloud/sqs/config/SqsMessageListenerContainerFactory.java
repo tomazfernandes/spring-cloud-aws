@@ -102,7 +102,7 @@ public class SqsMessageListenerContainerFactory<T>
 	private void addVisibilityExtender(Integer minTimeToProcess) {
 		MessageVisibilityExtenderInterceptor<T> interceptor = new MessageVisibilityExtenderInterceptor<>();
 		interceptor.setMinimumVisibility(minTimeToProcess);
-		super.addMessageInterceptor(interceptor);
+		super.addAsyncMessageInterceptor(interceptor);
 	}
 
 }

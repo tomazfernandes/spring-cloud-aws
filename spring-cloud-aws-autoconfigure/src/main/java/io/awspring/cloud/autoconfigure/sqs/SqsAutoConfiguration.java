@@ -25,7 +25,7 @@ import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.acknowledgement.AckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
-import io.awspring.cloud.sqs.listener.sink.MessageSink;
+import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
 import java.util.Collection;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -71,16 +71,16 @@ public class SqsAutoConfiguration {
 			ObjectProvider<AsyncErrorHandler<Object>> errorHandler,
 			ObjectProvider<Collection<AsyncMessageInterceptor<Object>>> interceptors,
 			ObjectProvider<AsyncMessageInterceptor<Object>> interceptor,
-			ObjectProvider<MessageSink<Object>> messageSplitter,
+			ObjectProvider<MessageListeningSink<Object>> messageSplitter,
 			ObjectProvider<AckHandler<Object>> ackHandler) {
 		SqsMessageListenerContainerFactory<Object> factory = new SqsMessageListenerContainerFactory<>();
 		containerOptions
 				.ifAvailable(options -> ReflectionUtils.shallowCopyFieldState(options, factory.getContainerOptions()));
 		sqsAsyncClient.ifAvailable(factory::setSqsAsyncClient);
-		errorHandler.ifAvailable(factory::setErrorHandler);
+		errorHandler.ifAvailable(factory::setAsyncErrorHandler);
 		ackHandler.ifAvailable(factory::setAckHandler);
-		interceptor.ifAvailable(factory::addMessageInterceptor);
-		interceptors.ifAvailable(factory::addMessageInterceptors);
+		interceptor.ifAvailable(factory::addAsyncMessageInterceptor);
+		interceptors.ifAvailable(interceptorList -> interceptorList.forEach(factory::addAsyncMessageInterceptor));
 		messageSplitter.ifAvailable(factory::setMessageSink);
 		return factory;
 	}

@@ -38,6 +38,6 @@ public interface MessageListenerContainer<T> extends SmartLifecycle {
 	 * Set the listener to be used to process messages asynchronously.
 	 * @param asyncMessageListener the listener instance.
 	 */
-	void setMessageListener(AsyncMessageListener<T> asyncMessageListener);
+	void setAsyncMessageListener(AsyncMessageListener<T> asyncMessageListener);
 
 }

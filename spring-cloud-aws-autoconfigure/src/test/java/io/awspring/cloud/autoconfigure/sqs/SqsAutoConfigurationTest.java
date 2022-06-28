@@ -35,14 +35,13 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import io.awspring.cloud.sqs.listener.sink.MessageSink;
+import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.Nullable;
-import org.springframework.messaging.Message;
 import org.springframework.test.util.ReflectionTestUtils;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.client.config.SdkClientOption;
@@ -142,7 +141,7 @@ class SqsAutoConfigurationTest {
 		}
 
 		@Bean
-		MessageSink<Object> messageSink() {
+		MessageListeningSink<Object> messageSink() {
 			return msgs -> msgs.stream().map(msg -> CompletableFuture.<Void>completedFuture(null)).collect(Collectors.toList());
 		}
 

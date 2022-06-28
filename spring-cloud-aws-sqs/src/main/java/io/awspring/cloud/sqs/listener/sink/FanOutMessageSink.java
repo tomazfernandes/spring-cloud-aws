@@ -19,12 +19,13 @@ import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 
 /**
- * {@link MessageSink} implementation that processes all messages from the provided batch in parallel.
+ * {@link MessageListeningSink} implementation that processes all messages from the provided batch in parallel.
  *
  * @param <T> the {@link Message} payload type.
  *
@@ -36,10 +37,10 @@ public class FanOutMessageSink<T> extends AbstractMessageListeningSink<T> {
 	Logger logger = LoggerFactory.getLogger(FanOutMessageSink.class);
 
 	@Override
-	protected Collection<CompletableFuture<Void>> doEmit(Collection<Message<T>> messages) {
+	protected Collection<CompletableFuture<Void>> doEmit(Collection<Message<T>> messages, AsyncMessageListener<T> messageListener) {
 		logger.trace("Splitting {} messages", messages.size());
 		return messages.stream().map(msg -> CompletableFuture
-				.supplyAsync(() -> super.getMessageListener().onMessage(msg), super.getTaskExecutor())
+				.supplyAsync(() -> messageListener.onMessage(msg), super.getTaskExecutor())
 				.thenCompose(x -> x))
 			.collect(Collectors.toList());
 	}

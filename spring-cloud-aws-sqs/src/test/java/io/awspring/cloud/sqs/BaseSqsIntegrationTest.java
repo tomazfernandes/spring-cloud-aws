@@ -44,6 +44,7 @@ abstract class BaseSqsIntegrationTest {
 	protected static final String RECEIVE_FROM_MANY_1_QUEUE_NAME = "receive_many_test_queue_1";
 	protected static final String RECEIVE_FROM_MANY_2_QUEUE_NAME = "receive_many_test_queue_2";
 	protected static final String MANUALLY_CREATE_CONTAINER_QUEUE_NAME = "manually_create_container_test_queue";
+	protected static final String MANUALLY_START_CONTAINER = "manually_start_container_test_queue";
 	protected static final String MANUALLY_CREATE_FACTORY_QUEUE_NAME = "manually_create_factory_test_queue";
 
 	@Container
@@ -85,6 +86,7 @@ abstract class BaseSqsIntegrationTest {
 						.attributes(singletonMap(QueueAttributeName.VISIBILITY_TIMEOUT, "1")).build()),
 				client.createQueue(req -> req.queueName(RESOLVES_POJO_TYPES_QUEUE_NAME).build()),
 				client.createQueue(req -> req.queueName(MANUALLY_CREATE_CONTAINER_QUEUE_NAME).build()),
+				client.createQueue(req -> req.queueName(MANUALLY_START_CONTAINER).build()),
 				client.createQueue(req -> req.queueName(MANUALLY_CREATE_FACTORY_QUEUE_NAME).build())).join();
 	}
 
