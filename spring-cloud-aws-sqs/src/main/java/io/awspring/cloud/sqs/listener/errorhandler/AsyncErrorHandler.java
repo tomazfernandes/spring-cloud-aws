@@ -19,7 +19,9 @@ import java.util.concurrent.CompletableFuture;
 import org.springframework.messaging.Message;
 
 /**
- * Functional interface for handling message processing errors.
+ * Functional interface for handling message processing errors in a non-blocking fashion.
+ *
+ * The non-blocking approach enables higher throughput for the application.
  *
  * @param <T> the {@link Message} payload type.
  *
@@ -30,8 +32,7 @@ import org.springframework.messaging.Message;
 public interface AsyncErrorHandler<T> {
 
 	/**
-	 * Asynchronously handle the error thrown by the {@link io.awspring.cloud.sqs.listener.AsyncMessageListener} when
-	 * processing the given {@link Message}.
+	 * Asynchronously handle the errors thrown processing the given {@link Message}.
 	 * @param message the message.
 	 * @param t the thrown exception.
 	 * @return a completable future.

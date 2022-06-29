@@ -15,12 +15,11 @@
  */
 package io.awspring.cloud.sqs.listener.sink;
 
+import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
-
-import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -39,8 +38,7 @@ import org.springframework.util.Assert;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractMessageListeningSink<T> implements MessageListeningSink<T>,
-	SmartLifecycle {
+public abstract class AbstractMessageListeningSink<T> implements MessageListeningSink<T>, SmartLifecycle {
 
 	private static final int DEFAULT_CORE_SIZE = 10;
 
@@ -63,7 +61,8 @@ public abstract class AbstractMessageListeningSink<T> implements MessageListenin
 	}
 
 	@Override
-	public Collection<CompletableFuture<Void>> emit(Collection<Message<T>> messages, AsyncMessageListener<T> messageListener) {
+	public Collection<CompletableFuture<Void>> emit(Collection<Message<T>> messages,
+			AsyncMessageListener<T> messageListener) {
 		Assert.notNull(messages, "messages cannot be null");
 		Assert.notNull(messageListener, "messageListener cannot be null");
 		if (!isRunning()) {
@@ -74,11 +73,12 @@ public abstract class AbstractMessageListeningSink<T> implements MessageListenin
 	}
 
 	protected List<CompletableFuture<Void>> returnVoidFutures(Collection<Message<T>> messages) {
-		return messages.stream().map(msg -> CompletableFuture.<Void>completedFuture(null)).collect(Collectors.toList());
+		return messages.stream().map(msg -> CompletableFuture.<Void> completedFuture(null))
+				.collect(Collectors.toList());
 	}
 
 	protected abstract Collection<CompletableFuture<Void>> doEmit(Collection<Message<T>> messages,
-																  AsyncMessageListener<T> messageListener);
+			AsyncMessageListener<T> messageListener);
 
 	@Override
 	public void start() {
@@ -105,7 +105,8 @@ public abstract class AbstractMessageListeningSink<T> implements MessageListenin
 			if (this.taskExecutor instanceof DisposableBean) {
 				try {
 					((DisposableBean) this.taskExecutor).destroy();
-				} catch (Exception e) {
+				}
+				catch (Exception e) {
 					throw new IllegalStateException("Error destroying TaskExecutor for sink.");
 				}
 			}

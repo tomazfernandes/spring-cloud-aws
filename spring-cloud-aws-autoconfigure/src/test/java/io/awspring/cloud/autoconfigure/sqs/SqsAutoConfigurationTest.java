@@ -27,15 +27,13 @@ import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.acknowledgement.AckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
-
+import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
-
-import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -103,12 +101,13 @@ class SqsAutoConfigurationTest {
 	}
 
 	private Map<?, ?> getProperties(SqsAsyncClient sqsAsyncClient) {
-		Object clientConfiguration = Objects.requireNonNull(ReflectionTestUtils.getField(sqsAsyncClient, "clientConfiguration"),
-			() -> "clientConfiguration field not found in " + sqsAsyncClient.getClass().getSimpleName());
+		Object clientConfiguration = Objects.requireNonNull(
+				ReflectionTestUtils.getField(sqsAsyncClient, "clientConfiguration"),
+				() -> "clientConfiguration field not found in " + sqsAsyncClient.getClass().getSimpleName());
 		Object attributes = Objects.requireNonNull(ReflectionTestUtils.getField(clientConfiguration, "attributes"),
-			() -> "attributes field not found in " + clientConfiguration.getClass().getSimpleName());
+				() -> "attributes field not found in " + clientConfiguration.getClass().getSimpleName());
 		return (Map<?, ?>) Objects.requireNonNull(ReflectionTestUtils.getField(attributes, "attributes"),
-			() -> "attributes field not found in " + clientConfiguration.getClass().getSimpleName());
+				() -> "attributes field not found in " + clientConfiguration.getClass().getSimpleName());
 	}
 
 	@Test
@@ -119,7 +118,7 @@ class SqsAutoConfigurationTest {
 					SqsMessageListenerContainerFactory<?> factory = context
 							.getBean(SqsMessageListenerContainerFactory.class);
 					assertThat(ReflectionTestUtils.getField(factory, "containerOptions")).isNotNull()
-						.extracting("maxInflightMessagesPerQueue").isEqualTo(19);
+							.extracting("maxInflightMessagesPerQueue").isEqualTo(19);
 					assertThat(ReflectionTestUtils.getField(factory, "errorHandler")).isNotNull();
 					assertThat(ReflectionTestUtils.getField(factory, "ackHandler")).isNotNull();
 					assertThat(ReflectionTestUtils.getField(factory, "messageSink")).isNotNull();
@@ -142,7 +141,7 @@ class SqsAutoConfigurationTest {
 
 		@Bean
 		MessageListeningSink<Object> messageSink() {
-			return msgs -> msgs.stream().map(msg -> CompletableFuture.<Void>completedFuture(null)).collect(Collectors.toList());
+			return (msgs, listener) -> msgs.stream().map(listener::onMessage).collect(Collectors.toList());
 		}
 
 		@Bean

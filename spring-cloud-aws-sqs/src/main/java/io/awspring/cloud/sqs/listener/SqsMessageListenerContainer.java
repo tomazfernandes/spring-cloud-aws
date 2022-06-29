@@ -20,12 +20,13 @@ import io.awspring.cloud.sqs.listener.acknowledgement.AckHandler;
 import io.awspring.cloud.sqs.listener.adapter.DelegatingMessageListenerAdapter;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
+import io.awspring.cloud.sqs.listener.sink.AbstractMessageListeningSink;
+import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
 import io.awspring.cloud.sqs.listener.source.MessageSourceFactory;
 import io.awspring.cloud.sqs.listener.source.PollableMessageSource;
-import io.awspring.cloud.sqs.listener.sink.AbstractMessageListeningSink;
-import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
-
+import io.awspring.cloud.sqs.listener.source.SqsMessageSource;
+import io.awspring.cloud.sqs.listener.source.SqsMessageSourceFactory;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
@@ -36,9 +37,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-
-import io.awspring.cloud.sqs.listener.source.SqsMessageSource;
-import io.awspring.cloud.sqs.listener.source.SqsMessageSourceFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -55,8 +53,8 @@ import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 /**
  * {@link MessageListenerContainer} implementation for SQS queues.
  *
- * All properties are assigned on container {@link #start()}, thus components and {@link ContainerOptions} can be
- * changed at runtime and such changes will be valid upon container restart.
+ * Components and {@link ContainerOptions} can be changed at runtime and such changes will be valid upon container
+ * restart.
  *
  * @author Tomaz Fernandes
  * @since 3.0
@@ -113,9 +111,8 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	}
 
 	private Collection<MessageSource<T>> createMessageSources() {
-		MessageSourceFactory<T> factoryToUse = super.getMessageSourceFactory() != null
-			? super.getMessageSourceFactory()
-			: new SqsMessageSourceFactory<>();
+		MessageSourceFactory<T> factoryToUse = super.getMessageSourceFactory() != null ? super.getMessageSourceFactory()
+				: new SqsMessageSourceFactory<>();
 		return this.getQueueNames().stream().map(factoryToUse::create).collect(Collectors.toList());
 	}
 
@@ -140,7 +137,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	private void configureSink() {
 		if (this.messageSink instanceof AbstractMessageListeningSink) {
 			((AbstractMessageListeningSink<T>) this.messageSink)
-				.setPoolSize(this.maxInFlightMessagesPerQueue * this.messageSources.size());
+					.setPoolSize(this.maxInFlightMessagesPerQueue * this.messageSources.size());
 		}
 		if (this.messageSink instanceof SmartInitializingSingleton) {
 			((SmartInitializingSingleton) this.messageSink).afterSingletonsInstantiated();
@@ -148,8 +145,8 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	}
 
 	private ProcessingPipelineMessageListener<T> decorateMessageListener() {
-		return new ProcessingPipelineMessageListener<>(super.getMessageListener(),
-			super.getErrorHandler(), super.getAckHandler(), super.getMessageInterceptors());
+		return new ProcessingPipelineMessageListener<>(super.getMessageListener(), super.getErrorHandler(),
+				super.getAckHandler(), super.getMessageInterceptors());
 	}
 
 	private void manageSourcesLifecycle(Consumer<SmartLifecycle> consumer) {
@@ -163,7 +160,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	private void startContainerThread() {
 		if (this.taskExecutor instanceof AsyncListenableTaskExecutor) {
 			this.executionFuture = ((AsyncListenableTaskExecutor) this.taskExecutor)
-				.submitListenable(this::pollAndProcessMessages).completable();
+					.submitListenable(this::pollAndProcessMessages).completable();
 		}
 		else {
 			this.taskExecutor.execute(this::pollAndProcessMessages);
@@ -182,11 +179,9 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 						releasePermits(this.messagesPerPoll);
 						return;
 					}
-					manageFutureFrom(messageSource.receive()
-						.exceptionally(this::handleSourceException)
-						.thenApply(this::releaseUnusedPermits)
-						.thenApply(this::emitMessagesToListener)
-						.thenAccept(this::releasePermitsAndHandleResult));
+					manageFutureFrom(messageSource.receive().exceptionally(this::handleSourceException)
+							.thenApply(this::releaseUnusedPermits).thenApply(this::emitMessagesToListener)
+							.thenAccept(this::releasePermitsAndHandleResult));
 				}
 				catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
@@ -206,9 +201,9 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	private void releasePermitsAndHandleResult(Collection<CompletableFuture<Void>> messageExecutionFutures) {
 		messageExecutionFutures.forEach(future -> future.exceptionally(t -> {
-				logger.error("Error processing message: ", t);
-				return null;
-			}).thenRun(() -> releasePermits(1)));
+			logger.error("Error processing message: ", t);
+			return null;
+		}).thenRun(() -> releasePermits(1)));
 	}
 
 	private void releasePermits(int messagesPerPoll) {
@@ -308,8 +303,9 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		private final AckHandler<T> ackHandler;
 		private final Collection<AsyncMessageInterceptor<T>> messageInterceptors;
 
-		private ProcessingPipelineMessageListener(AsyncMessageListener<T> messageListener, AsyncErrorHandler<T> errorHandler,
-												  AckHandler<T> ackHandler, Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
+		private ProcessingPipelineMessageListener(AsyncMessageListener<T> messageListener,
+				AsyncErrorHandler<T> errorHandler, AckHandler<T> ackHandler,
+				Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
 			super(messageListener);
 			Assert.notNull(errorHandler, "No error handler provided");
 			Assert.notNull(ackHandler, "No ackHandler provided");
@@ -322,21 +318,20 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		@Override
 		public CompletableFuture<Void> onMessage(Message<T> message) {
 			logger.trace("Processing message {}", MessageHeaderUtils.getId(message));
-			return intercept(message)
-				.thenCompose(getDelegate()::onMessage)
-				.handle((val, t) -> handleMessageListenerResult(message, t)).thenCompose(x -> x);
+			return intercept(message).thenCompose(getDelegate()::onMessage)
+					.handle((val, t) -> handleMessageListenerResult(message, t)).thenCompose(x -> x);
 		}
 
 		private CompletableFuture<Message<T>> intercept(Message<T> message) {
 			return this.messageInterceptors.stream().reduce(CompletableFuture.completedFuture(message),
-				(messageFuture, interceptor) -> messageFuture.thenCompose(interceptor::intercept), (a, b) -> a);
+					(messageFuture, interceptor) -> messageFuture.thenCompose(interceptor::intercept), (a, b) -> a);
 		}
 
 		private CompletableFuture<Void> handleMessageListenerResult(Message<T> message, Throwable throwable) {
 			logger.trace("Handling result for message {}", MessageHeaderUtils.getId(message));
 			return throwable == null ? this.ackHandler.onSuccess(message)
-				: this.errorHandler.handleError(message, throwable)
-				.thenCompose(val -> this.ackHandler.onError(message, throwable));
+					: this.errorHandler.handleError(message, throwable)
+							.thenCompose(val -> this.ackHandler.onError(message, throwable));
 		}
 	}
 

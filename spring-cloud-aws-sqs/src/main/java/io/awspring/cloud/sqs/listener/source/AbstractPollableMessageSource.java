@@ -78,7 +78,6 @@ public abstract class AbstractPollableMessageSource<T> implements PollableMessag
 		return doPollForMessages();
 	}
 
-
 	protected abstract CompletableFuture<Collection<Message<T>>> doPollForMessages();
 
 	@Override

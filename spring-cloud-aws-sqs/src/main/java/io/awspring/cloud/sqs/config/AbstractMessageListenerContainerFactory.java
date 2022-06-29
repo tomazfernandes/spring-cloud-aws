@@ -27,13 +27,12 @@ import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
-import io.awspring.cloud.sqs.listener.source.MessageSource;
 import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
+import io.awspring.cloud.sqs.listener.source.MessageSource;
+import io.awspring.cloud.sqs.listener.source.MessageSourceFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-
-import io.awspring.cloud.sqs.listener.source.MessageSourceFactory;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
@@ -70,9 +69,9 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	}
 
 	/**
-	 * Set the {@link ErrorHandler} instance to be used by containers created with this factory. If none is
-	 * provided, a default {@link io.awspring.cloud.sqs.listener.errorhandler.LoggingErrorHandler} is used.
-	 * The component will be adapted to an {@link AsyncErrorHandler}.
+	 * Set the {@link ErrorHandler} instance to be used by containers created with this factory. If none is provided, a
+	 * default {@link io.awspring.cloud.sqs.listener.errorhandler.LoggingErrorHandler} is used. The component will be
+	 * adapted to an {@link AsyncErrorHandler}.
 	 * @param errorHandler the error handler instance.
 	 */
 	public void setErrorHandler(ErrorHandler<T> errorHandler) {
@@ -91,9 +90,8 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	}
 
 	/**
-	 * Add a {@link MessageInterceptor} to be used by containers created with this factory. Interceptors will be
-	 * applied just before method invocation.
-	 * The component will be adapted to an {@link AsyncMessageInterceptor}.
+	 * Add a {@link MessageInterceptor} to be used by containers created with this factory. Interceptors will be applied
+	 * just before method invocation. The component will be adapted to an {@link AsyncMessageInterceptor}.
 	 * @param messageInterceptor the message interceptor instance.
 	 */
 	public void addMessageInterceptor(MessageInterceptor<T> messageInterceptor) {
@@ -112,9 +110,9 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	}
 
 	/**
-	 * Set the {@link MessageListener} instance to be used by containers created with this factory. If none is
-	 * provided, a default one will be created according to the endpoint's configuration.
-	 * The component will be adapted to an {@link AsyncMessageListener}.
+	 * Set the {@link MessageListener} instance to be used by containers created with this factory. If none is provided,
+	 * a default one will be created according to the endpoint's configuration. The component will be adapted to an
+	 * {@link AsyncMessageListener}.
 	 * @param messageListener the message listener instance.
 	 */
 	public void setMessageListener(MessageListener<T> messageListener) {
@@ -133,8 +131,8 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	}
 
 	/**
-	 * Set the {@link AckHandler} instance to be used by containers created with this factory. If none is provided,
-	 * a default {@link io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler} is used.
+	 * Set the {@link AckHandler} instance to be used by containers created with this factory. If none is provided, a
+	 * default {@link io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler} is used.
 	 * @param ackHandler the acknowledgement handler instance.
 	 */
 	public void setAckHandler(AckHandler<T> ackHandler) {
@@ -155,8 +153,8 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	/**
 	 * Set the {@link MessageListeningSink} instance to be used by containers created with this factory. If none is
 	 * provided, a default will be instantiated according to each endpoint's configuration. Message splitters handle the
-	 * batch of messages returned by the {@link MessageSource} and feeds the
-	 * messages to the container processing pipeline.
+	 * batch of messages returned by the {@link MessageSource} and feeds the messages to the container processing
+	 * pipeline.
 	 * @param messageSink the message splitter instance.
 	 */
 	public void setMessageSink(MessageListeningSink<T> messageSink) {
@@ -204,7 +202,7 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 				.acceptIfNotNull(this.ackHandler, container::setAckHandler)
 				.acceptIfNotNull(this.messageSourceFactory, container::setMessageSourceFactory)
 				.acceptIfNotNull(this.messageInterceptors,
-					interceptors -> interceptors.forEach(container::addAsyncMessageInterceptor));
+						interceptors -> interceptors.forEach(container::addAsyncMessageInterceptor));
 	}
 
 	protected abstract C createContainerInstance(Endpoint endpoint, ContainerOptions containerOptions);

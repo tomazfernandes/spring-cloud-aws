@@ -22,16 +22,15 @@ import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.LoggingErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
-import io.awspring.cloud.sqs.listener.source.MessageSource;
-import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
 import io.awspring.cloud.sqs.listener.sink.FanOutMessageSink;
+import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
+import io.awspring.cloud.sqs.listener.source.MessageSource;
+import io.awspring.cloud.sqs.listener.source.MessageSourceFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.UUID;
-
-import io.awspring.cloud.sqs.listener.source.MessageSourceFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
@@ -94,8 +93,8 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	/**
-	 * Set the {@link ErrorHandler} instance to be used by this container.
-	 * The component will be adapted to an {@link AsyncErrorHandler}.
+	 * Set the {@link ErrorHandler} instance to be used by this container. The component will be adapted to an
+	 * {@link AsyncErrorHandler}.
 	 * @param errorHandler the instance.
 	 */
 	public void setErrorHandler(ErrorHandler<T> errorHandler) {
@@ -123,8 +122,8 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	/**
-	 * Add an interceptor that will intercept the message before processing. Interceptors are executed
-	 * sequentially and in order.
+	 * Add an interceptor that will intercept the message before processing. Interceptors are executed sequentially and
+	 * in order.
 	 * @param messageInterceptor the interceptor instances.
 	 */
 	public void addAsyncMessageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
@@ -238,8 +237,8 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	/**
-	 * Return the queue names assigned to this container. May be empty if custom {@link MessageSource} instances
-	 * are provided.
+	 * Return the queue names assigned to this container. May be empty if custom {@link MessageSource} instances are
+	 * provided.
 	 * @return the queue names.
 	 */
 	public Collection<String> getQueueNames() {

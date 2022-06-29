@@ -15,12 +15,13 @@
  */
 package io.awspring.cloud.sqs.listener;
 
+import java.util.concurrent.CompletableFuture;
 import org.springframework.messaging.Message;
 
-import java.util.concurrent.CompletableFuture;
-
 /**
- * Interface to process incoming {@link Message}s.
+ * Interface to process incoming {@link Message}s in a non-blocking fashion.
+ *
+ * The non-blocking approach enables higher throughput for the application.
  *
  * @param <T> the {@link Message} payload type.
  *
@@ -31,7 +32,7 @@ import java.util.concurrent.CompletableFuture;
 public interface AsyncMessageListener<T> {
 
 	/**
-	 * Process the provided message asynchronously.
+	 * Process the provided message.
 	 * @param message the message.
 	 * @return a completable future.
 	 */

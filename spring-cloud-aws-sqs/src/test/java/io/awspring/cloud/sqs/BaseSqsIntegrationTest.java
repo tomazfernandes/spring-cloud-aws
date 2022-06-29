@@ -91,9 +91,10 @@ abstract class BaseSqsIntegrationTest {
 	}
 
 	protected static SqsAsyncClient createAsyncClient() {
-		return SqsAsyncClient.builder().credentialsProvider(credentialsProvider)
-				.endpointOverride(localstack.getEndpointOverride(SQS)).region(Region.of(localstack.getRegion()))
-				.build();
+		return SqsAsyncClient.builder()
+			.credentialsProvider(credentialsProvider)
+			.endpointOverride(localstack.getEndpointOverride(SQS)).region(Region.of(localstack.getRegion()))
+			.build();
 	}
 
 }

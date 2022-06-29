@@ -20,6 +20,8 @@ import java.util.concurrent.CompletableFuture;
 import org.springframework.messaging.Message;
 
 /**
+ * An asynchronous source for a batch of {@link Message} instances.
+ *
  * @param <T> the {@link Message} payload type.
  *
  * @author Tomaz Fernandes
@@ -29,6 +31,8 @@ import org.springframework.messaging.Message;
 public interface MessageSource<T> {
 
 	/**
+	 * Receive a batch of {@link Message} instances.
+	 * @return the message batch.
 	 */
 	CompletableFuture<Collection<Message<T>>> receive();
 

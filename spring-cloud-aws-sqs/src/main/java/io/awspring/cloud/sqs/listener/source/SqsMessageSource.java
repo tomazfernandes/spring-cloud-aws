@@ -20,7 +20,6 @@ import io.awspring.cloud.sqs.listener.QueueAttributesResolver;
 import io.awspring.cloud.sqs.listener.QueueMessageVisibility;
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
 import io.awspring.cloud.sqs.listener.acknowledgement.SqsAcknowledge;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
@@ -45,7 +44,7 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
  * {@link Message}.
  *
  * <p>
- * A {@link io.awspring.cloud.sqs.listener.MessageListenerContainer} can contain many pollers, and each poller polls
+ * A {@link io.awspring.cloud.sqs.listener.MessageListenerContainer} can contain many sources, and each source polls
  * from a single queue.
  * </p>
  *

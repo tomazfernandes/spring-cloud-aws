@@ -19,8 +19,10 @@ import java.util.concurrent.CompletableFuture;
 import org.springframework.messaging.Message;
 
 /**
- * Interface for intercepting messages before being sent to the
+ * Interface intercepting messages in a non-blocking fashion before being sent to the
  * {@link io.awspring.cloud.sqs.listener.AsyncMessageListener}.
+ *
+ * The non-blocking approach enables higher throughput for the application.
  *
  * @param <T> the {@link Message} payload type.
  *

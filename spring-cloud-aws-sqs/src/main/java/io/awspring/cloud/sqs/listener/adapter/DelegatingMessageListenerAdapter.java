@@ -1,16 +1,32 @@
+/*
+ * Copyright 2013-2022 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.awspring.cloud.sqs.listener.adapter;
 
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
+import java.util.concurrent.CompletableFuture;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
-import java.util.concurrent.CompletableFuture;
-
 /**
+ * {@link AsyncMessageListener} implementation that delegates {@link #onMessage} calls.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class DelegatingMessageListenerAdapter<T> implements AsyncMessageListener<T> {
+public abstract class DelegatingMessageListenerAdapter<T> implements AsyncMessageListener<T> {
 
 	private final AsyncMessageListener<T> delegate;
 
