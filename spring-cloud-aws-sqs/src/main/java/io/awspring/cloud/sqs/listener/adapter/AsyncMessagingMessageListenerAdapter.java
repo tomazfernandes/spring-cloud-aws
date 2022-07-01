@@ -16,6 +16,7 @@
 package io.awspring.cloud.sqs.listener.adapter;
 
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
+import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
@@ -28,7 +29,7 @@ import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class AsyncMessagingMessageListenerAdapter<T> extends MessagingMessageListenerAdapter
+public class AsyncMessagingMessageListenerAdapter<T> extends MessagingMessageListenerAdapter<T>
 		implements AsyncMessageListener<T> {
 
 	public AsyncMessagingMessageListenerAdapter(InvocableHandlerMethod handlerMethod) {
@@ -39,6 +40,20 @@ public class AsyncMessagingMessageListenerAdapter<T> extends MessagingMessageLis
 	public CompletableFuture<Void> onMessage(Message<T> message) {
 		try {
 			Object result = super.invokeHandler(message);
+			return result instanceof CompletableFuture ? ((CompletableFuture<?>) result).thenRun(() -> {
+			}) : CompletableFuture.completedFuture(null);
+		}
+		catch (Exception e) {
+			CompletableFuture<Void> future = new CompletableFuture<>();
+			future.completeExceptionally(e);
+			return future;
+		}
+	}
+
+	@Override
+	public CompletableFuture<Void> onMessage(Collection<Message<T>> messages) {
+		try {
+			Object result = super.invokeHandler(messages);
 			return result instanceof CompletableFuture ? ((CompletableFuture<?>) result).thenRun(() -> {
 			}) : CompletableFuture.completedFuture(null);
 		}

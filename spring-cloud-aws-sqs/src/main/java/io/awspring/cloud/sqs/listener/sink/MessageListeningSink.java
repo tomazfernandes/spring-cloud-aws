@@ -38,6 +38,6 @@ public interface MessageListeningSink<T> {
 	 * @return a collection of {@link CompletableFuture} instances, each representing the completion signal of a single
 	 * message processing.
 	 */
-	Collection<CompletableFuture<Void>> emit(Collection<Message<T>> messages, AsyncMessageListener<T> listener);
+	Collection<CompletableFuture<Integer>> emit(Collection<Message<T>> messages, AsyncMessageListener<T> listener);
 
 }

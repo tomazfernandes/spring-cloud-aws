@@ -22,6 +22,7 @@ import io.awspring.cloud.sqs.config.SqsEndpoint;
 import io.awspring.cloud.sqs.config.SqsListenerCustomizer;
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
 import io.awspring.cloud.sqs.support.AsyncAcknowledgmentHandlerMethodArgumentResolver;
+import io.awspring.cloud.sqs.support.BatchPayloadArgumentResolver;
 import io.awspring.cloud.sqs.support.SqsHeadersMethodArgumentResolver;
 import io.awspring.cloud.sqs.support.SqsMessageMethodArgumentResolver;
 import io.awspring.cloud.sqs.support.VisibilityHandlerMethodArgumentResolver;
@@ -180,6 +181,8 @@ public class SqsListenerAnnotationBeanPostProcessor
 
 	protected List<HandlerMethodArgumentResolver> createArgumentResolvers(
 			Collection<MessageConverter> messageConverters, ObjectMapper objectMapper) {
+		CompositeMessageConverter payloadArgumentCompositeConverter = createPayloadArgumentCompositeConverter(
+				messageConverters, objectMapper);
 		return Arrays.asList(new SqsHeadersMethodArgumentResolver(),
 				new AsyncAcknowledgmentHandlerMethodArgumentResolver(SqsMessageHeaders.ACKNOWLEDGMENT_HEADER),
 				new VisibilityHandlerMethodArgumentResolver(SqsMessageHeaders.VISIBILITY),
@@ -187,8 +190,8 @@ public class SqsListenerAnnotationBeanPostProcessor
 				new HeaderMethodArgumentResolver(new GenericConversionService(), null),
 				new MessageMethodArgumentResolver(messageConverters.isEmpty() ? new StringMessageConverter()
 						: new CompositeMessageConverter(messageConverters)),
-				new PayloadMethodArgumentResolver(
-						createPayloadArgumentCompositeConverter(messageConverters, objectMapper)));
+				new BatchPayloadArgumentResolver(payloadArgumentCompositeConverter),
+				new PayloadMethodArgumentResolver(payloadArgumentCompositeConverter));
 	}
 
 	protected CompositeMessageConverter createPayloadArgumentCompositeConverter(

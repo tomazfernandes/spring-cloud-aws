@@ -81,7 +81,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	private Duration semaphoreAcquireTimeout;
 
-	private Set<CompletableFuture<Void>> pollingFutures;
+	private Set<CompletableFuture<Void>> messageProcessingFutures;
 
 	private AsyncMessageListener<T> decoratedMessageListener;
 
@@ -98,7 +98,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		this.messageSources = createMessageSources();
 		this.messageSink = super.getMessageSink();
 		this.taskExecutor = createTaskExecutor();
-		this.pollingFutures = Collections.synchronizedSet(new HashSet<>());
+		this.messageProcessingFutures = Collections.synchronizedSet(new HashSet<>());
 		this.decoratedMessageListener = decorateMessageListener();
 		this.inFlightMessagesSemaphore = new Semaphore(this.maxInFlightMessagesPerQueue * this.messageSources.size());
 		logger.debug("Starting container {}", super.getId());
@@ -144,8 +144,8 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		}
 	}
 
-	private ProcessingPipelineMessageListener<T> decorateMessageListener() {
-		return new ProcessingPipelineMessageListener<>(super.getMessageListener(), super.getErrorHandler(),
+	private AsyncMessageListener<T> decorateMessageListener() {
+		return new ProcessingPipelineMessageListenerAdapter<>(super.getMessageListener(), super.getErrorHandler(),
 				super.getAckHandler(), super.getMessageInterceptors());
 	}
 
@@ -195,25 +195,25 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		logger.debug("Execution thread stopped.");
 	}
 
-	private Collection<CompletableFuture<Void>> emitMessagesToListener(Collection<Message<T>> messages) {
+	private Collection<CompletableFuture<Integer>> emitMessagesToListener(Collection<Message<T>> messages) {
 		return this.messageSink.emit(messages, this.decoratedMessageListener);
 	}
 
-	private void releasePermitsAndHandleResult(Collection<CompletableFuture<Void>> messageExecutionFutures) {
+	private void releasePermitsAndHandleResult(Collection<CompletableFuture<Integer>> messageExecutionFutures) {
 		messageExecutionFutures.forEach(future -> future.exceptionally(t -> {
-			logger.error("Error processing message: ", t);
+			logger.error("Sink returned an error.", t);
 			return null;
-		}).thenRun(() -> releasePermits(1)));
+		}).thenAccept(this::releasePermits));
 	}
 
-	private void releasePermits(int messagesPerPoll) {
-		logger.trace("Releasing {} permits", messagesPerPoll);
-		this.inFlightMessagesSemaphore.release(messagesPerPoll);
+	private void releasePermits(int numberOfPermits) {
+		logger.trace("Releasing {} permits", numberOfPermits);
+		this.inFlightMessagesSemaphore.release(numberOfPermits);
 	}
 
-	private void manageFutureFrom(CompletableFuture<Void> pollingFuture) {
-		this.pollingFutures.add(pollingFuture);
-		pollingFuture.thenRun(() -> this.pollingFutures.remove(pollingFuture));
+	private void manageFutureFrom(CompletableFuture<Void> processingFuture) {
+		this.messageProcessingFutures.add(processingFuture);
+		processingFuture.thenRun(() -> this.messageProcessingFutures.remove(processingFuture));
 	}
 
 	private boolean acquirePermits() throws InterruptedException {
@@ -225,6 +225,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 				this.semaphoreAcquireTimeout.getSeconds(), TimeUnit.SECONDS);
 		if (hasAcquired) {
 			logger.trace("{} permits acquired in container {} ", this.messagesPerPoll, getId());
+			logger.trace("Permits left: {}", this.inFlightMessagesSemaphore.availablePermits());
 		}
 		else {
 			logger.trace("Not able to acquire permits in {} seconds. Skipping.",
@@ -238,8 +239,8 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		return msgs;
 	}
 
-	protected Collection<Message<T>> handleSourceException(Throwable t) {
-		logger.error("Error polling for messages", t);
+	private Collection<Message<T>> handleSourceException(Throwable t) {
+		logger.error("Error polling for messages in container {}", getId(), t);
 		return Collections.emptyList();
 	}
 
@@ -254,7 +255,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		manageSourcesLifecycle(Lifecycle::stop);
 		// TODO: Make waiting optional
 		waitExistingTasksToFinish();
-		this.pollingFutures.forEach(pollingFuture -> pollingFuture.cancel(true));
+		this.messageProcessingFutures.forEach(pollingFuture -> pollingFuture.cancel(true));
 		if (this.messageSink instanceof SmartLifecycle) {
 			((SmartLifecycle) this.messageSink).stop();
 		}
@@ -297,13 +298,15 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		}
 	}
 
-	private static class ProcessingPipelineMessageListener<T> extends DelegatingMessageListenerAdapter<T> {
+	private static class ProcessingPipelineMessageListenerAdapter<T> extends DelegatingMessageListenerAdapter<T> {
+
+		Logger logger = LoggerFactory.getLogger(ProcessingPipelineMessageListenerAdapter.class);
 
 		private final AsyncErrorHandler<T> errorHandler;
 		private final AckHandler<T> ackHandler;
 		private final Collection<AsyncMessageInterceptor<T>> messageInterceptors;
 
-		private ProcessingPipelineMessageListener(AsyncMessageListener<T> messageListener,
+		private ProcessingPipelineMessageListenerAdapter(AsyncMessageListener<T> messageListener,
 				AsyncErrorHandler<T> errorHandler, AckHandler<T> ackHandler,
 				Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
 			super(messageListener);
@@ -317,22 +320,50 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 		@Override
 		public CompletableFuture<Void> onMessage(Message<T> message) {
-			logger.trace("Processing message {}", MessageHeaderUtils.getId(message));
-			return intercept(message).thenCompose(getDelegate()::onMessage)
-					.handle((val, t) -> handleMessageListenerResult(message, t)).thenCompose(x -> x);
+			return interceptOne(message).thenCompose(this::handleOne);
 		}
 
-		private CompletableFuture<Message<T>> intercept(Message<T> message) {
+		@Override
+		public CompletableFuture<Void> onMessage(Collection<Message<T>> messages) {
+			return interceptBatch(messages).thenCompose(this::handleBatch);
+		}
+
+		private CompletableFuture<Message<T>> interceptOne(Message<T> message) {
 			return this.messageInterceptors.stream().reduce(CompletableFuture.completedFuture(message),
 					(messageFuture, interceptor) -> messageFuture.thenCompose(interceptor::intercept), (a, b) -> a);
 		}
 
-		private CompletableFuture<Void> handleMessageListenerResult(Message<T> message, Throwable throwable) {
+		private CompletableFuture<Void> handleOne(Message<T> message) {
+			logger.trace("Processing message {}", MessageHeaderUtils.getId(message));
+			return getDelegate().onMessage(message).handle((val, t) -> handleBatchProcessingResult(message, t))
+					.thenCompose(x -> x);
+		}
+
+		private CompletableFuture<Void> handleOneProcessingResult(Collection<Message<T>> messages,
+				Throwable throwable) {
+			return throwable == null ? this.ackHandler.onSuccess(messages)
+					: this.errorHandler.handleError(messages, throwable)
+							.thenCompose(val -> this.ackHandler.onError(messages, throwable));
+		}
+
+		private CompletableFuture<Void> handleBatch(Collection<Message<T>> messages) {
+			logger.trace("Processing {} messages", messages.size());
+			return getDelegate().onMessage(messages).handle((val, t) -> handleOneProcessingResult(messages, t))
+					.thenCompose(x -> x);
+		}
+
+		private CompletableFuture<Collection<Message<T>>> interceptBatch(Collection<Message<T>> messages) {
+			return this.messageInterceptors.stream().reduce(CompletableFuture.completedFuture(messages),
+					(messageFuture, interceptor) -> messageFuture.thenCompose(interceptor::intercept), (a, b) -> a);
+		}
+
+		private CompletableFuture<Void> handleBatchProcessingResult(Message<T> message, Throwable throwable) {
 			logger.trace("Handling result for message {}", MessageHeaderUtils.getId(message));
 			return throwable == null ? this.ackHandler.onSuccess(message)
 					: this.errorHandler.handleError(message, throwable)
 							.thenCompose(val -> this.ackHandler.onError(message, throwable));
 		}
+
 	}
 
 }

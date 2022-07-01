@@ -141,7 +141,8 @@ class SqsAutoConfigurationTest {
 
 		@Bean
 		MessageListeningSink<Object> messageSink() {
-			return (msgs, listener) -> msgs.stream().map(listener::onMessage).collect(Collectors.toList());
+			return (msgs, listener) -> msgs.stream().map(listener::onMessage)
+					.map(future -> future.thenApply(theVoid -> 1)).collect(Collectors.toList());
 		}
 
 		@Bean

@@ -15,6 +15,7 @@
  */
 package io.awspring.cloud.sqs.listener.interceptor;
 
+import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import org.springframework.messaging.Message;
 
@@ -37,5 +38,11 @@ public interface AsyncMessageInterceptor<T> {
 	 * @return a completable future containing the resulting message.
 	 */
 	CompletableFuture<Message<T>> intercept(Message<T> message);
+
+	default CompletableFuture<Collection<Message<T>>> intercept(Collection<Message<T>> messages) {
+		CompletableFuture<Collection<Message<T>>> result = new CompletableFuture<>();
+		result.completeExceptionally(new UnsupportedOperationException("Batch not implemented for this ErrorHandler"));
+		return result;
+	}
 
 }

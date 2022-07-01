@@ -17,9 +17,9 @@ package io.awspring.cloud.sqs.listener.sink;
 
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import java.util.Collection;
-import java.util.List;
+import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -61,23 +61,37 @@ public abstract class AbstractMessageListeningSink<T> implements MessageListenin
 	}
 
 	@Override
-	public Collection<CompletableFuture<Void>> emit(Collection<Message<T>> messages,
+	public Collection<CompletableFuture<Integer>> emit(Collection<Message<T>> messages,
 			AsyncMessageListener<T> messageListener) {
 		Assert.notNull(messages, "messages cannot be null");
 		Assert.notNull(messageListener, "messageListener cannot be null");
 		if (!isRunning()) {
 			logger.debug("Sink not running, returning");
-			return returnVoidFutures(messages);
+			return Collections.singletonList(CompletableFuture.completedFuture(messages.size()));
+		}
+		if (messages.size() == 0) {
+			logger.debug("No messages provided, returning.");
+			return Collections.singletonList(CompletableFuture.completedFuture(0));
 		}
 		return doEmit(messages, messageListener);
 	}
 
-	protected List<CompletableFuture<Void>> returnVoidFutures(Collection<Message<T>> messages) {
-		return messages.stream().map(msg -> CompletableFuture.<Void> completedFuture(null))
-				.collect(Collectors.toList());
+	protected Collection<CompletableFuture<Integer>> executeSingleBatch(Supplier<CompletableFuture<Void>> supplier,
+			int messagesSize) {
+		return Collections.singletonList(execute(supplier, messagesSize));
 	}
 
-	protected abstract Collection<CompletableFuture<Void>> doEmit(Collection<Message<T>> messages,
+	protected CompletableFuture<Integer> execute(Supplier<CompletableFuture<Void>> supplier, int messagesSize) {
+		return CompletableFuture.supplyAsync(supplier, this.taskExecutor).thenCompose(x -> x)
+				.exceptionally(this::logError).thenApply(theVoid -> messagesSize);
+	}
+
+	private Void logError(Throwable t) {
+		logger.error("Error in message listener.", t);
+		return null;
+	}
+
+	protected abstract Collection<CompletableFuture<Integer>> doEmit(Collection<Message<T>> messages,
 			AsyncMessageListener<T> messageListener);
 
 	@Override

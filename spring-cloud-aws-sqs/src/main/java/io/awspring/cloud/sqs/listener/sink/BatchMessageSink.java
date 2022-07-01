@@ -13,22 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener.acknowledgement;
+package io.awspring.cloud.sqs.listener.sink;
 
+import io.awspring.cloud.sqs.listener.AsyncMessageListener;
+import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
+import org.springframework.messaging.Message;
 
 /**
- * Interface representing a message acknowledgement.
- *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public interface AsyncAcknowledgement {
+public class BatchMessageSink<T> extends AbstractMessageListeningSink<T> {
 
-	/**
-	 * Acknowledge the message asynchronously.
-	 * @return a completable future.
-	 */
-	CompletableFuture<Void> acknowledge();
-
+	@Override
+	protected Collection<CompletableFuture<Integer>> doEmit(Collection<Message<T>> messages,
+			AsyncMessageListener<T> messageListener) {
+		return executeSingleBatch(() -> messageListener.onMessage(messages), messages.size());
+	}
 }

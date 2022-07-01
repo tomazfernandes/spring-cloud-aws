@@ -16,8 +16,10 @@
 package io.awspring.cloud.sqs.listener.adapter;
 
 import io.awspring.cloud.sqs.listener.ListenerExecutionFailedException;
+import java.util.Collection;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
+import org.springframework.messaging.support.GenericMessage;
 
 /**
  *
@@ -26,7 +28,7 @@ import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class MessagingMessageListenerAdapter {
+public abstract class MessagingMessageListenerAdapter<T> {
 
 	private final InvocableHandlerMethod handlerMethod;
 
@@ -34,9 +36,18 @@ public abstract class MessagingMessageListenerAdapter {
 		this.handlerMethod = handlerMethod;
 	}
 
-	protected final Object invokeHandler(Message<?> message) {
+	protected final Object invokeHandler(Message<T> message) {
 		try {
 			return handlerMethod.invoke(message);
+		}
+		catch (Exception ex) {
+			throw new ListenerExecutionFailedException("Listener failed to process message", ex);
+		}
+	}
+
+	protected final Object invokeHandler(Collection<Message<T>> messages) {
+		try {
+			return handlerMethod.invoke(new GenericMessage<>(messages));
 		}
 		catch (Exception ex) {
 			throw new ListenerExecutionFailedException("Listener failed to process message", ex);

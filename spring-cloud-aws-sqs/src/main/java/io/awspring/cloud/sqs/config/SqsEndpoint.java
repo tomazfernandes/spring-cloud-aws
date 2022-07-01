@@ -35,16 +35,13 @@ public class SqsEndpoint extends AbstractEndpoint {
 
 	private final Integer minimumVisibility;
 
-	private final Boolean isAsync;
-
 	private SqsEndpoint(Collection<String> logicalEndpointNames, String listenerContainerFactoryName,
-			Integer maxInflightMessagesPerQueue, Integer pollTimeoutSeconds, Integer minTimeToProcess, Boolean isAsync,
+			Integer maxInflightMessagesPerQueue, Integer pollTimeoutSeconds, Integer minTimeToProcess, Boolean async,
 			String id) {
-		super(logicalEndpointNames, listenerContainerFactoryName, id);
+		super(logicalEndpointNames, listenerContainerFactoryName, id, async);
 		this.maxInflightMessagesPerQueue = maxInflightMessagesPerQueue;
 		this.pollTimeoutSeconds = pollTimeoutSeconds;
 		this.minimumVisibility = minTimeToProcess;
-		this.isAsync = isAsync;
 	}
 
 	/**
@@ -65,14 +62,6 @@ public class SqsEndpoint extends AbstractEndpoint {
 	}
 
 	/**
-	 * The maximum number of seconds to wait for messages in a given poll.
-	 * @return the poll timeout.
-	 */
-	public Integer getPollTimeoutSeconds() {
-		return this.pollTimeoutSeconds;
-	}
-
-	/**
 	 * The maximum duration to wait for messages in a given poll.
 	 * @return the poll timeout.
 	 */
@@ -88,14 +77,6 @@ public class SqsEndpoint extends AbstractEndpoint {
 	 */
 	public Integer getMinimumVisibility() {
 		return this.minimumVisibility;
-	}
-
-	/**
-	 * Whether this endpoint enables async processing.
-	 * @return true for async processing.
-	 */
-	public boolean isAsync() {
-		return this.isAsync;
 	}
 
 	public static class SqsEndpointBuilder {

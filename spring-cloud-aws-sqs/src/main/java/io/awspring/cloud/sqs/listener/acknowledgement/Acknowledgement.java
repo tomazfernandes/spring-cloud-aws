@@ -13,21 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener;
+package io.awspring.cloud.sqs.listener.acknowledgement;
 
-import org.springframework.messaging.Message;
+import java.util.concurrent.CompletableFuture;
 
 /**
- * Interface to process incoming {@link Message}s.
- *
- * @param <T> the {@link Message} payload type.
+ * Interface representing a message acknowledgement.
  *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-@FunctionalInterface
-public interface MessageListener<T> {
+public interface Acknowledgement {
 
-	void onMessage(Message<T> message);
+	/**
+	 * Acknowledge the message asynchronously.
+	 * @return a completable future.
+	 */
+	CompletableFuture<Void> acknowledge();
 
 }

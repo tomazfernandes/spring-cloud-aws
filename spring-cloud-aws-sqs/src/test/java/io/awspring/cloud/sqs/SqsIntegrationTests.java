@@ -31,7 +31,7 @@ import io.awspring.cloud.sqs.listener.MessageListenerContainerRegistry;
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
 import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.acknowledgement.AckHandler;
-import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAcknowledgement;
+import io.awspring.cloud.sqs.listener.acknowledgement.Acknowledgement;
 import io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
@@ -52,6 +52,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -193,15 +194,42 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 				latchContainer.manyMessagesTwoQueuesLatch, latchContainer.messageAckLatch);
 	}
 
+	@Test
+	void receivesBatchesFromTwoQueuesWithLoad() throws Exception {
+		latchContainer.batchesTwoQueuesLatch = new CountDownLatch(totalMessages);
+		latchContainer.batchesAckLatch = new CountDownLatch(totalMessages);
+
+		testWithLoad(RECEIVE_BATCH_1_QUEUE_NAME, RECEIVE_BATCH_2_QUEUE_NAME, latchContainer.batchesTwoQueuesLatch,
+				latchContainer.batchesAckLatch, pojoBodyFunction());
+	}
+
+	private BiFunction<Integer, Integer, String> pojoBodyFunction() {
+		return (parent, index) -> {
+			try {
+				return objectMapper
+						.writeValueAsString(new MyPojo(TEST_PAYLOAD + " - " + ((parent * 10) + index), "secondValue"));
+			}
+			catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		};
+	}
+
 	private void testWithLoad(String queue1, String queue2, CountDownLatch countDownLatch, CountDownLatch secondLatch)
 			throws InterruptedException, ExecutionException {
+		testWithLoad(queue1, queue2, countDownLatch, secondLatch,
+				(parent, index) -> TEST_PAYLOAD + " - " + ((parent * 10) + index));
+	}
+
+	private void testWithLoad(String queue1, String queue2, CountDownLatch countDownLatch, CountDownLatch secondLatch,
+			BiFunction<Integer, Integer, String> bodyFunction) throws InterruptedException, ExecutionException {
 		StopWatch watch = new StopWatch();
 		watch.start();
 		String queueUrl1 = fetchQueueUrl(queue1);
 		String queueUrl2 = fetchQueueUrl(queue2);
 		IntStream.range(0, outerBatchSize).forEach(index -> {
-			sendMessageBatch(queueUrl1, index, innerBatchSize);
-			sendMessageBatch(queueUrl2, index + outerBatchSize, innerBatchSize);
+			sendMessageBatch(queueUrl1, index, innerBatchSize, bodyFunction);
+			sendMessageBatch(queueUrl2, index + outerBatchSize, innerBatchSize, bodyFunction);
 		});
 		assertThat(countDownLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(secondLatch.await(60, TimeUnit.SECONDS)).isTrue();
@@ -211,12 +239,11 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 				totalMessages, totalMessages / totalTimeSeconds);
 	}
 
-	private void sendMessageBatch(String queueUrl, int parentIndex, int batchSize) {
+	private void sendMessageBatch(String queueUrl, int parentIndex, int batchSize,
+			BiFunction<Integer, Integer, String> bodyFunction) {
 		try {
-			sqsAsyncClient
-					.sendMessageBatch(
-							req -> req.entries(getBatchEntries(batchSize, parentIndex)).queueUrl(queueUrl).build())
-					.thenRun(() -> {
+			sqsAsyncClient.sendMessageBatch(req -> req.entries(getBatchEntries(batchSize, parentIndex, bodyFunction))
+					.queueUrl(queueUrl).build()).thenRun(() -> {
 						if (parentIndex % 5 == 0) {
 							logger.debug("Sent " + parentIndex * batchSize + " messages.");
 						}
@@ -229,10 +256,11 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		}
 	}
 
-	private SendMessageBatchRequestEntry[] getBatchEntries(int batchSize, int parentIndex) {
+	private SendMessageBatchRequestEntry[] getBatchEntries(int batchSize, int parentIndex,
+			BiFunction<Integer, Integer, String> bodyFunction) {
 		return IntStream.range(0, batchSize)
 				.mapToObj(index -> SendMessageBatchRequestEntry.builder().id(UUID.randomUUID().toString())
-						.messageBody(TEST_PAYLOAD + " - " + ((parentIndex * 10) + index)).build())
+						.messageBody(bodyFunction.apply(index, parentIndex)).build())
 				.toArray(SendMessageBatchRequestEntry[]::new);
 	}
 
@@ -283,9 +311,8 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		LatchContainer latchContainer;
 
 		@SqsListener(queueNames = RESOLVES_PARAMETER_TYPES_QUEUE_NAME, factory = LOW_RESOURCE_FACTORY_NAME, minimumVisibility = "20", id = "resolves-parameter")
-		void listen(Message<String> message, SqsMessageHeaders headers, AsyncAcknowledgement ack,
-				AsyncVisibility visibility, software.amazon.awssdk.services.sqs.model.Message originalMessage)
-				throws Exception {
+		void listen(Message<String> message, SqsMessageHeaders headers, Acknowledgement ack, AsyncVisibility visibility,
+				software.amazon.awssdk.services.sqs.model.Message originalMessage) throws Exception {
 			Assert.notNull(headers, "Received null SqsMessageHeaders");
 			Assert.notNull(ack, "Received null AsyncAcknowledgement");
 			Assert.notNull(visibility, "Received null Visibility");
@@ -346,6 +373,37 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		}
 	}
 
+	static class ReceiveBatchesFromTwoQueuesListener {
+
+		@Autowired
+		LatchContainer latchContainer;
+
+		AtomicInteger messagesReceived = new AtomicInteger();
+
+		AtomicInteger batchesReceived = new AtomicInteger();
+
+		@SqsListener(queueNames = { RECEIVE_BATCH_1_QUEUE_NAME,
+				RECEIVE_BATCH_2_QUEUE_NAME }, factory = HIGH_THROUGHPUT_FACTORY_NAME, id = "receive-batches-from-two-queues")
+		void listen(Collection<Message<MyPojo>> messages) {
+			logger.trace("Started processing {} messages", messages.size());
+			String firstField = messages.iterator().next().getPayload().firstField;// Make sure we got the right type
+			try {
+				Thread.sleep(2000);
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				// do nothing
+			}
+			messages.forEach(msg -> latchContainer.batchesTwoQueuesLatch.countDown());
+			int messagesCount = this.messagesReceived.addAndGet(messages.size());
+			int batches;
+			if ((batches = batchesReceived.incrementAndGet()) % 5 == 0) {
+				logger.debug("Listener processed {} batches and {} messages", batches, messagesCount);
+			}
+			logger.trace("Finished processing {} messages", messages.size());
+		}
+	}
+
 	static class LatchContainer {
 
 		final CountDownLatch receivesMessageLatch = new CountDownLatch(1);
@@ -367,7 +425,8 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		CountDownLatch orderedLoadLatch = new CountDownLatch(1);
 		CountDownLatch manyMessagesTwoQueuesLatch = new CountDownLatch(1);
 		CountDownLatch messageAckLatch = new CountDownLatch(1);
-		CountDownLatch messageAckLatchAsync = new CountDownLatch(1);
+		CountDownLatch batchesAckLatch = new CountDownLatch(1);
+		CountDownLatch batchesTwoQueuesLatch = new CountDownLatch(1);
 
 	}
 
@@ -434,7 +493,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			});
 			factory.setMessageSink(new FanOutMessageSink<String>() {
 				@Override
-				public Collection<CompletableFuture<Void>> emit(Collection<Message<String>> collection,
+				public Collection<CompletableFuture<Integer>> emit(Collection<Message<String>> collection,
 						AsyncMessageListener<String> listener) {
 					latchContainer.manuallyCreatedFactorySinkLatch.countDown();
 					return super.emit(collection, listener);
@@ -470,6 +529,11 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Bean
 		ReceiveManyFromTwoQueuesListener receiveManyFromTwoQueuesListener() {
 			return new ReceiveManyFromTwoQueuesListener();
+		}
+
+		@Bean
+		ReceiveBatchesFromTwoQueuesListener receiveBatchesFromTwoQueuesListener() {
+			return new ReceiveBatchesFromTwoQueuesListener();
 		}
 
 		@Bean
@@ -512,7 +576,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 				// Eventually ack to not interfere with other tests.
 				if (latchContainer.errorHandlerLatch.getCount() == 0) {
 					Objects.requireNonNull(
-							(AsyncAcknowledgement) msg.getHeaders().get(SqsMessageHeaders.ACKNOWLEDGMENT_HEADER),
+							(Acknowledgement) msg.getHeaders().get(SqsMessageHeaders.ACKNOWLEDGMENT_HEADER),
 							"No acknowledgement present").acknowledge();
 				}
 			};
@@ -522,10 +586,15 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			return new OnSuccessAckHandler<String>() {
 				@Override
 				public CompletableFuture<Void> onSuccess(Message<String> message) {
-					return super.onSuccess(message).thenRun(() -> {
-						latchContainer.messageAckLatch.countDown();
-						latchContainer.messageAckLatchAsync.countDown();
-					});
+					return super.onSuccess(message).thenRun(() -> latchContainer.messageAckLatch.countDown());
+				}
+
+				@Override
+				public CompletableFuture<Void> onSuccess(Collection<Message<String>> messages) {
+					return super.onSuccess(messages).exceptionally(t -> {
+						logger.error("Error acknowledging test batch", t);
+						return null;
+					}).thenRun(() -> messages.forEach(msg -> latchContainer.batchesAckLatch.countDown()));
 				}
 			};
 		}

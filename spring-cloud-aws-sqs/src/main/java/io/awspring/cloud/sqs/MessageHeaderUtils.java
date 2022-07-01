@@ -16,7 +16,7 @@
 package io.awspring.cloud.sqs;
 
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
-import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAcknowledgement;
+import io.awspring.cloud.sqs.listener.acknowledgement.Acknowledgement;
 import java.util.Objects;
 import java.util.UUID;
 import org.springframework.messaging.Message;
@@ -44,13 +44,13 @@ public class MessageHeaderUtils {
 	}
 
 	/**
-	 * Return the message's {@link AsyncAcknowledgement}
+	 * Return the message's {@link Acknowledgement}
 	 * @param message the message.
 	 * @return the acknowledgement.
 	 */
-	public static AsyncAcknowledgement getAcknowledgement(Message<?> message) {
+	public static Acknowledgement getAcknowledgement(Message<?> message) {
 		return Objects.requireNonNull(
-				message.getHeaders().get(SqsMessageHeaders.ACKNOWLEDGMENT_HEADER, AsyncAcknowledgement.class),
+				message.getHeaders().get(SqsMessageHeaders.ACKNOWLEDGMENT_HEADER, Acknowledgement.class),
 				() -> "No Acknowledgment found for message " + message);
 	}
 

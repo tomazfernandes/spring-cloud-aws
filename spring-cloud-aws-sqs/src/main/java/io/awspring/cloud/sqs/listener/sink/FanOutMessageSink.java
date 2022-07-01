@@ -36,12 +36,10 @@ public class FanOutMessageSink<T> extends AbstractMessageListeningSink<T> {
 	Logger logger = LoggerFactory.getLogger(FanOutMessageSink.class);
 
 	@Override
-	protected Collection<CompletableFuture<Void>> doEmit(Collection<Message<T>> messages,
+	protected Collection<CompletableFuture<Integer>> doEmit(Collection<Message<T>> messages,
 			AsyncMessageListener<T> messageListener) {
 		logger.trace("Splitting {} messages", messages.size());
-		return messages
-				.stream().map(msg -> CompletableFuture
-						.supplyAsync(() -> messageListener.onMessage(msg), super.getTaskExecutor()).thenCompose(x -> x))
+		return messages.stream().map(msg -> execute(() -> messageListener.onMessage(msg), 1))
 				.collect(Collectors.toList());
 	}
 }

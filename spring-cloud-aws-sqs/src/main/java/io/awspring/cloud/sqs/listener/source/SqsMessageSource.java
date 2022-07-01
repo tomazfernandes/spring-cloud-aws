@@ -100,6 +100,7 @@ public class SqsMessageSource<T> extends AbstractPollableMessageSource<T> {
 	}
 
 	private Collection<Message<T>> convertMessages(List<software.amazon.awssdk.services.sqs.model.Message> messages) {
+		logger.trace("Received {} messages from queue {}", messages.size(), this.queueUrl);
 		return messages.stream().map(this::convertMessage).collect(Collectors.toList());
 	}
 

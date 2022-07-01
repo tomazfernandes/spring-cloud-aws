@@ -15,6 +15,7 @@
  */
 package io.awspring.cloud.sqs.listener.acknowledgement;
 
+import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import org.springframework.messaging.Message;
 
@@ -37,6 +38,12 @@ public interface AckHandler<T> {
 	 */
 	CompletableFuture<Void> onSuccess(Message<T> message);
 
+	default CompletableFuture<Void> onSuccess(Collection<Message<T>> messages) {
+		CompletableFuture<Void> result = new CompletableFuture<>();
+		result.completeExceptionally(new UnsupportedOperationException("Batch not implemented for this component"));
+		return result;
+	}
+
 	/**
 	 * Called by the {@link io.awspring.cloud.sqs.listener.MessageListenerContainer} when the {@link Message} is
 	 * processed with an error. by the {@link io.awspring.cloud.sqs.listener.AsyncMessageListener}.
@@ -45,6 +52,10 @@ public interface AckHandler<T> {
 	 * @return a completable future.
 	 */
 	default CompletableFuture<Void> onError(Message<T> message, Throwable t) {
+		return CompletableFuture.completedFuture(null);
+	}
+
+	default CompletableFuture<Void> onError(Collection<Message<T>> messages, Throwable t) {
 		return CompletableFuture.completedFuture(null);
 	}
 

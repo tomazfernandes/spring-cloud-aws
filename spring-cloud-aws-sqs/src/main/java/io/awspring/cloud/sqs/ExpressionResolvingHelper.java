@@ -22,6 +22,7 @@ import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.expression.StandardBeanExpressionResolver;
+import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
 /**
@@ -50,6 +51,7 @@ public class ExpressionResolvingHelper implements BeanFactoryAware {
 	 * @param attribute the attribute name to be used in case of an exception.
 	 * @return the resolved {@link String}
 	 */
+	@Nullable
 	public String asString(String value, String attribute) {
 		if (!StringUtils.hasText(value)) {
 			return null;
@@ -71,6 +73,7 @@ public class ExpressionResolvingHelper implements BeanFactoryAware {
 	 * @param attribute the attribute name to be used in case of an exception.
 	 * @return the resolved {@link Integer}
 	 */
+	@Nullable
 	public Integer asInteger(String value, String attribute) {
 		if (!StringUtils.hasText(value)) {
 			return null;
@@ -84,6 +87,25 @@ public class ExpressionResolvingHelper implements BeanFactoryAware {
 		}
 		else if (resolved != null) {
 			throw new IllegalStateException(THE_LEFT + attribute + "] must resolve to Integer. " + RESOLVED_TO_LEFT
+					+ resolved.getClass() + RIGHT_FOR_LEFT + value + "]");
+		}
+		return null;
+	}
+
+	@Nullable
+	public Boolean asBoolean(String value, String attribute) {
+		if (!StringUtils.hasText(value)) {
+			return null;
+		}
+		Object resolved = resolveExpression(value);
+		if (resolved instanceof Boolean) {
+			return (Boolean) resolved;
+		}
+		else if (resolved instanceof String) {
+			return Boolean.parseBoolean((String) resolved);
+		}
+		else if (resolved != null) {
+			throw new IllegalStateException(THE_LEFT + attribute + "] must resolve to Boolean. " + RESOLVED_TO_LEFT
 					+ resolved.getClass() + RIGHT_FOR_LEFT + value + "]");
 		}
 		return null;

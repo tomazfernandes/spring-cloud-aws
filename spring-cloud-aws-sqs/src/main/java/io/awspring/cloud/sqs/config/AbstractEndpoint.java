@@ -19,10 +19,15 @@ import io.awspring.cloud.sqs.listener.AbstractMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.adapter.AsyncMessagingMessageListenerAdapter;
+import io.awspring.cloud.sqs.listener.sink.BatchMessageSink;
 import io.awspring.cloud.sqs.listener.sink.FanOutMessageSink;
 import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.util.Assert;
@@ -42,6 +47,8 @@ public abstract class AbstractEndpoint implements Endpoint {
 
 	private final String id;
 
+	private final Boolean async;
+
 	private Object bean;
 
 	private Method method;
@@ -51,11 +58,12 @@ public abstract class AbstractEndpoint implements Endpoint {
 	private MessageListeningSink<?> messageSink;
 
 	protected AbstractEndpoint(Collection<String> logicalNames, @Nullable String listenerContainerFactoryName,
-			String id) {
+			String id, Boolean async) {
 		Assert.notEmpty(logicalNames, "logicalNames cannot be empty.");
+		this.id = id;
 		this.logicalNames = logicalNames;
 		this.listenerContainerFactoryName = listenerContainerFactoryName;
-		this.id = id;
+		this.async = async;
 	}
 
 	@Override
@@ -104,14 +112,39 @@ public abstract class AbstractEndpoint implements Endpoint {
 	 */
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public void setupContainer(MessageListenerContainer container) {
+		boolean isBatch = inferAndValidateBatchParameters();
 		container.setAsyncMessageListener(createMessageListener());
 		if (container instanceof AbstractMessageListenerContainer) {
-			((AbstractMessageListenerContainer) container).setMessageSink(createOrGetMessageSplitter());
+			((AbstractMessageListenerContainer) container).setMessageSink(createOrGetMessageSink(isBatch));
 		}
 	}
 
-	private MessageListeningSink<?> createOrGetMessageSplitter() {
-		return this.messageSink != null ? this.messageSink : new FanOutMessageSink<>();
+	private boolean inferAndValidateBatchParameters() {
+		Type[] genericParameterTypes = this.method.getGenericParameterTypes();
+		boolean batch = inferBatch(genericParameterTypes);
+		if (batch && genericParameterTypes.length > 1) {
+			throw new IllegalArgumentException(String.format(
+					"Method %s in endpoint %s has invalid parameters for batch processing. "
+							+ "Batch methods can have a single parameter, either a List or a Collection, of Message<T> or T types.",
+					this.method.getName(), this.id));
+		}
+		return batch;
+	}
+
+	private boolean inferBatch(Type[] genericParameterTypes) {
+		return Arrays.stream(genericParameterTypes).anyMatch(this::isCollectionType);
+	}
+
+	private boolean isCollectionType(Type type) {
+		return type instanceof ParameterizedType && (((ParameterizedType) type).getRawType().equals(Collection.class)
+				|| ((ParameterizedType) type).getRawType().equals(List.class));
+	}
+
+	private MessageListeningSink<?> createOrGetMessageSink(boolean isBatch) {
+		if (this.messageSink != null) {
+			return this.messageSink;
+		}
+		return isBatch ? new BatchMessageSink<>() : new FanOutMessageSink<>();
 	}
 
 	private AsyncMessageListener<?> createMessageListener() {

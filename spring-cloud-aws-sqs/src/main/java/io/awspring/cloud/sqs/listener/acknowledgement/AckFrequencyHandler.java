@@ -24,7 +24,7 @@ import java.util.concurrent.CompletableFuture;
 // TODO: TBD
 public interface AckFrequencyHandler {
 
-	CompletableFuture<Void> registerAck(AsyncAcknowledgement ack);
+	CompletableFuture<Void> registerAck(Acknowledgement ack);
 
 	enum AckFrequency {
 

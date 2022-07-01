@@ -210,7 +210,7 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	private static class EndpointAdapter extends AbstractEndpoint {
 
 		protected EndpointAdapter(Collection<String> logicalNames) {
-			super(logicalNames, null, null);
+			super(logicalNames, null, null, false);
 		}
 
 		@SuppressWarnings("rawtypes")
