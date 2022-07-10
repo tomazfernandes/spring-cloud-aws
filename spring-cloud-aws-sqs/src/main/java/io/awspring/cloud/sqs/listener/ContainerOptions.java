@@ -16,6 +16,8 @@
 package io.awspring.cloud.sqs.listener;
 
 import java.time.Duration;
+
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 
@@ -43,6 +45,8 @@ public class ContainerOptions {
 	private Duration pollTimeout = DEFAULT_POLL_TIMEOUT;
 
 	private Duration semaphoreAcquireTimeout = DEFAULT_SEMAPHORE_TIMEOUT;
+
+	private TaskExecutor sinkTaskExecutor;
 
 	public static ContainerOptions create() {
 		return new ContainerOptions();
@@ -89,6 +93,12 @@ public class ContainerOptions {
 		return this;
 	}
 
+	public ContainerOptions sinkTaskExecutor(TaskExecutor sinkTaskExecutor) {
+		Assert.notNull(sinkTaskExecutor, "sinkTaskExecutor cannot be null");
+		this.sinkTaskExecutor = sinkTaskExecutor;
+		return this;
+	}
+
 	/**
 	 * Return the maximum allowed number of inflight messages for each queue.
 	 * @return the number.
@@ -121,6 +131,10 @@ public class ContainerOptions {
 		return this.semaphoreAcquireTimeout;
 	}
 
+	public TaskExecutor getSinkTaskExecutor() {
+		return this.sinkTaskExecutor;
+	}
+
 	/**
 	 * Creates a shallow copy of these options.
 	 * @return the copy.
@@ -130,4 +144,5 @@ public class ContainerOptions {
 		ReflectionUtils.shallowCopyFieldState(this, newCopy);
 		return newCopy;
 	}
+
 }

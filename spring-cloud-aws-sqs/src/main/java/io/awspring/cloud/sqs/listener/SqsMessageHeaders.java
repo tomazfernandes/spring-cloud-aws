@@ -77,6 +77,8 @@ public class SqsMessageHeaders extends MessageHeaders {
 
 	public static final String ACKNOWLEDGMENT_HEADER = "acknowledgement";
 
+	public static final String SQS_CLIENT_HEADER = "sqs-client";
+
 	public SqsMessageHeaders(Map<String, Object> headers) {
 		super(headers, getId(headers), getTimestamp(headers));
 	}

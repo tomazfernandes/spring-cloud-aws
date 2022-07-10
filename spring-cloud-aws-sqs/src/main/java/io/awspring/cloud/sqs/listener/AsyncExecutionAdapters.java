@@ -15,6 +15,8 @@
  */
 package io.awspring.cloud.sqs.listener;
 
+import io.awspring.cloud.sqs.CompletableFutures;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
@@ -40,9 +42,7 @@ public class AsyncExecutionAdapters {
 			return CompletableFuture.completedFuture(null);
 		}
 		catch (Exception e) {
-			CompletableFuture<Void> result = new CompletableFuture<>();
-			result.completeExceptionally(e);
-			return result;
+			return CompletableFutures.failedFuture(e);
 		}
 	}
 
@@ -56,9 +56,7 @@ public class AsyncExecutionAdapters {
 			return CompletableFuture.completedFuture(blockingProcess.get());
 		}
 		catch (Exception e) {
-			CompletableFuture<T> result = new CompletableFuture<>();
-			result.completeExceptionally(e);
-			return result;
+			return CompletableFutures.failedFuture(e);
 		}
 	}
 }

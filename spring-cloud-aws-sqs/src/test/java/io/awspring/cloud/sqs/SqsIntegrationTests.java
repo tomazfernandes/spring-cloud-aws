@@ -23,8 +23,7 @@ import io.awspring.cloud.sqs.annotation.EnableSqs;
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import io.awspring.cloud.sqs.config.SqsListenerCustomizer;
 import io.awspring.cloud.sqs.config.SqsMessageListenerContainerFactory;
-import io.awspring.cloud.sqs.listener.AsyncMessageListener;
-import io.awspring.cloud.sqs.listener.AsyncVisibility;
+import io.awspring.cloud.sqs.listener.Visibility;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.MessageListenerContainerRegistry;
@@ -36,7 +35,7 @@ import io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
 import io.awspring.cloud.sqs.listener.sink.FanOutMessageSink;
-import io.awspring.cloud.sqs.listener.sink.OrderedMessageSink;
+import io.awspring.cloud.sqs.listener.sink.OrderedMessageListeningSink;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
 import io.awspring.cloud.sqs.listener.source.SqsMessageSourceFactory;
 import java.lang.reflect.Method;
@@ -311,7 +310,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		LatchContainer latchContainer;
 
 		@SqsListener(queueNames = RESOLVES_PARAMETER_TYPES_QUEUE_NAME, factory = LOW_RESOURCE_FACTORY_NAME, minimumVisibility = "20", id = "resolves-parameter")
-		void listen(Message<String> message, SqsMessageHeaders headers, Acknowledgement ack, AsyncVisibility visibility,
+		void listen(Message<String> message, SqsMessageHeaders headers, Acknowledgement ack, Visibility visibility,
 				software.amazon.awssdk.services.sqs.model.Message originalMessage) throws Exception {
 			Assert.notNull(headers, "Received null SqsMessageHeaders");
 			Assert.notNull(ack, "Received null AsyncAcknowledgement");
@@ -459,7 +458,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions().maxInflightMessagesPerQueue(10).pollTimeout(Duration.ofSeconds(1))
 					.messagesPerPoll(1).semaphoreAcquireTimeout(Duration.ofSeconds(1));
-			factory.setMessageSink(new OrderedMessageSink<>());
+			factory.setMessageSinkSupplier(OrderedMessageListeningSink::new);
 			factory.setAckHandler(testAckHandler());
 			factory.setErrorHandler(testErrorHandler());
 			factory.addMessageInterceptor(testInterceptor());
@@ -491,12 +490,11 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 					return super.create(endpointName);
 				}
 			});
-			factory.setMessageSink(new FanOutMessageSink<String>() {
+			factory.setMessageSinkSupplier(() -> new FanOutMessageSink<String>() {
 				@Override
-				public Collection<CompletableFuture<Integer>> emit(Collection<Message<String>> collection,
-						AsyncMessageListener<String> listener) {
+				public CompletableFuture<Void> emit(Collection<Message<String>> collection) {
 					latchContainer.manuallyCreatedFactorySinkLatch.countDown();
-					return super.emit(collection, listener);
+					return super.emit(collection);
 				}
 			});
 			factory.setSqsAsyncClient(BaseSqsIntegrationTest.createAsyncClient());
@@ -579,6 +577,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 							(Acknowledgement) msg.getHeaders().get(SqsMessageHeaders.ACKNOWLEDGMENT_HEADER),
 							"No acknowledgement present").acknowledge();
 				}
+				throw new RuntimeException("Propagating error from test error handler", t);
 			};
 		}
 

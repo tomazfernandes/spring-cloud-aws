@@ -21,6 +21,7 @@ import java.util.Objects;
 import java.util.UUID;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
+import org.springframework.util.Assert;
 
 /**
  * Utility class for extracting {@link MessageHeaders} from a {@link Message}.
@@ -54,4 +55,15 @@ public class MessageHeaderUtils {
 				() -> "No Acknowledgment found for message " + message);
 	}
 
+	public static Object getHeader(Message<?> message, String headerName) {
+		return Objects.requireNonNull(message.getHeaders().get(headerName),
+			() -> String.format("Header %s not found in message %s", headerName, getId(message)));
+	}
+
+	public static <T> T getHeader(Message<?> message, String headerName, Class<T> classToCast) {
+		Object header = getHeader(message, headerName);
+		Assert.isInstanceOf(classToCast, header,
+			() -> String.format("Header %s from message %s not instance of class %s", header, getId(message), classToCast));
+		return classToCast.cast(header);
+	}
 }

@@ -27,8 +27,7 @@ import org.springframework.messaging.Message;
 public class BatchMessageSink<T> extends AbstractMessageListeningSink<T> {
 
 	@Override
-	protected Collection<CompletableFuture<Integer>> doEmit(Collection<Message<T>> messages,
-			AsyncMessageListener<T> messageListener) {
-		return executeSingleBatch(() -> messageListener.onMessage(messages), messages.size());
+	protected CompletableFuture<Void> doEmit(Collection<Message<T>> messages) {
+		return execute(() -> super.getMessageListener().onMessage(messages));
 	}
 }

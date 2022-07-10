@@ -16,8 +16,6 @@
 package io.awspring.cloud.sqs.listener.sink;
 
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
-import java.util.Collection;
-import java.util.concurrent.CompletableFuture;
 import org.springframework.messaging.Message;
 
 /**
@@ -29,15 +27,8 @@ import org.springframework.messaging.Message;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public interface MessageListeningSink<T> {
+public interface MessageListeningSink<T> extends MessageSink<T> {
 
-	/**
-	 * Emit the provided {@link Message} instances to the provided {@link AsyncMessageListener}.
-	 * @param messages the messages to emit.
-	 * @param listener the listener to emit the messages to.
-	 * @return a collection of {@link CompletableFuture} instances, each representing the completion signal of a single
-	 * message processing.
-	 */
-	Collection<CompletableFuture<Integer>> emit(Collection<Message<T>> messages, AsyncMessageListener<T> listener);
+	void setMessageListener(AsyncMessageListener<T> listener);
 
 }

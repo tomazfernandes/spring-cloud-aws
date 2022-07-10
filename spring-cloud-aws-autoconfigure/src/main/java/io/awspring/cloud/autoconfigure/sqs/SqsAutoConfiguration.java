@@ -27,6 +27,8 @@ import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
 import java.util.Collection;
+import java.util.function.Supplier;
+
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -71,7 +73,7 @@ public class SqsAutoConfiguration {
 			ObjectProvider<AsyncErrorHandler<Object>> errorHandler,
 			ObjectProvider<Collection<AsyncMessageInterceptor<Object>>> interceptors,
 			ObjectProvider<AsyncMessageInterceptor<Object>> interceptor,
-			ObjectProvider<MessageListeningSink<Object>> messageSplitter,
+			ObjectProvider<Supplier<MessageListeningSink<Object>>> messageSplitter,
 			ObjectProvider<AckHandler<Object>> ackHandler) {
 		SqsMessageListenerContainerFactory<Object> factory = new SqsMessageListenerContainerFactory<>();
 		containerOptions
@@ -81,7 +83,7 @@ public class SqsAutoConfiguration {
 		ackHandler.ifAvailable(factory::setAckHandler);
 		interceptor.ifAvailable(factory::addAsyncMessageInterceptor);
 		interceptors.ifAvailable(interceptorList -> interceptorList.forEach(factory::addAsyncMessageInterceptor));
-		messageSplitter.ifAvailable(factory::setMessageSink);
+		messageSplitter.ifAvailable(factory::setMessageSinkSupplier);
 		return factory;
 	}
 }

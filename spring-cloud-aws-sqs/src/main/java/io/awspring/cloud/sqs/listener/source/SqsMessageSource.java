@@ -37,6 +37,7 @@ import org.springframework.util.Assert;
 import org.springframework.util.MimeType;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
+import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 
 /**
@@ -95,7 +96,7 @@ public class SqsMessageSource<T> extends AbstractPollableMessageSource<T> {
 		logger.trace("Polling queue {} for {} messages.", this.queueUrl, super.getNumberOfMessagesPerPoll());
 		return sqsAsyncClient
 				.receiveMessage(req -> req.queueUrl(this.queueUrl).maxNumberOfMessages(getNumberOfMessagesPerPoll())
-						.waitTimeSeconds((int) getPollTimeout().getSeconds()))
+					.attributeNames(QueueAttributeName.ALL).waitTimeSeconds((int) getPollTimeout().getSeconds()))
 				.thenApply(ReceiveMessageResponse::messages).thenApply(this::convertMessages);
 	}
 
@@ -126,6 +127,7 @@ public class SqsMessageSource<T> extends AbstractPollableMessageSource<T> {
 		HashMap<String, Object> additionalHeaders = new HashMap<>();
 		additionalHeaders.put(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID, getLogicalEndpointName());
 		additionalHeaders.put(SqsMessageHeaders.RECEIVED_AT, Instant.now());
+		additionalHeaders.put(SqsMessageHeaders.SQS_CLIENT_HEADER, this.sqsAsyncClient);
 		additionalHeaders.put(SqsMessageHeaders.QUEUE_VISIBILITY, this.queueAttributes.getVisibilityTimeout());
 		additionalHeaders.put(SqsMessageHeaders.VISIBILITY,
 				new QueueMessageVisibility(this.sqsAsyncClient, this.queueUrl, message.receiptHandle()));
@@ -137,6 +139,8 @@ public class SqsMessageSource<T> extends AbstractPollableMessageSource<T> {
 			software.amazon.awssdk.services.sqs.model.Message message) {
 
 		Map<String, Object> messageHeaders = new HashMap<>();
+		messageHeaders.put(SqsMessageHeaders.SQS_GROUP_ID_HEADER,
+			message.attributes().get(MessageSystemAttributeName.MESSAGE_GROUP_ID));
 		for (Map.Entry<MessageSystemAttributeName, String> messageAttribute : message.attributes().entrySet()) {
 			if (org.springframework.messaging.MessageHeaders.CONTENT_TYPE.equals(messageAttribute.getKey().name())) {
 				messageHeaders.put(org.springframework.messaging.MessageHeaders.CONTENT_TYPE,

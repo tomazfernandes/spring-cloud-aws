@@ -25,7 +25,7 @@ import java.util.concurrent.CompletableFuture;
  * @author Tomaz Fernandes
  * @since 1.3
  */
-public interface AsyncVisibility {
+public interface Visibility {
 
 	/**
 	 * Asynchronously changes the message visibility to the provided value.

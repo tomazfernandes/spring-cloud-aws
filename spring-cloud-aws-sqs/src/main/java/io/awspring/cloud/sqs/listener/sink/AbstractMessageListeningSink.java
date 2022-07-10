@@ -17,16 +17,16 @@ package io.awspring.cloud.sqs.listener.sink;
 
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import java.util.function.Supplier;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.messaging.Message;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.Assert;
 
 /**
@@ -40,11 +40,7 @@ import org.springframework.util.Assert;
  */
 public abstract class AbstractMessageListeningSink<T> implements MessageListeningSink<T>, SmartLifecycle {
 
-	private static final int DEFAULT_CORE_SIZE = 10;
-
 	private static final Logger logger = LoggerFactory.getLogger(AbstractMessageListeningSink.class);
-
-	private int poolSize = DEFAULT_CORE_SIZE;
 
 	private TaskExecutor taskExecutor;
 
@@ -52,38 +48,36 @@ public abstract class AbstractMessageListeningSink<T> implements MessageListenin
 
 	private volatile boolean running;
 
-	public void setPoolSize(int coreSize) {
-		this.poolSize = coreSize;
+	private AsyncMessageListener<T> messageListener;
+
+	@Override
+	public void setMessageListener(AsyncMessageListener<T> messageListener) {
+		Assert.notNull(messageListener, "listener must not be null.");
+		this.messageListener = messageListener;
 	}
 
-	protected TaskExecutor getTaskExecutor() {
-		return this.taskExecutor;
+	protected AsyncMessageListener<T> getMessageListener() {
+		return this.messageListener;
 	}
 
 	@Override
-	public Collection<CompletableFuture<Integer>> emit(Collection<Message<T>> messages,
-			AsyncMessageListener<T> messageListener) {
+	public CompletableFuture<Void> emit(Collection<Message<T>> messages) {
 		Assert.notNull(messages, "messages cannot be null");
-		Assert.notNull(messageListener, "messageListener cannot be null");
 		if (!isRunning()) {
 			logger.debug("Sink not running, returning");
-			return Collections.singletonList(CompletableFuture.completedFuture(messages.size()));
+			return CompletableFuture.completedFuture(null);
 		}
 		if (messages.size() == 0) {
 			logger.debug("No messages provided, returning.");
-			return Collections.singletonList(CompletableFuture.completedFuture(0));
+			return CompletableFuture.completedFuture(null);
 		}
-		return doEmit(messages, messageListener);
+		return doEmit(messages);
 	}
 
-	protected Collection<CompletableFuture<Integer>> executeSingleBatch(Supplier<CompletableFuture<Void>> supplier,
-			int messagesSize) {
-		return Collections.singletonList(execute(supplier, messagesSize));
-	}
-
-	protected CompletableFuture<Integer> execute(Supplier<CompletableFuture<Void>> supplier, int messagesSize) {
-		return CompletableFuture.supplyAsync(supplier, this.taskExecutor).thenCompose(x -> x)
-				.exceptionally(this::logError).thenApply(theVoid -> messagesSize);
+	protected CompletableFuture<Void> execute(Supplier<CompletableFuture<Void>> supplier) {
+		Assert.state(this.taskExecutor != null, "TaskExecutor cannot be null");
+		return CompletableFuture.supplyAsync(supplier, this.taskExecutor).thenCompose(Function.identity())
+				.exceptionally(this::logError);
 	}
 
 	private Void logError(Throwable t) {
@@ -91,8 +85,7 @@ public abstract class AbstractMessageListeningSink<T> implements MessageListenin
 		return null;
 	}
 
-	protected abstract Collection<CompletableFuture<Integer>> doEmit(Collection<Message<T>> messages,
-			AsyncMessageListener<T> messageListener);
+	protected abstract CompletableFuture<Void> doEmit(Collection<Message<T>> messages);
 
 	@Override
 	public void start() {
@@ -101,8 +94,8 @@ public abstract class AbstractMessageListeningSink<T> implements MessageListenin
 			return;
 		}
 		synchronized (this.lifecycleMonitor) {
-			logger.debug("Starting Sink");
-			this.taskExecutor = createTaskExecutor();
+			Assert.notNull(this.messageListener, "messageListener cannot be null");
+			logger.debug("Starting sink");
 			this.running = true;
 		}
 	}
@@ -132,13 +125,9 @@ public abstract class AbstractMessageListeningSink<T> implements MessageListenin
 		return this.running;
 	}
 
-	private TaskExecutor createTaskExecutor() {
-		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-		executor.setMaxPoolSize(this.poolSize);
-		executor.setCorePoolSize(this.poolSize);
-		executor.setThreadNamePrefix(this.getClass().getSimpleName().toLowerCase() + "-");
-		executor.afterPropertiesSet();
-		return executor;
+	public void setTaskExecutor(TaskExecutor taskExecutor) {
+		Assert.notNull(taskExecutor, "taskExecutor cannot be null");
+		this.taskExecutor = taskExecutor;
 	}
 
 }

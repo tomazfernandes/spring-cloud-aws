@@ -15,6 +15,7 @@
  */
 package io.awspring.cloud.sqs.listener.adapter;
 
+import io.awspring.cloud.sqs.CompletableFutures;
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
@@ -44,9 +45,7 @@ public class AsyncMessagingMessageListenerAdapter<T> extends MessagingMessageLis
 			}) : CompletableFuture.completedFuture(null);
 		}
 		catch (Exception e) {
-			CompletableFuture<Void> future = new CompletableFuture<>();
-			future.completeExceptionally(e);
-			return future;
+			return CompletableFutures.failedFuture(e);
 		}
 	}
 
@@ -58,9 +57,7 @@ public class AsyncMessagingMessageListenerAdapter<T> extends MessagingMessageLis
 			}) : CompletableFuture.completedFuture(null);
 		}
 		catch (Exception e) {
-			CompletableFuture<Void> future = new CompletableFuture<>();
-			future.completeExceptionally(e);
-			return future;
+			return CompletableFutures.failedFuture(e);
 		}
 	}
 }

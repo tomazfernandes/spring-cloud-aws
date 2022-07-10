@@ -261,6 +261,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 			if (this.id == null) {
 				this.id = resolveContainerId();
 			}
+			logger.debug("Starting container {}", getId());
 			doStart();
 		}
 		logger.debug("Container started {}", this.id);

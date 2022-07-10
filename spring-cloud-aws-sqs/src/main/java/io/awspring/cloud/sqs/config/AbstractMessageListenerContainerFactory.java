@@ -33,6 +33,8 @@ import io.awspring.cloud.sqs.listener.source.MessageSourceFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.function.Supplier;
+
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
@@ -55,7 +57,7 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 
 	private AckHandler<T> ackHandler;
 
-	private MessageListeningSink<T> messageSink;
+	private Supplier<MessageListeningSink<T>> messageSinkSupplier;
 
 	private AsyncMessageListener<T> messageListener;
 
@@ -155,11 +157,11 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	 * provided, a default will be instantiated according to each endpoint's configuration. Message splitters handle the
 	 * batch of messages returned by the {@link MessageSource} and feeds the messages to the container processing
 	 * pipeline.
-	 * @param messageSink the message splitter instance.
+	 * @param messageSinkSupplier the message splitter instance.
 	 */
-	public void setMessageSink(MessageListeningSink<T> messageSink) {
-		Assert.notNull(messageSink, "messageSplitter cannot be null");
-		this.messageSink = messageSink;
+	public void setMessageSinkSupplier(Supplier<MessageListeningSink<T>> messageSinkSupplier) {
+		Assert.notNull(messageSinkSupplier, "messageSplitter cannot be null");
+		this.messageSinkSupplier = messageSinkSupplier;
 	}
 
 	/**
@@ -175,9 +177,6 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	public C createContainer(Endpoint endpoint) {
 		Assert.notNull(endpoint, "endpoint cannot be null");
 		C container = createContainerInstance(endpoint, this.containerOptions.createCopy());
-		if (endpoint instanceof AbstractEndpoint) {
-			configureEndpoint((AbstractEndpoint) endpoint);
-		}
 		endpoint.setupContainer(container);
 		configureContainer(container, endpoint);
 		return container;
@@ -189,14 +188,10 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 		return createContainer(new EndpointAdapter(Arrays.asList(logicalEndpointNames)));
 	}
 
-	private void configureEndpoint(AbstractEndpoint endpoint) {
-		ConfigUtils.INSTANCE.acceptIfNotNull(this.messageSink, endpoint::setMessageSink);
-	}
-
 	private void configureContainer(AbstractMessageListenerContainer<T> container, Endpoint endpoint) {
 		container.setId(endpoint.getId());
 		container.setQueueNames(endpoint.getLogicalNames());
-		ConfigUtils.INSTANCE.acceptIfNotNull(this.messageSink, container::setMessageSink)
+		ConfigUtils.INSTANCE.acceptIfNotNull(this.messageSinkSupplier, supplier -> container.setMessageSink(messageSinkSupplier.get()))
 				.acceptIfNotNull(this.messageListener, container::setAsyncMessageListener)
 				.acceptIfNotNull(this.errorHandler, container::setAsyncErrorHandler)
 				.acceptIfNotNull(this.ackHandler, container::setAckHandler)

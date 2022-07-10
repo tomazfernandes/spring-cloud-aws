@@ -15,9 +15,7 @@
  */
 package io.awspring.cloud.sqs.listener.sink;
 
-import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,22 +29,17 @@ import org.springframework.messaging.Message;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class OrderedMessageSink<T> extends AbstractMessageListeningSink<T> {
+public class OrderedMessageListeningSink<T> extends AbstractMessageListeningSink<T> {
 
-	Logger logger = LoggerFactory.getLogger(OrderedMessageSink.class);
+	Logger logger = LoggerFactory.getLogger(OrderedMessageListeningSink.class);
 
 	@Override
-	protected Collection<CompletableFuture<Integer>> doEmit(Collection<Message<T>> messages,
-			AsyncMessageListener<T> messageListener) {
+	protected CompletableFuture<Void> doEmit(Collection<Message<T>> messages) {
 		logger.debug("Splitting {} messages", messages.size());
-		return Collections
-				.singletonList(
-						CompletableFuture.supplyAsync(
-								() -> messages.stream().reduce(CompletableFuture.<Void> completedFuture(null),
+		return execute(() -> messages.stream().reduce(CompletableFuture.completedFuture(null),
 										(voidFuture, msg) -> voidFuture
-												.thenCompose(theVoid -> messageListener.onMessage(msg)),
-										(a, b) -> b),
-								getTaskExecutor()).thenApply(theVoid -> messages.size()));
+												.thenCompose(theVoid -> super.getMessageListener().onMessage(msg)),
+										(a, b) -> b));
 	}
 
 }

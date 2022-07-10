@@ -15,14 +15,14 @@
  */
 package io.awspring.cloud.sqs.support;
 
-import io.awspring.cloud.sqs.listener.AsyncVisibility;
+import io.awspring.cloud.sqs.listener.Visibility;
 import org.springframework.core.MethodParameter;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
 import org.springframework.util.ClassUtils;
 
 /**
- * {@link HandlerMethodArgumentResolver} for {@link AsyncVisibility} method parameters.
+ * {@link HandlerMethodArgumentResolver} for {@link Visibility} method parameters.
  *
  * @author Szymon Dembek
  * @since 1.3
@@ -37,7 +37,7 @@ public class VisibilityHandlerMethodArgumentResolver implements HandlerMethodArg
 
 	@Override
 	public boolean supportsParameter(MethodParameter parameter) {
-		return ClassUtils.isAssignable(AsyncVisibility.class, parameter.getParameterType());
+		return ClassUtils.isAssignable(Visibility.class, parameter.getParameterType());
 	}
 
 	@Override

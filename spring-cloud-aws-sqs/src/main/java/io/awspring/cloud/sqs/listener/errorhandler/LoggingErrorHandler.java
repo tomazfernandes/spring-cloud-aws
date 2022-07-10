@@ -15,6 +15,7 @@
  */
 package io.awspring.cloud.sqs.listener.errorhandler;
 
+import io.awspring.cloud.sqs.CompletableFutures;
 import io.awspring.cloud.sqs.MessageHeaderUtils;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
@@ -37,12 +38,12 @@ public class LoggingErrorHandler<T> implements AsyncErrorHandler<T> {
 	@Override
 	public CompletableFuture<Void> handleError(Message<T> message, Throwable t) {
 		logger.error("Error processing message {}", MessageHeaderUtils.getId(message), t);
-		return CompletableFuture.completedFuture(null);
+		return CompletableFutures.failedFuture(t);
 	}
 
 	@Override
 	public CompletableFuture<Void> handleError(Collection<Message<T>> messages, Throwable t) {
 		logger.error("Error processing {} messages", messages.size(), t);
-		return CompletableFuture.completedFuture(null);
+		return CompletableFutures.failedFuture(t);
 	}
 }
