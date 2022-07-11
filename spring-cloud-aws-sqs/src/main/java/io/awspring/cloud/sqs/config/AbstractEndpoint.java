@@ -15,6 +15,7 @@
  */
 package io.awspring.cloud.sqs.config;
 
+import io.awspring.cloud.sqs.JavaUtils;
 import io.awspring.cloud.sqs.listener.AbstractMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
@@ -112,11 +113,9 @@ public abstract class AbstractEndpoint implements Endpoint {
 	 */
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public void setupContainer(MessageListenerContainer container) {
-		boolean isBatch = inferAndValidateBatchParameters();
 		container.setAsyncMessageListener(createMessageListener());
-		if (container instanceof AbstractMessageListenerContainer) {
-			((AbstractMessageListenerContainer) container).setMessageSink(createOrGetMessageSink(isBatch));
-		}
+		JavaUtils.INSTANCE.acceptIfInstance(container, AbstractMessageListenerContainer.class,
+			abstractContainer -> abstractContainer.setMessageSink(createOrGetMessageSink()));
 	}
 
 	private boolean inferAndValidateBatchParameters() {
@@ -140,11 +139,11 @@ public abstract class AbstractEndpoint implements Endpoint {
 				|| ((ParameterizedType) type).getRawType().equals(List.class));
 	}
 
-	private MessageListeningSink<?> createOrGetMessageSink(boolean isBatch) {
+	private MessageListeningSink<?> createOrGetMessageSink() {
 		if (this.messageSink != null) {
 			return this.messageSink;
 		}
-		return isBatch ? new BatchMessageSink<>() : new FanOutMessageSink<>();
+		return inferAndValidateBatchParameters() ? new BatchMessageSink<>() : new FanOutMessageSink<>();
 	}
 
 	private AsyncMessageListener<?> createMessageListener() {

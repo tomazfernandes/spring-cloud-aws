@@ -36,8 +36,7 @@ import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
 import io.awspring.cloud.sqs.listener.sink.FanOutMessageSink;
 import io.awspring.cloud.sqs.listener.sink.OrderedMessageListeningSink;
-import io.awspring.cloud.sqs.listener.source.MessageSource;
-import io.awspring.cloud.sqs.listener.source.SqsMessageSourceFactory;
+import io.awspring.cloud.sqs.listener.source.SqsMessageSource;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -52,6 +51,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -483,12 +483,9 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			factory.getContainerOptions().maxInflightMessagesPerQueue(1).pollTimeout(Duration.ofSeconds(2))
 					.messagesPerPoll(1).semaphoreAcquireTimeout(Duration.ofSeconds(1))
 					.pollTimeout(Duration.ofSeconds(1));
-			factory.setMessageSourceFactory(new SqsMessageSourceFactory<String>() {
-				@Override
-				public MessageSource<String> create(String endpointName) {
-					latchContainer.manuallyCreatedFactorySourceFactoryLatch.countDown();
-					return super.create(endpointName);
-				}
+			factory.setMessageSourceFactory(names -> {
+				latchContainer.manuallyCreatedFactorySourceFactoryLatch.countDown();
+				return names.stream().map(name -> new SqsMessageSource<String>(name)).collect(Collectors.toList());
 			});
 			factory.setMessageSinkSupplier(() -> new FanOutMessageSink<String>() {
 				@Override

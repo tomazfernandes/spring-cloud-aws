@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sqs.config;
 
-import io.awspring.cloud.sqs.ConfigUtils;
+import io.awspring.cloud.sqs.JavaUtils;
 import io.awspring.cloud.sqs.listener.AbstractMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.AsyncComponentAdapters;
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
@@ -191,7 +191,7 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	private void configureContainer(AbstractMessageListenerContainer<T> container, Endpoint endpoint) {
 		container.setId(endpoint.getId());
 		container.setQueueNames(endpoint.getLogicalNames());
-		ConfigUtils.INSTANCE.acceptIfNotNull(this.messageSinkSupplier, supplier -> container.setMessageSink(messageSinkSupplier.get()))
+		JavaUtils.INSTANCE.acceptIfNotNull(this.messageSinkSupplier, supplier -> container.setMessageSink(messageSinkSupplier.get()))
 				.acceptIfNotNull(this.messageListener, container::setAsyncMessageListener)
 				.acceptIfNotNull(this.errorHandler, container::setAsyncErrorHandler)
 				.acceptIfNotNull(this.ackHandler, container::setAckHandler)

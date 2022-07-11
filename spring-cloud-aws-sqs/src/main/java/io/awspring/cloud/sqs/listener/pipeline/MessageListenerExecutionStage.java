@@ -26,16 +26,7 @@ public class MessageListenerExecutionStage<T> implements MessageProcessingPipeli
 
 	@Override
 	public CompletableFuture<Message<T>> process(Message<T> message) {
-		logger.debug("Processing message {}", MessageHeaderUtils.getId(message));
-		return this.messageListener.onMessage(message)
-			.whenComplete((v, t) -> {
-				if (t != null) {
-					logger.error("Error processing message {}", MessageHeaderUtils.getId(message), t);
-				} else {
-					logger.debug("Processed message {}", MessageHeaderUtils.getId(message));
-				}
-			})
-			.thenApply(theVoid -> message);
+		return this.messageListener.onMessage(message).thenApply(theVoid -> message);
 	}
 
 	@Override
@@ -43,4 +34,5 @@ public class MessageListenerExecutionStage<T> implements MessageProcessingPipeli
 		logger.debug("Processing {} messages", messages.size());
 		return this.messageListener.onMessage(messages).thenApply(theVoid -> messages);
 	}
+
 }

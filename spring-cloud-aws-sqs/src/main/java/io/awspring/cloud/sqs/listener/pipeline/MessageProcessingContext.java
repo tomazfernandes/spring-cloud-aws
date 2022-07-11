@@ -7,6 +7,7 @@ import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.interceptor.MessageVisibilityExtenderInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.Assert;
 
 import java.util.Collection;
 import java.util.concurrent.Semaphore;
@@ -97,7 +98,13 @@ public class MessageProcessingContext<T> {
 		}
 
 		public MessageProcessingContext<T> build() {
-			return new MessageProcessingContext<>(this.messageInterceptors, this.messageListener, this.errorHandler, this.ackHandler, this.semaphore);
+			Assert.notNull(this.messageListener, "messageListener cannot be null provided");
+			Assert.notNull(this.errorHandler, "No error handler provided");
+			Assert.notNull(this.ackHandler, "No ackHandler provided");
+			Assert.notNull(this.messageInterceptors, "messageInterceptors cannot be null");
+			Assert.notNull(this.semaphore, "semaphore cannot be null");
+			return new MessageProcessingContext<>(this.messageInterceptors, this.messageListener,
+				this.errorHandler, this.ackHandler, this.semaphore);
 		}
 	}
 

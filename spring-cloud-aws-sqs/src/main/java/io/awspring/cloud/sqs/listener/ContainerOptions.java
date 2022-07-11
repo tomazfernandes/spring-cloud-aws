@@ -38,6 +38,8 @@ public class ContainerOptions {
 
 	private static final Duration DEFAULT_SEMAPHORE_TIMEOUT = Duration.ofSeconds(10);
 
+	private static final Duration DEFAULT_SHUTDOWN_TIMEOUT = Duration.ofSeconds(20);
+
 	private int maxInflightMessagesPerQueue = DEFAULT_MAX_INFLIGHT_MSG_PER_QUEUE;
 
 	private int messagesPerPoll = DEFAULT_MESSAGES_PER_POLL;
@@ -45,6 +47,8 @@ public class ContainerOptions {
 	private Duration pollTimeout = DEFAULT_POLL_TIMEOUT;
 
 	private Duration semaphoreAcquireTimeout = DEFAULT_SEMAPHORE_TIMEOUT;
+
+	private Duration shutDownTimeout = DEFAULT_SHUTDOWN_TIMEOUT;
 
 	private TaskExecutor sinkTaskExecutor;
 
@@ -99,6 +103,11 @@ public class ContainerOptions {
 		return this;
 	}
 
+	public ContainerOptions shutDownTimeout(Duration shutDownTimeout) {
+		this.shutDownTimeout = shutDownTimeout;
+		return this;
+	}
+
 	/**
 	 * Return the maximum allowed number of inflight messages for each queue.
 	 * @return the number.
@@ -131,8 +140,12 @@ public class ContainerOptions {
 		return this.semaphoreAcquireTimeout;
 	}
 
-	public TaskExecutor getSinkTaskExecutor() {
+	TaskExecutor getSinkTaskExecutor() {
 		return this.sinkTaskExecutor;
+	}
+
+	public Duration getShutDownTimeout() {
+		return this.shutDownTimeout;
 	}
 
 	/**
