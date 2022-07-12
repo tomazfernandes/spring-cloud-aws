@@ -1,6 +1,7 @@
 package io.awspring.cloud.sqs.listener.pipeline;
 
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
+import io.awspring.cloud.sqs.listener.BackPressureHandler;
 import io.awspring.cloud.sqs.listener.acknowledgement.AckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
@@ -28,16 +29,16 @@ public class MessageProcessingContext<T> {
 
 	private final AckHandler<T> ackHandler;
 
-	private final Semaphore semaphore;
+	private final BackPressureHandler backPressureHandler;
 
 	public MessageProcessingContext(Collection<AsyncMessageInterceptor<T>> messageInterceptors,
 									AsyncMessageListener<T> messageListener, AsyncErrorHandler<T> errorHandler,
-									AckHandler<T> ackHandler, Semaphore semaphore) {
+									AckHandler<T> ackHandler, BackPressureHandler backPressureHandler) {
 		this.messageInterceptors = messageInterceptors;
 		this.messageListener = messageListener;
 		this.errorHandler = errorHandler;
 		this.ackHandler = ackHandler;
-		this.semaphore = semaphore;
+		this.backPressureHandler = backPressureHandler;
 	}
 
 	public static <T> MessageProcessingContext.Builder<T> builder() {
@@ -60,8 +61,8 @@ public class MessageProcessingContext<T> {
 		return this.ackHandler;
 	}
 
-	public Semaphore getSemaphore() {
-		return this.semaphore;
+	public BackPressureHandler getBackPressureHandler() {
+		return this.backPressureHandler;
 	}
 
 	public static class Builder<T> {
@@ -70,7 +71,7 @@ public class MessageProcessingContext<T> {
 		private AsyncMessageListener<T> messageListener;
 		private AsyncErrorHandler<T> errorHandler;
 		private AckHandler<T> ackHandler;
-		private Semaphore semaphore;
+		private BackPressureHandler backPressureHandler;
 
 		public Builder<T> interceptors(Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
 			this.messageInterceptors = messageInterceptors;
@@ -92,8 +93,8 @@ public class MessageProcessingContext<T> {
 			return this;
 		}
 
-		public Builder<T> semaphore(Semaphore semaphore) {
-			this.semaphore = semaphore;
+		public Builder<T> backPressureHandler(BackPressureHandler backPressureHandler) {
+			this.backPressureHandler = backPressureHandler;
 			return this;
 		}
 
@@ -102,9 +103,9 @@ public class MessageProcessingContext<T> {
 			Assert.notNull(this.errorHandler, "No error handler provided");
 			Assert.notNull(this.ackHandler, "No ackHandler provided");
 			Assert.notNull(this.messageInterceptors, "messageInterceptors cannot be null");
-			Assert.notNull(this.semaphore, "semaphore cannot be null");
+			Assert.notNull(this.backPressureHandler, "backPressureHandler cannot be null");
 			return new MessageProcessingContext<>(this.messageInterceptors, this.messageListener,
-				this.errorHandler, this.ackHandler, this.semaphore);
+				this.errorHandler, this.ackHandler, this.backPressureHandler);
 		}
 	}
 

@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import io.awspring.cloud.sqs.JavaUtils;
+import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.LifecycleUtils;
 import io.awspring.cloud.sqs.listener.pipeline.AckHandlerExecutionStage;
 import io.awspring.cloud.sqs.listener.pipeline.ErrorHandlerExecutionStage;
@@ -24,7 +24,7 @@ import io.awspring.cloud.sqs.listener.pipeline.MessageListenerExecutionStage;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipelineBuilder;
-import io.awspring.cloud.sqs.listener.pipeline.SemaphoreReleaseStage;
+import io.awspring.cloud.sqs.listener.pipeline.BackPressureReleaseStage;
 import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import io.awspring.cloud.sqs.listener.sink.TaskExecutorAware;
@@ -32,19 +32,17 @@ import io.awspring.cloud.sqs.listener.source.MessageSource;
 import io.awspring.cloud.sqs.listener.source.PollableMessageSource;
 import io.awspring.cloud.sqs.listener.source.SqsMessageSource;
 import io.awspring.cloud.sqs.listener.source.SqsMessageSourceFactory;
+
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.DisposableBean;
 import org.springframework.core.task.AsyncListenableTaskExecutor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
@@ -67,25 +65,17 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	private final SqsAsyncClient asyncClient;
 
-	private int maxInFlightMessagesPerQueue;
-
 	private int messagesPerPoll;
 
 	private TaskExecutor taskExecutor;
-
-	private Semaphore inFlightMessagesSemaphore;
 
 	private Collection<MessageSource<T>> messageSources;
 
 	private MessageSink<T> messageSink;
 
-	private CompletableFuture<?> executionFuture;
+	private Set<CompletableFuture<?>> messageSourceFutures;
 
-	private Duration semaphoreAcquireTimeout;
-
-	private Set<CompletableFuture<?>> pollingFutures;
-
-	private AsyncMessageListener<T> processingPipelineMessageListener;
+	private BackPressureHandler backPressureHandler;
 
 	public SqsMessageListenerContainer(SqsAsyncClient asyncClient, ContainerOptions options) {
 		super(options);
@@ -94,36 +84,38 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	@Override
 	protected void doStart() {
-		this.semaphoreAcquireTimeout = super.getContainerOptions().getSemaphoreAcquireTimeout();
 		this.messagesPerPoll = super.getContainerOptions().getMessagesPerPoll();
-		this.maxInFlightMessagesPerQueue = super.getContainerOptions().getMaxInFlightMessagesPerQueue();
 		this.messageSources = createMessageSources();
 		this.messageSink = super.getMessageSink();
 		this.taskExecutor = createContainerTaskExecutor();
-		this.pollingFutures = Collections.synchronizedSet(new HashSet<>());
-		this.inFlightMessagesSemaphore = new Semaphore(this.maxInFlightMessagesPerQueue * this.messageSources.size());
-		this.processingPipelineMessageListener = decorateMessageListener();
+		this.backPressureHandler = createBackPressureHandler();
+		this.messageSourceFutures = Collections.synchronizedSet(new HashSet<>());
 		configureComponents();
 		LifecycleUtils.start(this.messageSink, this.messageSources);
 		startContainerThread();
 	}
 
+	private SemaphoreBackPressureHandler createBackPressureHandler() {
+		int totalPermits = getContainerOptions().getMaxInFlightMessagesPerQueue() * this.messageSources.size();
+		return new SemaphoreBackPressureHandler(totalPermits, super.getContainerOptions().getSemaphoreAcquireTimeout());
+	}
+
 	private Collection<MessageSource<T>> createMessageSources() {
 		return super.getMessageSourceFactory() != null
-			? super.getMessageSourceFactory().create(this.getQueueNames())
-			: SqsMessageSourceFactory.createSourcesFor(this.getQueueNames());
+			? super.getMessageSourceFactory().create(getQueueNames())
+			: SqsMessageSourceFactory.createSourcesFor(getQueueNames());
 	}
 
 	@SuppressWarnings("unchecked")
 	private void configureComponents() {
-		JavaUtils.INSTANCE
-			.executeManyIfInstance(this.messageSources, PollableMessageSource.class, pms -> {
+		ConfigUtils.INSTANCE
+			.acceptManyIfInstance(this.messageSources, PollableMessageSource.class, pms -> {
 				pms.setPollTimeout(getContainerOptions().getPollTimeout());
 				pms.setNumberOfMessagesPerPoll(getContainerOptions().getMessagesPerPoll());
 			})
-			.executeManyIfInstance(this.messageSources, SqsMessageSource.class, sms -> sms.setSqsAsyncClient(this.asyncClient))
+			.acceptManyIfInstance(this.messageSources, SqsMessageSource.class, sms -> sms.setSqsAsyncClient(this.asyncClient))
 			.acceptIfInstance(this.messageSink, TaskExecutorAware.class, tea -> tea.setTaskExecutor(getOrCreateSinkTaskExecutor()))
-			.acceptIfInstance(this.messageSink, MessageListeningSink.class, mls -> mls.setMessageListener(this.processingPipelineMessageListener));
+			.acceptIfInstance(this.messageSink, MessageListeningSink.class, mls -> mls.setMessageListener(decorateMessageListener()));
 	}
 
 	private TaskExecutor getOrCreateSinkTaskExecutor() {
@@ -134,7 +126,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	private ThreadPoolTaskExecutor createSinkTaskExecutor() {
 		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-		int poolSize = this.maxInFlightMessagesPerQueue * this.messageSources.size();
+		int poolSize = getContainerOptions().getMaxInFlightMessagesPerQueue() * this.messageSources.size();
 		executor.setMaxPoolSize(poolSize);
 		executor.setCorePoolSize(poolSize);
 		executor.setThreadNamePrefix(this.getClass().getSimpleName().toLowerCase() + "-");
@@ -144,40 +136,45 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	private AsyncMessageListener<T> decorateMessageListener() {
 		return ProcessingPipelineMessageListenerAdapter.create(context -> context
-			.interceptors(super.getMessageInterceptors()).messageListener(super.getMessageListener()).errorHandler(super.getErrorHandler())
-			.ackHandler(super.getAckHandler()).semaphore(this.inFlightMessagesSemaphore));
+			.interceptors(getMessageInterceptors()).messageListener(getMessageListener()).errorHandler(getErrorHandler())
+			.ackHandler(getAckHandler()).backPressureHandler(this.backPressureHandler));
 	}
 
 	private void startContainerThread() {
-		JavaUtils.INSTANCE.executeIfInstanceOtherwise(this.taskExecutor, AsyncListenableTaskExecutor.class,
-				listenableExecutor -> this.executionFuture = listenableExecutor.submitListenable(this::pollAndProcessMessages).completable(),
-			taskExecutor -> taskExecutor.execute(this::pollAndProcessMessages));
+		this.taskExecutor.execute(this::pollSourcesAndProcessMessages);
 	}
 
-	private void pollAndProcessMessages() {
+	private void pollSourcesAndProcessMessages() {
 		while (super.isRunning()) {
-			this.messageSources.forEach(messageSource -> {
-				try {
-					if (!acquirePermits()) {
-						return;
-					}
-					if (!super.isRunning()) {
-						logger.debug("Container not running. Returning.");
-						releasePermits(this.messagesPerPoll);
-						return;
-					}
-					manageFutureFrom(messageSource.receive()).exceptionally(this::handleSourceException)
-						.thenApply(this::releaseUnusedPermits).thenCompose(this::emitMessagesToListener)
-						.exceptionally(this::handleSinkException);
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					throw new IllegalStateException("Container thread interrupted", e);
-				} catch (Exception e) {
-					logger.error("Error in ListenerContainer {}. Resuming.", getId(), e);
-				}
-			});
+			this.messageSources.forEach(this::pollAndEmit);
 		}
 		logger.debug("Execution thread stopped.");
+	}
+
+	private void pollAndEmit(MessageSource<T> messageSource) {
+		try {
+			if (!isRunning() || !this.backPressureHandler.request(this.messagesPerPoll)) {
+				return;
+			}
+			if (!isRunning()) {
+				logger.debug("Container was stopped after acquiring permits. Releasing permits and returning.");
+				this.backPressureHandler.release(this.messagesPerPoll);
+				return;
+			}
+			manageSourceFuture(messageSource.receive()).exceptionally(this::handleSourceException)
+				.thenApply(this::releaseUnusedPermits).thenCompose(this::emitMessagesToListener)
+				.exceptionally(this::handleSinkException);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException("Container thread interrupted", e);
+		} catch (Exception e) {
+			logger.error("Error in ListenerContainer {}. Resuming.", getId(), e);
+		}
+	}
+
+	public Collection<Message<T>> releaseUnusedPermits(Collection<Message<T>> msgs) {
+		this.backPressureHandler.release(this.messagesPerPoll - msgs.size());
+		return msgs;
 	}
 
 	private CompletableFuture<Void> emitMessagesToListener(Collection<Message<T>> messages) {
@@ -189,37 +186,10 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		return null;
 	}
 
-	private <F> CompletableFuture<F> manageFutureFrom(CompletableFuture<F> processingFuture) {
-		this.pollingFutures.add(processingFuture);
-		processingFuture.thenRun(() -> this.pollingFutures.remove(processingFuture));
+	private <F> CompletableFuture<F> manageSourceFuture(CompletableFuture<F> processingFuture) {
+		this.messageSourceFutures.add(processingFuture);
+		processingFuture.thenRun(() -> this.messageSourceFutures.remove(processingFuture));
 		return processingFuture;
-	}
-
-	private boolean acquirePermits() throws InterruptedException {
-		if (!isRunning()) {
-			return false;
-		}
-		logger.trace("Acquiring {} permits in container {}", this.messagesPerPoll, getId());
-		boolean hasAcquired = this.inFlightMessagesSemaphore.tryAcquire(this.messagesPerPoll,
-			this.semaphoreAcquireTimeout.getSeconds(), TimeUnit.SECONDS);
-		if (hasAcquired) {
-			logger.trace("{} permits acquired in container {} ", this.messagesPerPoll, getId());
-			logger.trace("Permits left: {}", this.inFlightMessagesSemaphore.availablePermits());
-		} else {
-			logger.trace("Not able to acquire permits in {} seconds. Skipping.",
-				this.semaphoreAcquireTimeout.getSeconds());
-		}
-		return hasAcquired;
-	}
-
-	private Collection<Message<T>> releaseUnusedPermits(Collection<Message<T>> msgs) {
-		this.inFlightMessagesSemaphore.release(this.messagesPerPoll - msgs.size());
-		return msgs;
-	}
-
-	private void releasePermits(int numberOfPermits) {
-		logger.trace("Releasing {} permits", numberOfPermits);
-		this.inFlightMessagesSemaphore.release(numberOfPermits);
 	}
 
 	private Collection<Message<T>> handleSourceException(Throwable t) {
@@ -227,7 +197,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		return Collections.emptyList();
 	}
 
-	private TaskExecutor createContainerTaskExecutor() {
+	private AsyncListenableTaskExecutor createContainerTaskExecutor() {
 		SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor();
 		executor.setThreadNamePrefix(this.getId() + "-");
 		return executor;
@@ -237,49 +207,20 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	protected void doStop() {
 		LifecycleUtils.stop(this.messageSources);
 		waitExistingTasksToFinish();
-		this.pollingFutures.forEach(pollingFuture -> pollingFuture.cancel(true));
+		this.messageSourceFutures.forEach(pollingFuture -> pollingFuture.cancel(true));
 		LifecycleUtils.stop(this.messageSink);
-		shutDownTaskExecutor();
 		logger.debug("Container {} stopped", getId());
 	}
 
-	private void shutDownTaskExecutor() {
-		if (this.executionFuture != null) {
-			this.executionFuture.thenRun(this::doShutdownTaskExecutor);
-		} else {
-			doShutdownTaskExecutor();
-		}
-	}
-
 	private void waitExistingTasksToFinish() {
-		try {
-			if (getContainerOptions().getShutDownTimeout().isZero()) {
-				logger.debug("Container shutdown timeout set to zero - not waiting for tasks to finish.");
-				return;
-			}
-			int timeoutSeconds = (int) getContainerOptions().getShutDownTimeout().getSeconds();
-			int totalPermits = this.maxInFlightMessagesPerQueue * this.messageSources.size();
-			logger.debug("Waiting for up to {} seconds for approx. {} tasks to finish on container {}", timeoutSeconds,
-				totalPermits - this.inFlightMessagesSemaphore.availablePermits(), this.getId());
-			boolean tasksFinished = this.inFlightMessagesSemaphore.tryAcquire(totalPermits, timeoutSeconds,
-				TimeUnit.SECONDS);
-			if (!tasksFinished) {
-				logger.warn("Tasks did not finish in {} seconds, proceeding with shutdown for container {}",
-					timeoutSeconds, getId());
-			}
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-			throw new IllegalStateException("Interrupted while waiting for container tasks to finish", e);
+		Duration shutDownTimeout = getContainerOptions().getShutDownTimeout();
+		if (shutDownTimeout.isZero()) {
+			logger.debug("Container shutdown timeout set to zero - not waiting for tasks to finish.");
+			return;
 		}
-	}
-
-	private void doShutdownTaskExecutor() {
-		if (this.taskExecutor instanceof DisposableBean) {
-			try {
-				((DisposableBean) this.taskExecutor).destroy();
-			} catch (Exception e) {
-				throw new IllegalStateException("Error shutting down TaskExecutor", e);
-			}
+		boolean tasksFinished = this.backPressureHandler.drain(shutDownTimeout);
+		if (!tasksFinished) {
+			logger.warn("Tasks did not finish in {} seconds, proceeding with shutdown.", shutDownTimeout.getSeconds());
 		}
 	}
 
@@ -293,7 +234,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 				.then(MessageListenerExecutionStage::new)
 				.wrappedWith(ErrorHandlerExecutionStage::new)
 				.wrappedWith(AckHandlerExecutionStage::new)
-				.then(SemaphoreReleaseStage::new)
+				.then(BackPressureReleaseStage::new)
 				.build(context);
 		}
 

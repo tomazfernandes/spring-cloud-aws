@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sqs.config;
 
-import io.awspring.cloud.sqs.JavaUtils;
+import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.listener.AbstractMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
@@ -114,7 +114,7 @@ public abstract class AbstractEndpoint implements Endpoint {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public void setupContainer(MessageListenerContainer container) {
 		container.setAsyncMessageListener(createMessageListener());
-		JavaUtils.INSTANCE.acceptIfInstance(container, AbstractMessageListenerContainer.class,
+		ConfigUtils.INSTANCE.acceptIfInstance(container, AbstractMessageListenerContainer.class,
 			abstractContainer -> abstractContainer.setMessageSink(createOrGetMessageSink()));
 	}
 

@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sqs.config;
 
-import io.awspring.cloud.sqs.JavaUtils;
+import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.interceptor.MessageVisibilityExtenderInterceptor;
@@ -69,7 +69,7 @@ public class SqsMessageListenerContainerFactory<T>
 	private ContainerOptions configureContainerOptions(Endpoint endpoint, ContainerOptions options) {
 		if (endpoint instanceof SqsEndpoint) {
 			SqsEndpoint sqsEndpoint = (SqsEndpoint) endpoint;
-			JavaUtils.INSTANCE
+			ConfigUtils.INSTANCE
 					.acceptIfNotNull(sqsEndpoint.getMaxInflightMessagesPerQueue(), options::maxInflightMessagesPerQueue)
 					.acceptIfNotNull(sqsEndpoint.getPollTimeout(), options::pollTimeout)
 					.acceptIfNotNull(sqsEndpoint.getMinimumVisibility(), this::addVisibilityExtender);

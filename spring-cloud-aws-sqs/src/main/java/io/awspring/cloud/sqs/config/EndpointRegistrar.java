@@ -16,7 +16,7 @@
 package io.awspring.cloud.sqs.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.awspring.cloud.sqs.JavaUtils;
+import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.listener.DefaultListenerContainerRegistry;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.MessageListenerContainerRegistry;
@@ -136,7 +136,7 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 			this.listenerContainerRegistry = beanFactory.getBean(this.messageListenerContainerRegistryBeanName,
 					MessageListenerContainerRegistry.class);
 		}
-		JavaUtils.INSTANCE.acceptIfInstance(this.listenerContainerRegistry, DefaultListenerContainerRegistry.class,
+		ConfigUtils.INSTANCE.acceptIfInstance(this.listenerContainerRegistry, DefaultListenerContainerRegistry.class,
 			dlcr -> dlcr.setParallelLifecycleManagement(this.isParallelLifecycleManagement));
 		this.endpoints.forEach(this::process);
 	}

@@ -29,21 +29,21 @@ import org.springframework.util.CollectionUtils;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class JavaUtils {
+public class ConfigUtils {
 
-	public static final JavaUtils INSTANCE = new JavaUtils();
+	public static final ConfigUtils INSTANCE = new ConfigUtils();
 
-	private JavaUtils() {
+	private ConfigUtils() {
 	}
 
-	public <T> JavaUtils acceptIfNotNull(T value, Consumer<T> consumer) {
+	public <T> ConfigUtils acceptIfNotNull(T value, Consumer<T> consumer) {
 		if (value != null) {
 			consumer.accept(value);
 		}
 		return this;
 	}
 
-	public <T, V> JavaUtils acceptBothIfNoneNull(T firstValue, V secondValue, BiConsumer<T, V> consumer) {
+	public <T, V> ConfigUtils acceptBothIfNoneNull(T firstValue, V secondValue, BiConsumer<T, V> consumer) {
 		if (firstValue != null && secondValue != null) {
 			consumer.accept(firstValue, secondValue);
 		}
@@ -52,38 +52,27 @@ public class JavaUtils {
 
 	@SuppressWarnings("varargs")
 	@SafeVarargs
-	public final <T> JavaUtils acceptFirstNonNull(Consumer<T> consumer, T... values) {
+	public final <T> ConfigUtils acceptFirstNonNull(Consumer<T> consumer, T... values) {
 		Arrays.stream(values).filter(Objects::nonNull).findFirst().ifPresent(consumer);
 		return this;
 	}
 
-	public <T> JavaUtils acceptIfNotEmpty(Collection<T> value, Consumer<Collection<T>> consumer) {
+	public <T> ConfigUtils acceptIfNotEmpty(Collection<T> value, Consumer<Collection<T>> consumer) {
 		if (!CollectionUtils.isEmpty(value)) {
 			consumer.accept(value);
 		}
 		return this;
 	}
 
-	@SuppressWarnings({"unchecked"})
-	public <T> JavaUtils acceptIfInstance(Object value, Class<T> clazz, Consumer<T> consumer) {
+	public <T> ConfigUtils acceptIfInstance(Object value, Class<T> clazz, Consumer<T> consumer) {
 		if (clazz.isAssignableFrom(value.getClass())) {
-			consumer.accept((T) value);
+			consumer.accept(clazz.cast(value));
 		}
 		return this;
 	}
 
-	public <T> JavaUtils executeManyIfInstance(Collection<?> values, Class<T> clazz, Consumer<T> consumer) {
+	public <T> ConfigUtils acceptManyIfInstance(Collection<?> values, Class<T> clazz, Consumer<T> consumer) {
 		values.forEach(value -> acceptIfInstance(value, clazz, consumer));
-		return this;
-	}
-
-	@SuppressWarnings({"unchecked"})
-	public <T, U> JavaUtils executeIfInstanceOtherwise(U value, Class<T> clazz, Consumer<T> consumer, Consumer<U> rawValueConsumer) {
-		if (clazz.isAssignableFrom(value.getClass())) {
-			consumer.accept((T) value);
-		} else {
-			rawValueConsumer.accept(value);
-		}
 		return this;
 	}
 
