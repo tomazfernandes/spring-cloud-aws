@@ -25,8 +25,17 @@ import org.springframework.context.SmartLifecycle;
  */
 public interface PollingMessageSource<T> extends MessageSource<T>, SmartLifecycle {
 
+	/**
+	 * Set the endpoint logical name that will be polled by this source.
+	 * @param endpointName the name.
+	 */
 	void setPollingEndpointName(String endpointName);
 
+	/**
+	 * Set the {@link BackPressureHandler} that will be use to handle
+	 * backpressure in this source.
+	 * @param backPressureHandler the handler.
+	 */
 	void setBackPressureHandler(BackPressureHandler backPressureHandler);
 
 }

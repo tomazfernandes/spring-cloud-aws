@@ -15,9 +15,6 @@
  */
 package io.awspring.cloud.sqs.listener.source;
 
-import java.util.Collection;
-import java.util.concurrent.CompletableFuture;
-
 import io.awspring.cloud.sqs.listener.ConfigurableContainerComponent;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import org.springframework.messaging.Message;

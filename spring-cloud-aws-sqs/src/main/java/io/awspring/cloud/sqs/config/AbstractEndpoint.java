@@ -29,13 +29,14 @@ import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+
+import io.awspring.cloud.sqs.listener.source.MessageSourceFactory;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.util.Assert;
 
 /**
- * Base class for implementing an {@link Endpoint}. Contains properties that should be common to all endpoints to be
- * handled by an {@link AbstractMessageListenerContainerFactory}.
+ * Base class for implementing an {@link Endpoint}.
  *
  * @author Tomaz Fernandes
  * @since 3.0
@@ -114,9 +115,13 @@ public abstract class AbstractEndpoint implements Endpoint {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public void setupContainer(MessageListenerContainer container) {
 		container.setAsyncMessageListener(createMessageListener());
+		container.setMessageSink(createOrGetMessageSink());
+		container.setMessageSourceFactory(createMessageSourceFactory());
 		ConfigUtils.INSTANCE.acceptIfInstance(container, AbstractMessageListenerContainer.class,
 			abstractContainer -> abstractContainer.setMessageSink(createOrGetMessageSink()));
 	}
+
+	protected abstract MessageSourceFactory<?> createMessageSourceFactory();
 
 	private boolean inferAndValidateBatchParameters() {
 		Type[] genericParameterTypes = this.method.getGenericParameterTypes();

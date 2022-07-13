@@ -19,8 +19,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.parallel.ExecutionMode.CONCURRENT;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.awspring.cloud.sqs.annotation.EnableSqs;
 import io.awspring.cloud.sqs.annotation.SqsListener;
+import io.awspring.cloud.sqs.config.SqsBootstrapConfiguration;
 import io.awspring.cloud.sqs.config.SqsListenerCustomizer;
 import io.awspring.cloud.sqs.config.SqsMessageListenerContainerFactory;
 import io.awspring.cloud.sqs.listener.Visibility;
@@ -35,8 +35,8 @@ import io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
 import io.awspring.cloud.sqs.listener.sink.FanOutMessageSink;
-import io.awspring.cloud.sqs.listener.sink.MessageExecutionContext;
-import io.awspring.cloud.sqs.listener.sink.MessageExecutionResult;
+import io.awspring.cloud.sqs.listener.sink.MessageProcessingContext;
+import io.awspring.cloud.sqs.listener.sink.MessageProcessingResult;
 import io.awspring.cloud.sqs.listener.sink.OrderedMessageListeningSink;
 import io.awspring.cloud.sqs.listener.source.SqsMessageSource;
 import java.lang.reflect.Method;
@@ -63,6 +63,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory;
@@ -430,7 +431,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 
 	}
 
-	@EnableSqs
+	@Import(SqsBootstrapConfiguration.class)
 	@Configuration
 	static class SQSConfiguration {
 
@@ -490,7 +491,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			});
 			factory.setMessageSinkSupplier(() -> new FanOutMessageSink<String>() {
 				@Override
-				public CompletableFuture<MessageExecutionResult> emit(Collection<Message<String>> collection, MessageExecutionContext<String> context) {
+				public CompletableFuture<MessageProcessingResult> emit(Collection<Message<String>> collection, MessageProcessingContext<String> context) {
 					latchContainer.manuallyCreatedFactorySinkLatch.countDown();
 					return super.emit(collection, context);
 				}

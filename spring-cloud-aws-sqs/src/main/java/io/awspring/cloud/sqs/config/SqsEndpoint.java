@@ -16,6 +16,9 @@
 package io.awspring.cloud.sqs.config;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
+import io.awspring.cloud.sqs.listener.source.MessageSourceFactory;
+import io.awspring.cloud.sqs.listener.source.SqsMessageSourceFactory;
+
 import java.time.Duration;
 import java.util.Collection;
 
@@ -77,6 +80,11 @@ public class SqsEndpoint extends AbstractEndpoint {
 	 */
 	public Integer getMinimumVisibility() {
 		return this.minimumVisibility;
+	}
+
+	@Override
+	protected MessageSourceFactory<?> createMessageSourceFactory() {
+		return new SqsMessageSourceFactory<>();
 	}
 
 	public static class SqsEndpointBuilder {

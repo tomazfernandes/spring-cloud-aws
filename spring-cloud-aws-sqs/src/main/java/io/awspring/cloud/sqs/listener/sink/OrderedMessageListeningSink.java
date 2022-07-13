@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 the original author or authors.
+ * Copyright 2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,10 +35,10 @@ public class OrderedMessageListeningSink<T> extends AbstractMessageListeningSink
 	Logger logger = LoggerFactory.getLogger(OrderedMessageListeningSink.class);
 
 	@Override
-	protected CompletableFuture<MessageExecutionResult> doEmit(Collection<Message<T>> messages, MessageExecutionContext<T> context) {
+	protected CompletableFuture<MessageProcessingResult> doEmit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
 		logger.debug("Splitting {} messages", messages.size());
-		return messages.stream().reduce(CompletableFuture.completedFuture(MessageExecutionResult.empty()),
-				(resultFuture, msg) -> execute(msg, context).thenCombine(resultFuture, MessageExecutionResult::merge),
+		return messages.stream().reduce(CompletableFuture.completedFuture(MessageProcessingResult.empty()),
+				(resultFuture, msg) -> execute(msg, context).thenCombine(resultFuture, MessageProcessingResult::merge),
 			(a, b) -> a);
 	}
 

@@ -21,8 +21,7 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.messaging.Message;
 
 /**
- * Component responsible for deciding how {@link Message} instances should be emitted to the provided
- * {@link AsyncMessageListener}.
+ * {@link MessageSink} extension that uses an {@link AsyncMessageListener} as the output.
  *
  * @param <T> the {@link Message} payload type.
  *

@@ -153,11 +153,10 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	}
 
 	/**
-	 * Set the {@link MessageListeningSink} instance to be used by containers created with this factory. If none is
-	 * provided, a default will be instantiated according to each endpoint's configuration. Message splitters handle the
-	 * batch of messages returned by the {@link MessageSource} and feeds the messages to the container processing
-	 * pipeline.
-	 * @param messageSinkSupplier the message splitter instance.
+	 * Set the {@link MessageListeningSink} supplier to be used to create instances for
+	 * containers created with this factory. If none is provided, a default will be
+	 * instantiated according to each endpoint's configuration.
+	 * @param messageSinkSupplier the instance.
 	 */
 	public void setMessageSinkSupplier(Supplier<MessageListeningSink<T>> messageSinkSupplier) {
 		Assert.notNull(messageSinkSupplier, "messageSplitter cannot be null");
@@ -212,6 +211,11 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 		@Override
 		public void setupContainer(MessageListenerContainer container) {
 			// No ops - container should be setup manually.
+		}
+
+		@Override
+		protected MessageSourceFactory<?> createMessageSourceFactory() {
+			return null;
 		}
 	}
 }

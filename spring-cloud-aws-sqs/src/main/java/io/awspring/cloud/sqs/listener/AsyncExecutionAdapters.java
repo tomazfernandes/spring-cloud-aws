@@ -21,7 +21,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
 /**
- * Utility class for adapting blocking processes to asynchronous components including error handling.
+ * Utility class for adapting blocking processes to asynchronous components,
+ * including error handling for the method calls.
  *
  * @author Tomaz Fernandes
  * @since 3.0

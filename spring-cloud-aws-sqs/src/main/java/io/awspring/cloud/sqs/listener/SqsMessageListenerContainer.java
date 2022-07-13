@@ -20,16 +20,16 @@ import io.awspring.cloud.sqs.LifecycleUtils;
 import io.awspring.cloud.sqs.listener.pipeline.ProcessingPipelineMessageListenerAdapter;
 import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
-import io.awspring.cloud.sqs.listener.sink.TaskExecutorAware;
+import io.awspring.cloud.sqs.listener.sink.TaskExecutorAwareComponent;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
 import io.awspring.cloud.sqs.listener.source.MessageSourceFactory;
 import io.awspring.cloud.sqs.listener.source.PollingMessageSource;
 import io.awspring.cloud.sqs.listener.source.SqsMessageSource;
-import io.awspring.cloud.sqs.listener.source.SqsMessageSourceFactory;
 
 import java.util.Collection;
 import java.util.stream.Collectors;
 
+import io.awspring.cloud.sqs.listener.source.SqsMessageSourceFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.task.TaskExecutor;
@@ -48,6 +48,8 @@ import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 public class SqsMessageListenerContainer<T> extends AbstractMessageListenerContainer<T> {
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessageListenerContainer.class);
+
+	private final MessageSourceFactory<T> DEFAULT_SQS_MESSAGE_SOURCE_FACTORY = new SqsMessageSourceFactory<>();
 
 	private final SqsAsyncClient asyncClient;
 
@@ -69,15 +71,15 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	}
 
 	private Collection<MessageSource<T>> createMessageSources() {
-		MessageSourceFactory<T> factoryToUse = super.getMessageSourceFactory() != null
-			? super.getMessageSourceFactory()
-			: new SqsMessageSourceFactory<>();
-		return getQueueNames().stream().map(queueName -> createMessageSource(queueName, factoryToUse))
+		if (getMessageSourceFactory() == null) {
+			setMessageSourceFactory(DEFAULT_SQS_MESSAGE_SOURCE_FACTORY);
+		}
+		return getQueueNames().stream().map(this::createMessageSource)
 			.collect(Collectors.toList());
 	}
 
-	private MessageSource<T> createMessageSource(String queueName, MessageSourceFactory<T> messageSourceFactory) {
-		MessageSource<T> messageSource = messageSourceFactory.create();
+	private MessageSource<T> createMessageSource(String queueName) {
+		MessageSource<T> messageSource = getMessageSourceFactory().create();
 		ConfigUtils.INSTANCE
 			.acceptIfInstance(messageSource, PollingMessageSource.class, pms -> pms.setPollingEndpointName(queueName));
 		return messageSource;
@@ -92,7 +94,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 			.acceptManyIfInstance(this.messageSources, SqsMessageSource.class, sms -> sms.setSqsAsyncClient(this.asyncClient))
 			.acceptManyIfInstance(this.messageSources, PollingMessageSource.class, sms -> sms.setBackPressureHandler(createBackPressureHandler()))
 			.acceptManyIfInstance(this.messageSources, PollingMessageSource.class, sms -> sms.setMessageSink(this.messageSink))
-			.acceptIfInstance(this.messageSink, TaskExecutorAware.class, tea -> tea.setTaskExecutor(getOrCreateSinkTaskExecutor()))
+			.acceptIfInstance(this.messageSink, TaskExecutorAwareComponent.class, tea -> tea.setTaskExecutor(getOrCreateSinkTaskExecutor()))
 			.acceptIfInstance(this.messageSink, MessageListeningSink.class, mls -> mls.setMessageListener(decorateMessageListener()));
 	}
 

@@ -64,8 +64,9 @@ import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
- * {@link BeanPostProcessor} implementation that scans the bean for an {@link SqsListener @SqsListener} annotation,
- * extracts information to an {@link SqsEndpoint}, and registers it in the {@link EndpointRegistrar}.
+ * {@link BeanPostProcessor} implementation that scans the bean for a
+ * {@link SqsListener @SqsListener} annotation, extracts information to a {@link SqsEndpoint},
+ * and registers it in the {@link EndpointRegistrar}.
  *
  * @author Tomaz Fernandes
  * @since 3.0

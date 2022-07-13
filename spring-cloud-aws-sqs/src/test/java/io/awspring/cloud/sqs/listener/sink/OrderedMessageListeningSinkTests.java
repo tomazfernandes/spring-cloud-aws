@@ -1,18 +1,11 @@
 package io.awspring.cloud.sqs.listener.sink;
 
-import io.awspring.cloud.sqs.listener.AsyncComponentAdapters;
-import io.awspring.cloud.sqs.listener.AsyncExecutionAdapters;
-import io.awspring.cloud.sqs.listener.MessageListener;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
 
@@ -37,7 +30,7 @@ class OrderedMessageListeningSinkTests {
 			return CompletableFuture.completedFuture(null);
 		});
 		sink.start();
-		sink.emit(messagesToEmit, MessageExecutionContext.withCompletionCallback(msg -> {})).join();
+		sink.emit(messagesToEmit, MessageProcessingContext.withCompletionCallback(msg -> {})).join();
 		sink.stop();
 		assertThat(received).containsSequence(messagesToEmit);
 	}

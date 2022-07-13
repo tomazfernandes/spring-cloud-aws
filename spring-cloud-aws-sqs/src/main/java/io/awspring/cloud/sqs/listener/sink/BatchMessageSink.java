@@ -20,13 +20,17 @@ import java.util.concurrent.CompletableFuture;
 import org.springframework.messaging.Message;
 
 /**
+ * {@link MessageSink} implementation that emits the whole received batch of messages to
+ * the configured {@link io.awspring.cloud.sqs.listener.AsyncMessageListener}.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */
 public class BatchMessageSink<T> extends AbstractMessageListeningSink<T> {
 
 	@Override
-	protected CompletableFuture<MessageExecutionResult> doEmit(Collection<Message<T>> messages, MessageExecutionContext<T> context) {
+	protected CompletableFuture<MessageProcessingResult> doEmit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
 		return execute(messages, context);
 	}
+
 }

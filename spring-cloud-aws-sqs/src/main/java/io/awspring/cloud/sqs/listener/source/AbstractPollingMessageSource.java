@@ -3,8 +3,8 @@ package io.awspring.cloud.sqs.listener.source;
 
 import io.awspring.cloud.sqs.listener.BackPressureHandler;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
-import io.awspring.cloud.sqs.listener.sink.MessageExecutionContext;
-import io.awspring.cloud.sqs.listener.sink.MessageExecutionResult;
+import io.awspring.cloud.sqs.listener.sink.MessageProcessingContext;
+import io.awspring.cloud.sqs.listener.sink.MessageProcessingResult;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +22,12 @@ import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 
 /**
+ * Base {@link PollingMessageSource} implementation with
+ * {@link org.springframework.context.SmartLifecycle} and backpressure handling capabilities.
+ *
+ * The connected {@link MessageSink} should use the provided completion callback to signal
+ * each completed message processing.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */
@@ -125,8 +131,10 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 					this.backPressureHandler.release(permits);
 					continue;
 				}
-				managePollingFuture(doPollForMessages()).exceptionally(this::handlePollingException)
-					.thenApply(this::releaseUnusedPermits).thenCompose(this::emitMessages)
+				managePollingFuture(doPollForMessages())
+					.exceptionally(this::handlePollingException)
+					.thenApply(this::releaseUnusedPermits)
+					.thenCompose(this::emitMessages)
 					.exceptionally(this::handleSinkException);
 			}
 			catch (InterruptedException e) {
@@ -149,16 +157,16 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 		return msgs;
 	}
 
-	private CompletableFuture<MessageExecutionResult> emitMessages(Collection<Message<T>> messages) {
+	private CompletableFuture<MessageProcessingResult> emitMessages(Collection<Message<T>> messages) {
 		if (messages.isEmpty()) {
-			return CompletableFuture.completedFuture(MessageExecutionResult.empty());
+			return CompletableFuture.completedFuture(MessageProcessingResult.empty());
 		}
-		return this.messageSink.emit(messages, MessageExecutionContext.withCompletionCallback(msg -> this.backPressureHandler.release(1)));
+		return this.messageSink.emit(messages, MessageProcessingContext.withCompletionCallback(msg -> this.backPressureHandler.release(1)));
 	}
 
-	private MessageExecutionResult handleSinkException(Throwable throwable) {
+	private MessageProcessingResult handleSinkException(Throwable throwable) {
 		logger.error("Sink returned an error.", throwable);
-		return MessageExecutionResult.empty();
+		return MessageProcessingResult.empty();
 	}
 
 	private Collection<Message<T>> handlePollingException(Throwable t) {

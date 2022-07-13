@@ -15,8 +15,6 @@
  */
 package io.awspring.cloud.sqs.listener.source;
 
-import java.util.Collection;
-
 /**
  * An abstraction for creating {@link MessageSource} instances for a given endpoint name.
  *
@@ -25,6 +23,10 @@ import java.util.Collection;
  */
 public interface MessageSourceFactory<T> {
 
+	/**
+	 * Create a {@link MessageSource} instance.
+	 * @return the created instance.
+	 */
 	MessageSource<T> create();
 
 }

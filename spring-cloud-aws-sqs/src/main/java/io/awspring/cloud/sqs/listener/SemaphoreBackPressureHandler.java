@@ -8,6 +8,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * {@link BackPressureHandler} implementation that uses a {@link Semaphore} for handling
  * @author Tomaz Fernandes
  * @since 3.0
  */

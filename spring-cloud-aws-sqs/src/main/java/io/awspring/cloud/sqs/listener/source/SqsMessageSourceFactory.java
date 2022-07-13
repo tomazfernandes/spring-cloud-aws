@@ -15,8 +15,6 @@
  */
 package io.awspring.cloud.sqs.listener.source;
 
-import java.util.Collection;
-
 /**
  * Default implementation of the {@link MessageSourceFactory} interface to create {@link SqsMessageSource} instances.
  *

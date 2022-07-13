@@ -24,6 +24,7 @@ import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
 import io.awspring.cloud.sqs.listener.sink.FanOutMessageSink;
 import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
+import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
 import io.awspring.cloud.sqs.listener.source.MessageSourceFactory;
 import java.util.ArrayList;
@@ -72,7 +73,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	private AckHandler<T> ackHandler = DEFAULT_ACK_HANDLER;
 
-	private MessageListeningSink<T> messageSink = DEFAULT_MESSAGE_SINK;
+	private MessageSink<T> messageSink = DEFAULT_MESSAGE_SINK;
 
 	private final Collection<AsyncMessageInterceptor<T>> messageInterceptors = new ArrayList<>();
 
@@ -153,7 +154,8 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 		this.messageSourceFactory = messageSourceFactory;
 	}
 
-	public void setMessageSink(MessageListeningSink<T> messageSink) {
+	@Override
+	public void setMessageSink(MessageSink<T> messageSink) {
 		this.messageSink = messageSink;
 	}
 
@@ -202,7 +204,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	 * Return the {@link MessageListeningSink} instances used by this container.
 	 * @return the instance.
 	 */
-	public MessageListeningSink<T> getMessageSink() {
+	public MessageSink<T> getMessageSink() {
 		return this.messageSink;
 	}
 
