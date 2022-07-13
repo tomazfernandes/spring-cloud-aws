@@ -25,6 +25,6 @@ import java.util.Collection;
  */
 public interface MessageSourceFactory<T> {
 
-	Collection<MessageSource<T>> create(Collection<String> endpointNames);
+	MessageSource<T> create();
 
 }

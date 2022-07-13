@@ -17,9 +17,9 @@ public class SemaphoreBackPressureHandler implements BackPressureHandler {
 
 	private final Semaphore semaphore;
 
-	private final Duration acquireTimeout;
-
 	private final int totalPermits;
+
+	private final Duration acquireTimeout;
 
 	public SemaphoreBackPressureHandler(int totalPermits, Duration acquireTimeout) {
 		this.totalPermits = totalPermits;
@@ -28,24 +28,24 @@ public class SemaphoreBackPressureHandler implements BackPressureHandler {
 	}
 
 	@Override
-	public boolean request(int numberOfPermits) throws InterruptedException {
-		logger.debug("Acquiring {} permits", numberOfPermits);
-		boolean hasAcquired = this.semaphore.tryAcquire(numberOfPermits,
+	public int request(int amount) throws InterruptedException {
+		logger.debug("Acquiring {} permits", amount);
+		boolean hasAcquired = this.semaphore.tryAcquire(amount,
 			this.acquireTimeout.getSeconds(), TimeUnit.SECONDS);
 		if (hasAcquired) {
-			logger.trace("{} permits acquired", numberOfPermits);
+			logger.trace("{} permits acquired", amount);
 			logger.trace("Permits left: {}", this.semaphore.availablePermits());
 		} else {
 			logger.trace("Not able to acquire permits in {} seconds. Skipping.",
 				this.acquireTimeout.getSeconds());
 		}
-		return hasAcquired;
+		return hasAcquired ? amount : 0;
 	}
 
 	@Override
-	public void release(int numberOfPermits) {
-		logger.debug("Releasing {} permits", numberOfPermits);
-		this.semaphore.release(numberOfPermits);
+	public void release(int amount) {
+		logger.debug("Releasing {} permits", amount);
+		this.semaphore.release(amount);
 	}
 
 	@Override

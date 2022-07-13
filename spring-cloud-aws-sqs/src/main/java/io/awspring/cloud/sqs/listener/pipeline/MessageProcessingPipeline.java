@@ -9,7 +9,7 @@ import java.util.concurrent.CompletableFuture;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public interface MessageProcessingPipeline<T> {
+interface MessageProcessingPipeline<T> {
 
 	CompletableFuture<Message<T>> process(Message<T> message);
 

@@ -37,7 +37,7 @@ class OrderedMessageListeningSinkTests {
 			return CompletableFuture.completedFuture(null);
 		});
 		sink.start();
-		sink.emit(messagesToEmit).join();
+		sink.emit(messagesToEmit, MessageExecutionContext.withCompletionCallback(msg -> {})).join();
 		sink.stop();
 		assertThat(received).containsSequence(messagesToEmit);
 	}

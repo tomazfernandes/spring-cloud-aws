@@ -16,6 +16,7 @@
 package io.awspring.cloud.sqs.listener;
 
 import java.time.Duration;
+import java.util.Collection;
 
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.util.Assert;
@@ -112,7 +113,7 @@ public class ContainerOptions {
 	 * Return the maximum allowed number of inflight messages for each queue.
 	 * @return the number.
 	 */
-	int getMaxInFlightMessagesPerQueue() {
+	public int getMaxInFlightMessagesPerQueue() {
 		return this.maxInflightMessagesPerQueue;
 	}
 
@@ -120,7 +121,7 @@ public class ContainerOptions {
 	 * Return the number of messages that should be returned per poll.
 	 * @return the number.
 	 */
-	int getMessagesPerPoll() {
+	public int getMessagesPerPoll() {
 		return this.messagesPerPoll;
 	}
 
@@ -128,7 +129,7 @@ public class ContainerOptions {
 	 * Return the timeout for polling messages for this endpoint.
 	 * @return the timeout duration.
 	 */
-	Duration getPollTimeout() {
+	public Duration getPollTimeout() {
 		return this.pollTimeout;
 	}
 
@@ -136,11 +137,11 @@ public class ContainerOptions {
 	 * Return the maximum time the polling thread should wait for permits.
 	 * @return the timeout.
 	 */
-	Duration getSemaphoreAcquireTimeout() {
+	public Duration getSemaphoreAcquireTimeout() {
 		return this.semaphoreAcquireTimeout;
 	}
 
-	TaskExecutor getSinkTaskExecutor() {
+	public TaskExecutor getSinkTaskExecutor() {
 		return this.sinkTaskExecutor;
 	}
 
@@ -156,6 +157,14 @@ public class ContainerOptions {
 		ContainerOptions newCopy = new ContainerOptions();
 		ReflectionUtils.shallowCopyFieldState(this, newCopy);
 		return newCopy;
+	}
+
+	public void configure(ConfigurableContainerComponent configurable) {
+		configurable.configure(this);
+	}
+
+	public void configure(Collection<? extends ConfigurableContainerComponent> configurables) {
+		configurables.forEach(this::configure);
 	}
 
 }

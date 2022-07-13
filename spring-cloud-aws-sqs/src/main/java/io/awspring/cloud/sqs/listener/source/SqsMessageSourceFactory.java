@@ -16,8 +16,6 @@
 package io.awspring.cloud.sqs.listener.source;
 
 import java.util.Collection;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * Default implementation of the {@link MessageSourceFactory} interface to create {@link SqsMessageSource} instances.
@@ -27,19 +25,9 @@ import java.util.stream.Collectors;
  */
 public class SqsMessageSourceFactory<T> implements MessageSourceFactory<T> {
 
-	private SqsMessageSourceFactory() {}
-
 	@Override
-	public Collection<MessageSource<T>> create(Collection<String> endpointNames) {
-		return endpointNames.stream().map(newMessageSourceInstance()).collect(Collectors.toList());
-	}
-
-	private Function<String, SqsMessageSource<T>> newMessageSourceInstance() {
-		return SqsMessageSource::new;
-	}
-
-	public static <T> Collection<MessageSource<T>> createSourcesFor(Collection<String> endpointNames) {
-		return new SqsMessageSourceFactory<T>().create(endpointNames);
+	public MessageSource<T> create() {
+		return new SqsMessageSource<>();
 	}
 
 }

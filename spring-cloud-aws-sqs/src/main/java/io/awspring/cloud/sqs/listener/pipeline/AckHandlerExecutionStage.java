@@ -3,7 +3,6 @@ package io.awspring.cloud.sqs.listener.pipeline;
 import io.awspring.cloud.sqs.CompletableFutures;
 import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.acknowledgement.AckHandler;
-import io.awspring.cloud.sqs.listener.interceptor.MessageVisibilityExtenderInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
@@ -15,7 +14,7 @@ import java.util.concurrent.CompletableFuture;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class AckHandlerExecutionStage<T> implements MessageProcessingPipeline<T> {
+class AckHandlerExecutionStage<T> implements MessageProcessingPipeline<T> {
 
 	private static final Logger logger = LoggerFactory.getLogger(AckHandlerExecutionStage.class);
 
@@ -23,7 +22,7 @@ public class AckHandlerExecutionStage<T> implements MessageProcessingPipeline<T>
 
 	private final AckHandler<T> ackHandler;
 
-	public AckHandlerExecutionStage(MessageProcessingContext<T> context, MessageProcessingPipeline<T> wrapped) {
+	public AckHandlerExecutionStage(MessageProcessingConfiguration<T> context, MessageProcessingPipeline<T> wrapped) {
 		this.wrapped = wrapped;
 		this.ackHandler = context.getAckHandler();
 	}

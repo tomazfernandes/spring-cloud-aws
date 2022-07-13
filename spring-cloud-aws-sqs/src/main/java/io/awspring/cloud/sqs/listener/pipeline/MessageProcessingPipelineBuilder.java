@@ -11,27 +11,27 @@ import java.util.function.Function;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class MessageProcessingPipelineBuilder<T> {
+class MessageProcessingPipelineBuilder<T> {
 
-	private final Function<MessageProcessingContext<T>, MessageProcessingPipeline<T>> pipelineFactory;
+	private final Function<MessageProcessingConfiguration<T>, MessageProcessingPipeline<T>> pipelineFactory;
 
-	public MessageProcessingPipelineBuilder(Function<MessageProcessingContext<T>, MessageProcessingPipeline<T>> pipelineFactory) {
+	public MessageProcessingPipelineBuilder(Function<MessageProcessingConfiguration<T>, MessageProcessingPipeline<T>> pipelineFactory) {
 		this.pipelineFactory = pipelineFactory;
 	}
 
-	public static <T> MessageProcessingPipelineBuilder<T> first(Function<MessageProcessingContext<T>, MessageProcessingPipeline<T>> pipelineFactory) {
+	public static <T> MessageProcessingPipelineBuilder<T> first(Function<MessageProcessingConfiguration<T>, MessageProcessingPipeline<T>> pipelineFactory) {
 		return new MessageProcessingPipelineBuilder<>(pipelineFactory);
 	}
 
-	public MessageProcessingPipelineBuilder<T> then(Function<MessageProcessingContext<T>, MessageProcessingPipeline<T>> pipelineFactory) {
+	public MessageProcessingPipelineBuilder<T> then(Function<MessageProcessingConfiguration<T>, MessageProcessingPipeline<T>> pipelineFactory) {
 		return new MessageProcessingPipelineBuilder<>(context -> new ComposingMessagePipelineStage<>(this.pipelineFactory.apply(context), pipelineFactory.apply(context)));
 	}
 
-	public MessageProcessingPipeline<T> build(MessageProcessingContext<T> context) {
+	public MessageProcessingPipeline<T> build(MessageProcessingConfiguration<T> context) {
 		return this.pipelineFactory.apply(context);
 	}
 
-	public MessageProcessingPipelineBuilder<T> wrappedWith(BiFunction<MessageProcessingContext<T>, MessageProcessingPipeline<T>, MessageProcessingPipeline<T>> pipelineFactory) {
+	public MessageProcessingPipelineBuilder<T> thenWrapWith(BiFunction<MessageProcessingConfiguration<T>, MessageProcessingPipeline<T>, MessageProcessingPipeline<T>> pipelineFactory) {
 		return new MessageProcessingPipelineBuilder<>(context -> pipelineFactory.apply(context, this.pipelineFactory.apply(context)));
 	}
 

@@ -19,8 +19,8 @@ import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
+import io.awspring.cloud.sqs.listener.BackPressureHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -38,15 +38,15 @@ import org.springframework.util.Assert;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractMessageListeningSink<T> implements MessageListeningSink<T>, SmartLifecycle {
+public abstract class AbstractMessageListeningSink<T> implements MessageListeningSink<T>, TaskExecutorAware {
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractMessageListeningSink.class);
-
-	private TaskExecutor taskExecutor;
 
 	private final Object lifecycleMonitor = new Object();
 
 	private volatile boolean running;
+
+	private TaskExecutor taskExecutor;
 
 	private AsyncMessageListener<T> messageListener;
 
@@ -61,7 +61,7 @@ public abstract class AbstractMessageListeningSink<T> implements MessageListenin
 	}
 
 	@Override
-	public CompletableFuture<Void> emit(Collection<Message<T>> messages) {
+	public CompletableFuture<MessageExecutionResult> emit(Collection<Message<T>> messages, MessageExecutionContext<T> context) {
 		Assert.notNull(messages, "messages cannot be null");
 		if (!isRunning()) {
 			logger.debug("Sink not running, returning");
@@ -71,21 +71,35 @@ public abstract class AbstractMessageListeningSink<T> implements MessageListenin
 			logger.debug("No messages provided, returning.");
 			return CompletableFuture.completedFuture(null);
 		}
-		return doEmit(messages);
+		return doEmit(messages, context);
 	}
 
-	protected CompletableFuture<Void> execute(Supplier<CompletableFuture<Void>> supplier) {
+	protected abstract CompletableFuture<MessageExecutionResult> doEmit(Collection<Message<T>> messages, MessageExecutionContext<T> context);
+
+	protected CompletableFuture<MessageExecutionResult> execute(Message<T> message, MessageExecutionContext<T> context) {
 		Assert.state(this.taskExecutor != null, "TaskExecutor cannot be null");
-		return CompletableFuture.supplyAsync(supplier, this.taskExecutor).thenCompose(Function.identity())
-				.exceptionally(this::logError);
+		return CompletableFuture.supplyAsync(() -> getMessageListener().onMessage(message), this.taskExecutor).thenCompose(Function.identity())
+			.thenApply(theVoid -> MessageExecutionResult.successfulMessage(message))
+				.exceptionally(this::logError).thenApply(result -> {
+					context.messageProcessingComplete(message);
+					return result;
+			});
 	}
 
-	private Void logError(Throwable t) {
+	protected CompletableFuture<MessageExecutionResult> execute(Collection<Message<T>> messages, MessageExecutionContext<T> context) {
+		Assert.state(this.taskExecutor != null, "TaskExecutor cannot be null");
+		return CompletableFuture.supplyAsync(() -> getMessageListener().onMessage(messages), this.taskExecutor).thenCompose(Function.identity())
+			.thenApply(theVoid -> MessageExecutionResult.successfulMessages(messages))
+				.exceptionally(this::logError).thenApply(result -> {
+					messages.forEach(m -> context.messageProcessingComplete(messages));
+					return result;
+			});
+	}
+
+	private MessageExecutionResult logError(Throwable t) {
 		logger.error("Error in message listener.", t);
-		return null;
+		return MessageExecutionResult.empty();
 	}
-
-	protected abstract CompletableFuture<Void> doEmit(Collection<Message<T>> messages);
 
 	@Override
 	public void start() {

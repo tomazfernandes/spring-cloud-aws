@@ -15,7 +15,6 @@
  */
 package io.awspring.cloud.sqs.listener.sink;
 
-import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import org.springframework.messaging.Message;
@@ -27,7 +26,7 @@ import org.springframework.messaging.Message;
 public class BatchMessageSink<T> extends AbstractMessageListeningSink<T> {
 
 	@Override
-	protected CompletableFuture<Void> doEmit(Collection<Message<T>> messages) {
-		return execute(() -> super.getMessageListener().onMessage(messages));
+	protected CompletableFuture<MessageExecutionResult> doEmit(Collection<Message<T>> messages, MessageExecutionContext<T> context) {
+		return execute(messages, context);
 	}
 }

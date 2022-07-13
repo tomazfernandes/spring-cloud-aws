@@ -17,6 +17,9 @@ package io.awspring.cloud.sqs.listener.source;
 
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
+
+import io.awspring.cloud.sqs.listener.ConfigurableContainerComponent;
+import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import org.springframework.messaging.Message;
 
 /**
@@ -28,12 +31,8 @@ import org.springframework.messaging.Message;
  * @since 3.0
  */
 @FunctionalInterface
-public interface MessageSource<T> {
+public interface MessageSource<T> extends ConfigurableContainerComponent {
 
-	/**
-	 * Receive a batch of {@link Message} instances.
-	 * @return the message batch.
-	 */
-	CompletableFuture<Collection<Message<T>>> receive();
+	void setMessageSink(MessageSink<T> messageSink);
 
 }

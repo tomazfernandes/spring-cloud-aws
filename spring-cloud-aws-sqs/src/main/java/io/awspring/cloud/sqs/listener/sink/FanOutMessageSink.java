@@ -15,11 +15,9 @@
  */
 package io.awspring.cloud.sqs.listener.sink;
 
-import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import java.util.Collection;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
@@ -37,9 +35,10 @@ public class FanOutMessageSink<T> extends AbstractMessageListeningSink<T> {
 	Logger logger = LoggerFactory.getLogger(FanOutMessageSink.class);
 
 	@Override
-	protected CompletableFuture<Void> doEmit(Collection<Message<T>> messages) {
+	protected CompletableFuture<MessageExecutionResult> doEmit(Collection<Message<T>> messages, MessageExecutionContext<T> context) {
 		logger.trace("Splitting {} messages", messages.size());
-		return CompletableFuture.allOf(messages.stream().map(msg -> execute(() -> super.getMessageListener().onMessage(msg)))
-			.toArray(CompletableFuture[]::new));
+		return messages.stream().map(msg -> execute(msg, context))
+			.reduce(CompletableFuture.completedFuture(MessageExecutionResult.empty()), (accFuture, resultFuture) ->
+				accFuture.thenCombine(resultFuture, MessageExecutionResult::merge));
 	}
 }

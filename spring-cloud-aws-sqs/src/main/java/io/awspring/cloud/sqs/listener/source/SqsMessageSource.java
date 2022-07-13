@@ -60,7 +60,7 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SqsMessageSource<T> extends AbstractPollableMessageSource<T> {
+public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> {
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessageSource.class);
 
@@ -70,14 +70,6 @@ public class SqsMessageSource<T> extends AbstractPollableMessageSource<T> {
 
 	private String queueUrl;
 
-	/**
-	 * Create an instance to poll the provided logical endpoint name with the provided client.
-	 * @param logicalEndpointName the logical endpoint name to be polled.
-	 */
-	public SqsMessageSource(String logicalEndpointName) {
-		super(logicalEndpointName);
-	}
-
 	public void setSqsAsyncClient(SqsAsyncClient sqsAsyncClient) {
 		Assert.notNull(sqsAsyncClient, "sqsAsyncClient cannot be null.");
 		this.sqsAsyncClient = sqsAsyncClient;
@@ -86,16 +78,17 @@ public class SqsMessageSource<T> extends AbstractPollableMessageSource<T> {
 	@Override
 	protected void doStart() {
 		Assert.state(this.sqsAsyncClient != null, "sqsAsyncClient not set");
-		this.queueAttributes = QueueAttributesResolver.resolveAttributes(super.getLogicalEndpointName(),
+		this.queueAttributes = QueueAttributesResolver.resolveAttributes(getPollingEndpointName(),
 				this.sqsAsyncClient);
 		this.queueUrl = queueAttributes.getQueueUrl();
+		super.doStart();
 	}
 
 	@Override
 	protected CompletableFuture<Collection<Message<T>>> doPollForMessages() {
-		logger.trace("Polling queue {} for {} messages.", this.queueUrl, super.getNumberOfMessagesPerPoll());
+		logger.trace("Polling queue {} for {} messages.", this.queueUrl, getMessagesPerPoll());
 		return sqsAsyncClient
-				.receiveMessage(req -> req.queueUrl(this.queueUrl).maxNumberOfMessages(getNumberOfMessagesPerPoll())
+				.receiveMessage(req -> req.queueUrl(this.queueUrl).maxNumberOfMessages(getMessagesPerPoll())
 					.attributeNames(QueueAttributeName.ALL).waitTimeSeconds((int) getPollTimeout().getSeconds()))
 				.thenApply(ReceiveMessageResponse::messages).thenApply(this::convertMessages);
 	}
@@ -125,7 +118,7 @@ public class SqsMessageSource<T> extends AbstractPollableMessageSource<T> {
 	private Message<T> convertMessage(final software.amazon.awssdk.services.sqs.model.Message message) {
 		logger.trace("Converting message {} to messaging message", message.messageId());
 		HashMap<String, Object> additionalHeaders = new HashMap<>();
-		additionalHeaders.put(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID, getLogicalEndpointName());
+		additionalHeaders.put(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID, getPollingEndpointName());
 		additionalHeaders.put(SqsMessageHeaders.RECEIVED_AT, Instant.now());
 		additionalHeaders.put(SqsMessageHeaders.SQS_CLIENT_HEADER, this.sqsAsyncClient);
 		additionalHeaders.put(SqsMessageHeaders.QUEUE_VISIBILITY, this.queueAttributes.getVisibilityTimeout());

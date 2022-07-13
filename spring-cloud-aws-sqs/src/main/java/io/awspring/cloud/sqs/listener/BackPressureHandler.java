@@ -8,9 +8,9 @@ import java.time.Duration;
  */
 public interface BackPressureHandler {
 
-	boolean request(int numberOfPermits) throws InterruptedException;
+	int request(int amount) throws InterruptedException;
 
-	void release(int numberOfPermits);
+	void release(int amount);
 
 	boolean drain(Duration timeout);
 

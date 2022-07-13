@@ -17,6 +17,7 @@ package io.awspring.cloud.sqs.listener.sink;
 
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
@@ -34,12 +35,11 @@ public class OrderedMessageListeningSink<T> extends AbstractMessageListeningSink
 	Logger logger = LoggerFactory.getLogger(OrderedMessageListeningSink.class);
 
 	@Override
-	protected CompletableFuture<Void> doEmit(Collection<Message<T>> messages) {
+	protected CompletableFuture<MessageExecutionResult> doEmit(Collection<Message<T>> messages, MessageExecutionContext<T> context) {
 		logger.debug("Splitting {} messages", messages.size());
-		return execute(() -> messages.stream().reduce(CompletableFuture.completedFuture(null),
-										(voidFuture, msg) -> voidFuture
-												.thenCompose(theVoid -> super.getMessageListener().onMessage(msg)),
-										(a, b) -> b));
+		return messages.stream().reduce(CompletableFuture.completedFuture(MessageExecutionResult.empty()),
+				(resultFuture, msg) -> execute(msg, context).thenCombine(resultFuture, MessageExecutionResult::merge),
+			(a, b) -> a);
 	}
 
 }

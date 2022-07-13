@@ -11,13 +11,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
 
 import java.util.Collection;
-import java.util.concurrent.Semaphore;
 
 /**
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class MessageProcessingContext<T> {
+public class MessageProcessingConfiguration<T> {
 
 	private static final Logger logger = LoggerFactory.getLogger(MessageVisibilityExtenderInterceptor.class);
 
@@ -29,19 +28,16 @@ public class MessageProcessingContext<T> {
 
 	private final AckHandler<T> ackHandler;
 
-	private final BackPressureHandler backPressureHandler;
-
-	public MessageProcessingContext(Collection<AsyncMessageInterceptor<T>> messageInterceptors,
-									AsyncMessageListener<T> messageListener, AsyncErrorHandler<T> errorHandler,
-									AckHandler<T> ackHandler, BackPressureHandler backPressureHandler) {
+	public MessageProcessingConfiguration(Collection<AsyncMessageInterceptor<T>> messageInterceptors,
+										  AsyncMessageListener<T> messageListener, AsyncErrorHandler<T> errorHandler,
+										  AckHandler<T> ackHandler) {
 		this.messageInterceptors = messageInterceptors;
 		this.messageListener = messageListener;
 		this.errorHandler = errorHandler;
 		this.ackHandler = ackHandler;
-		this.backPressureHandler = backPressureHandler;
 	}
 
-	public static <T> MessageProcessingContext.Builder<T> builder() {
+	public static <T> MessageProcessingConfiguration.Builder<T> builder() {
 		return new Builder<>();
 	}
 
@@ -61,17 +57,12 @@ public class MessageProcessingContext<T> {
 		return this.ackHandler;
 	}
 
-	public BackPressureHandler getBackPressureHandler() {
-		return this.backPressureHandler;
-	}
-
 	public static class Builder<T> {
 
 		private Collection<AsyncMessageInterceptor<T>> messageInterceptors;
 		private AsyncMessageListener<T> messageListener;
 		private AsyncErrorHandler<T> errorHandler;
 		private AckHandler<T> ackHandler;
-		private BackPressureHandler backPressureHandler;
 
 		public Builder<T> interceptors(Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
 			this.messageInterceptors = messageInterceptors;
@@ -93,19 +84,13 @@ public class MessageProcessingContext<T> {
 			return this;
 		}
 
-		public Builder<T> backPressureHandler(BackPressureHandler backPressureHandler) {
-			this.backPressureHandler = backPressureHandler;
-			return this;
-		}
-
-		public MessageProcessingContext<T> build() {
+		public MessageProcessingConfiguration<T> build() {
 			Assert.notNull(this.messageListener, "messageListener cannot be null provided");
 			Assert.notNull(this.errorHandler, "No error handler provided");
 			Assert.notNull(this.ackHandler, "No ackHandler provided");
 			Assert.notNull(this.messageInterceptors, "messageInterceptors cannot be null");
-			Assert.notNull(this.backPressureHandler, "backPressureHandler cannot be null");
-			return new MessageProcessingContext<>(this.messageInterceptors, this.messageListener,
-				this.errorHandler, this.ackHandler, this.backPressureHandler);
+			return new MessageProcessingConfiguration<>(this.messageInterceptors, this.messageListener,
+				this.errorHandler, this.ackHandler);
 		}
 	}
 
