@@ -98,6 +98,18 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> {
 		return messages.stream().map(this::convertMessage).collect(Collectors.toList());
 	}
 
+	private Message<T> convertMessage(final software.amazon.awssdk.services.sqs.model.Message message) {
+		logger.trace("Converting message {} to messaging message", message.messageId());
+		HashMap<String, Object> additionalHeaders = new HashMap<>();
+		additionalHeaders.put(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID, getPollingEndpointName());
+		additionalHeaders.put(SqsMessageHeaders.RECEIVED_AT, Instant.now());
+		additionalHeaders.put(SqsMessageHeaders.SQS_CLIENT_HEADER, this.sqsAsyncClient);
+		additionalHeaders.put(SqsMessageHeaders.QUEUE_VISIBILITY, this.queueAttributes.getVisibilityTimeout());
+		additionalHeaders.put(SqsMessageHeaders.VISIBILITY,
+			new QueueMessageVisibility(this.sqsAsyncClient, this.queueUrl, message.receiptHandle()));
+		return createMessage(message, Collections.unmodifiableMap(additionalHeaders));
+	}
+
 	// TODO: Convert the message payload to type T
 	@SuppressWarnings("unchecked")
 	private Message<T> createMessage(software.amazon.awssdk.services.sqs.model.Message message,
@@ -113,18 +125,6 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> {
 		messageHeaders.putAll(getAttributesAsMessageHeaders(message));
 		messageHeaders.putAll(getMessageAttributesAsMessageHeaders(message));
 		return new GenericMessage<>((T) message.body(), new SqsMessageHeaders(messageHeaders));
-	}
-
-	private Message<T> convertMessage(final software.amazon.awssdk.services.sqs.model.Message message) {
-		logger.trace("Converting message {} to messaging message", message.messageId());
-		HashMap<String, Object> additionalHeaders = new HashMap<>();
-		additionalHeaders.put(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID, getPollingEndpointName());
-		additionalHeaders.put(SqsMessageHeaders.RECEIVED_AT, Instant.now());
-		additionalHeaders.put(SqsMessageHeaders.SQS_CLIENT_HEADER, this.sqsAsyncClient);
-		additionalHeaders.put(SqsMessageHeaders.QUEUE_VISIBILITY, this.queueAttributes.getVisibilityTimeout());
-		additionalHeaders.put(SqsMessageHeaders.VISIBILITY,
-				new QueueMessageVisibility(this.sqsAsyncClient, this.queueUrl, message.receiptHandle()));
-		return createMessage(message, Collections.unmodifiableMap(additionalHeaders));
 	}
 
 	// TODO: Review this logic using streams

@@ -15,9 +15,12 @@
  */
 package io.awspring.cloud.sqs.listener.sink.adapter;
 
+import io.awspring.cloud.sqs.ConfigUtils;
+import io.awspring.cloud.sqs.LifecycleUtils;
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
+import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import io.awspring.cloud.sqs.listener.sink.AbstractMessageListeningSink;
-import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
+import io.awspring.cloud.sqs.listener.sink.MessageProcessingPipelineSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import io.awspring.cloud.sqs.listener.sink.TaskExecutorAwareComponent;
 import org.springframework.context.SmartLifecycle;
@@ -28,7 +31,7 @@ import org.springframework.util.Assert;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractDelegatingMessageListeningSinkAdapter<T> implements MessageListeningSink<T>, TaskExecutorAwareComponent {
+public abstract class AbstractDelegatingMessageListeningSinkAdapter<T> implements MessageProcessingPipelineSink<T>, TaskExecutorAwareComponent {
 
 	private final MessageSink<T> delegate;
 
@@ -37,40 +40,34 @@ public abstract class AbstractDelegatingMessageListeningSinkAdapter<T> implement
 		this.delegate = delegate;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
-	public void setMessageListener(AsyncMessageListener<T> listener) {
-		if (this.delegate instanceof MessageListeningSink) {
-			((MessageListeningSink<T>) this.delegate).setMessageListener(listener);
-		}
+	public void setMessagePipeline(MessageProcessingPipeline<T> messageProcessingPipeline) {
+		ConfigUtils.INSTANCE
+			.acceptIfInstance(this.delegate, MessageProcessingPipelineSink.class,
+				mpps -> mpps.setMessagePipeline(messageProcessingPipeline));
 	}
 
 	@Override
 	public void setTaskExecutor(TaskExecutor taskExecutor) {
-		if (this.delegate instanceof AbstractMessageListeningSink) {
-			((AbstractMessageListeningSink<T>) this.delegate).setTaskExecutor(taskExecutor);
-		}
+		ConfigUtils.INSTANCE
+			.acceptIfInstance(this.delegate, TaskExecutorAwareComponent.class,
+				teac -> teac.setTaskExecutor(taskExecutor));
 	}
 
 	@Override
 	public void start() {
-		if (this.delegate instanceof SmartLifecycle) {
-			((SmartLifecycle) this.delegate).start();
-		}
+		LifecycleUtils.start(this.delegate);
 	}
 
 	@Override
 	public void stop() {
-		if (this.delegate instanceof SmartLifecycle) {
-			((SmartLifecycle) this.delegate).stop();
-		}
+		LifecycleUtils.stop(this.delegate);
 	}
 
 	@Override
 	public boolean isRunning() {
-		if (this.delegate instanceof SmartLifecycle) {
-			return ((SmartLifecycle) this.delegate).isRunning();
-		}
-		return true;
+		return LifecycleUtils.isRunning(this.delegate);
 	}
 
 	protected MessageSink<T> getDelegate() {

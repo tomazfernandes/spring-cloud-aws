@@ -17,6 +17,9 @@ package io.awspring.cloud.sqs.listener.sink;
 
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 
 /**
@@ -28,8 +31,11 @@ import org.springframework.messaging.Message;
  */
 public class BatchMessageSink<T> extends AbstractMessageListeningSink<T> {
 
+	Logger logger = LoggerFactory.getLogger(BatchMessageSink.class);
+
 	@Override
-	protected CompletableFuture<MessageProcessingResult> doEmit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
+	protected CompletableFuture<Void> doEmit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
+		logger.trace("Emitting {} messages", messages.size());
 		return execute(messages, context);
 	}
 

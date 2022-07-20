@@ -157,16 +157,17 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 		return msgs;
 	}
 
-	private CompletableFuture<MessageProcessingResult> emitMessages(Collection<Message<T>> messages) {
+	private CompletableFuture<Void> emitMessages(Collection<Message<T>> messages) {
 		if (messages.isEmpty()) {
-			return CompletableFuture.completedFuture(MessageProcessingResult.empty());
+			return CompletableFuture.completedFuture(null);
 		}
-		return this.messageSink.emit(messages, MessageProcessingContext.withCompletionCallback(msg -> this.backPressureHandler.release(1)));
+		return this.messageSink.emit(messages, MessageProcessingContext
+			.withCompletionCallback(msg -> this.backPressureHandler.release(1)));
 	}
 
-	private MessageProcessingResult handleSinkException(Throwable throwable) {
+	private Void handleSinkException(Throwable throwable) {
 		logger.error("Sink returned an error.", throwable);
-		return MessageProcessingResult.empty();
+		return null;
 	}
 
 	private Collection<Message<T>> handlePollingException(Throwable t) {

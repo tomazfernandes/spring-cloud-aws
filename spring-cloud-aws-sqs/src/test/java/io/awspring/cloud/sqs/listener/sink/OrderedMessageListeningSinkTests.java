@@ -25,9 +25,9 @@ class OrderedMessageListeningSinkTests {
 		List<Message<Integer>> received = new ArrayList<>(100000);
 		AbstractMessageListeningSink<Integer> sink = new OrderedMessageListeningSink<>();
 		sink.setTaskExecutor(Runnable::run);
-		sink.setMessageListener(msg -> {
+		sink.setMessagePipeline((msg, ctx) -> {
 			received.add(msg);
-			return CompletableFuture.completedFuture(null);
+			return CompletableFuture.completedFuture(msg);
 		});
 		sink.start();
 		sink.emit(messagesToEmit, MessageProcessingContext.withCompletionCallback(msg -> {})).join();

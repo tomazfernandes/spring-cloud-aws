@@ -25,7 +25,7 @@ import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.acknowledgement.AckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
-import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
+import io.awspring.cloud.sqs.listener.sink.MessageProcessingPipelineSink;
 import java.util.Collection;
 import java.util.function.Supplier;
 
@@ -73,7 +73,7 @@ public class SqsAutoConfiguration {
 			ObjectProvider<AsyncErrorHandler<Object>> errorHandler,
 			ObjectProvider<Collection<AsyncMessageInterceptor<Object>>> interceptors,
 			ObjectProvider<AsyncMessageInterceptor<Object>> interceptor,
-			ObjectProvider<Supplier<MessageListeningSink<Object>>> messageSplitter,
+			ObjectProvider<Supplier<MessageProcessingPipelineSink<Object>>> messageSplitter,
 			ObjectProvider<AckHandler<Object>> ackHandler) {
 		SqsMessageListenerContainerFactory<Object> factory = new SqsMessageListenerContainerFactory<>();
 		containerOptions

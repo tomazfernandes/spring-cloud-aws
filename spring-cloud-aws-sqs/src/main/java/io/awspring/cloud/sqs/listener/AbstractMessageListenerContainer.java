@@ -23,7 +23,7 @@ import io.awspring.cloud.sqs.listener.errorhandler.LoggingErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
 import io.awspring.cloud.sqs.listener.sink.FanOutMessageSink;
-import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
+import io.awspring.cloud.sqs.listener.sink.MessageProcessingPipelineSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
 import io.awspring.cloud.sqs.listener.source.MessageSourceFactory;
@@ -201,7 +201,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	/**
-	 * Return the {@link MessageListeningSink} instances used by this container.
+	 * Return the {@link MessageProcessingPipelineSink} instances used by this container.
 	 * @return the instance.
 	 */
 	public MessageSink<T> getMessageSink() {

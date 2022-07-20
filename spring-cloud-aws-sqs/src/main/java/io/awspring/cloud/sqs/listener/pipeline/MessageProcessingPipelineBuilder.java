@@ -15,6 +15,7 @@
  */
 package io.awspring.cloud.sqs.listener.pipeline;
 
+import io.awspring.cloud.sqs.listener.sink.MessageProcessingContext;
 import org.springframework.messaging.Message;
 
 import java.util.Collection;
@@ -28,7 +29,7 @@ import java.util.function.Function;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-class MessageProcessingPipelineBuilder<T> {
+public class MessageProcessingPipelineBuilder<T> {
 
 	private final Function<MessageProcessingConfiguration<T>, MessageProcessingPipeline<T>> pipelineFactory;
 
@@ -63,13 +64,13 @@ class MessageProcessingPipelineBuilder<T> {
 		}
 
 		@Override
-		public CompletableFuture<Message<T>> process(Message<T> input) {
-			return first.process(input).thenCompose(second::process);
+		public CompletableFuture<Message<T>> process(Message<T> message, MessageProcessingContext<T> context) {
+			return first.process(message, context).thenCompose(msg -> second.process(msg, context));
 		}
 
 		@Override
-		public CompletableFuture<Collection<Message<T>>> process(Collection<Message<T>> input) {
-			return first.process(input).thenCompose(second::process);
+		public CompletableFuture<Collection<Message<T>>> process(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
+			return first.process(messages, context).thenCompose(msgs -> second.process(msgs, context));
 		}
 	}
 

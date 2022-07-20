@@ -46,4 +46,11 @@ public class LifecycleUtils {
 		manageLifecycle(SmartLifecycle::stop, objects);
 	}
 
+	public static boolean isRunning(Object object) {
+		if (object instanceof SmartLifecycle) {
+			return ((SmartLifecycle) object).isRunning();
+		}
+		return true;
+	}
+
 }

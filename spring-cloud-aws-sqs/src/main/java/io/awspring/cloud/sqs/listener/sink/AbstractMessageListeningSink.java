@@ -20,7 +20,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
+import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -30,7 +32,7 @@ import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
 /**
- * Base implementation for {@link MessageListeningSink} containing {@link SmartLifecycle} features
+ * Base implementation for {@link MessageProcessingPipelineSink} containing {@link SmartLifecycle} features
  * and useful execution methods that can be used by subclasses.
  *
  * @param <T> the {@link Message} payload type.
@@ -38,7 +40,7 @@ import org.springframework.util.Assert;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractMessageListeningSink<T> implements MessageListeningSink<T>, TaskExecutorAwareComponent {
+public abstract class AbstractMessageListeningSink<T> implements MessageProcessingPipelineSink<T>, TaskExecutorAwareComponent {
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractMessageListeningSink.class);
 
@@ -48,20 +50,16 @@ public abstract class AbstractMessageListeningSink<T> implements MessageListenin
 
 	private TaskExecutor taskExecutor;
 
-	private AsyncMessageListener<T> messageListener;
+	private MessageProcessingPipeline<T> messageProcessingPipeline;
 
 	@Override
-	public void setMessageListener(AsyncMessageListener<T> messageListener) {
-		Assert.notNull(messageListener, "listener must not be null.");
-		this.messageListener = messageListener;
-	}
-
-	protected AsyncMessageListener<T> getMessageListener() {
-		return this.messageListener;
+	public void setMessagePipeline(MessageProcessingPipeline<T> messageProcessingPipeline) {
+		Assert.notNull(messageProcessingPipeline, "messageProcessingPipeline must not be null.");
+		this.messageProcessingPipeline = messageProcessingPipeline;
 	}
 
 	@Override
-	public CompletableFuture<MessageProcessingResult> emit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
+	public CompletableFuture<Void> emit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
 		Assert.notNull(messages, "messages cannot be null");
 		if (!isRunning()) {
 			logger.debug("Sink not running, returning");
@@ -74,35 +72,37 @@ public abstract class AbstractMessageListeningSink<T> implements MessageListenin
 		return doEmit(messages, context);
 	}
 
-	protected abstract CompletableFuture<MessageProcessingResult> doEmit(Collection<Message<T>> messages, MessageProcessingContext<T> context);
+	protected abstract CompletableFuture<Void> doEmit(Collection<Message<T>> messages, MessageProcessingContext<T> context);
 
-	protected CompletableFuture<MessageProcessingResult> execute(Message<T> message, MessageProcessingContext<T> context) {
+	/**
+	 * Send the provided {@link Message} to the {@link TaskExecutor} as a unit of work.
+	 * A {@link MessageProcessingResult} instance will be created with the result of
+	 * the execution.
+	 * @param message the message to be executed.
+	 * @param context the processing context.
+	 * @return the processing result.
+	 */
+	protected CompletableFuture<Void> execute(Message<T> message, MessageProcessingContext<T> context) {
 		Assert.state(this.taskExecutor != null, "TaskExecutor cannot be null");
-		return CompletableFuture.supplyAsync(() -> getMessageListener().onMessage(message), this.taskExecutor)
-			.thenCompose(Function.identity())
-			.thenApply(theVoid -> MessageProcessingResult.successfulMessage(message))
-			.exceptionally(t -> handleListenerError(Collections.singletonList(message), t))
-			.thenApply(result -> {
-					context.messageProcessingComplete(message);
-					return result;
-			});
+		return doExecute(() -> this.messageProcessingPipeline.process(message, context));
 	}
 
-	protected CompletableFuture<MessageProcessingResult> execute(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
+	/**
+	 * Send the provided {@link Message} instances to the {@link TaskExecutor}
+	 * as a unit of work.
+	 * A {@link MessageProcessingResult} instance will be created with the result of
+	 * the execution.
+	 * @param messages the messages to be executed.
+	 * @param context the processing context.
+	 * @return the processing result.
+	 */
+	protected CompletableFuture<Void> execute(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
 		Assert.state(this.taskExecutor != null, "TaskExecutor cannot be null");
-		return CompletableFuture.supplyAsync(() -> getMessageListener().onMessage(messages), this.taskExecutor)
-			.thenCompose(Function.identity())
-			.thenApply(theVoid -> MessageProcessingResult.successfulMessages(messages))
-			.exceptionally(t -> handleListenerError(messages, t))
-			.thenApply(result -> {
-					messages.forEach(m -> context.messageProcessingComplete(messages));
-					return result;
-			});
+		return doExecute(() -> this.messageProcessingPipeline.process(messages, context));
 	}
 
-	private MessageProcessingResult handleListenerError(Collection<Message<T>> messages, Throwable t) {
-		logger.error("Error in message listener.", t);
-		return MessageProcessingResult.failedMessages(messages);
+	private CompletableFuture<Void> doExecute(Supplier<CompletableFuture<?>> supplier) {
+		return CompletableFuture.supplyAsync(supplier, this.taskExecutor).thenRun(() -> {});
 	}
 
 	@Override
@@ -112,7 +112,7 @@ public abstract class AbstractMessageListeningSink<T> implements MessageListenin
 			return;
 		}
 		synchronized (this.lifecycleMonitor) {
-			Assert.notNull(this.messageListener, "messageListener cannot be null");
+			Assert.notNull(this.messageProcessingPipeline, "messageListener cannot be null");
 			logger.debug("Starting sink");
 			this.running = true;
 		}
@@ -143,6 +143,7 @@ public abstract class AbstractMessageListeningSink<T> implements MessageListenin
 		return this.running;
 	}
 
+	@Override
 	public void setTaskExecutor(TaskExecutor taskExecutor) {
 		Assert.notNull(taskExecutor, "taskExecutor cannot be null");
 		this.taskExecutor = taskExecutor;

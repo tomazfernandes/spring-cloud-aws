@@ -16,8 +16,8 @@
 package io.awspring.cloud.sqs.listener.sink;
 
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
+import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import org.springframework.context.SmartLifecycle;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.messaging.Message;
 
 /**
@@ -28,8 +28,8 @@ import org.springframework.messaging.Message;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public interface MessageListeningSink<T> extends MessageSink<T>, SmartLifecycle {
+public interface MessageProcessingPipelineSink<T> extends MessageSink<T>, SmartLifecycle {
 
-	void setMessageListener(AsyncMessageListener<T> listener);
+	void setMessagePipeline(MessageProcessingPipeline<T> messageProcessingPipeline);
 
 }

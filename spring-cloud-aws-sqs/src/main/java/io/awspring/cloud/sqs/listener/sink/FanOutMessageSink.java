@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 
 /**
- * {@link MessageListeningSink} implementation that processes all messages
+ * {@link MessageProcessingPipelineSink} implementation that processes all messages
  * from the provided batch in parallel.
  *
  * @param <T> the {@link Message} payload type.
@@ -36,10 +36,8 @@ public class FanOutMessageSink<T> extends AbstractMessageListeningSink<T> {
 	Logger logger = LoggerFactory.getLogger(FanOutMessageSink.class);
 
 	@Override
-	protected CompletableFuture<MessageProcessingResult> doEmit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
-		logger.trace("Splitting {} messages", messages.size());
-		return messages.stream().map(msg -> execute(msg, context))
-			.reduce(CompletableFuture.completedFuture(MessageProcessingResult.empty()), (accFuture, resultFuture) ->
-				accFuture.thenCombine(resultFuture, MessageProcessingResult::merge));
+	protected CompletableFuture<Void> doEmit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
+		logger.trace("Emitting {} messages", messages.size());
+		return CompletableFuture.allOf(messages.stream().map(msg -> execute(msg, context)).toArray(CompletableFuture[]::new));
 	}
 }

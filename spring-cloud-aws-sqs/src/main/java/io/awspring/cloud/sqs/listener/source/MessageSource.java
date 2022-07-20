@@ -30,6 +30,10 @@ import org.springframework.messaging.Message;
 @FunctionalInterface
 public interface MessageSource<T> extends ConfigurableContainerComponent {
 
+	/**
+	 * Set the {@link MessageSink} to be used as an output for this {@link MessageSource}.
+	 * @param messageSink the message sink.
+	 */
 	void setMessageSink(MessageSink<T> messageSink);
 
 }

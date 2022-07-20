@@ -19,6 +19,7 @@ import io.awspring.cloud.sqs.CompletableFutures;
 import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.acknowledgement.AckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
+import io.awspring.cloud.sqs.listener.sink.MessageProcessingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
@@ -32,7 +33,7 @@ import java.util.concurrent.CompletableFuture;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-class ErrorHandlerExecutionStage<T> implements MessageProcessingPipeline<T> {
+public class ErrorHandlerExecutionStage<T> implements MessageProcessingPipeline<T> {
 
 	private static final Logger logger = LoggerFactory.getLogger(ErrorHandlerExecutionStage.class);
 
@@ -46,16 +47,16 @@ class ErrorHandlerExecutionStage<T> implements MessageProcessingPipeline<T> {
 	}
 
 	@Override
-	public CompletableFuture<Message<T>> process(Message<T> message) {
+	public CompletableFuture<Message<T>> process(Message<T> message, MessageProcessingContext<T> context) {
 		logger.debug("Processing message {}", MessageHeaderUtils.getId(message));
-		return CompletableFutures.exceptionallyCompose(wrapped.process(message),
+		return CompletableFutures.exceptionallyCompose(wrapped.process(message, context),
 			t -> errorHandler.handleError(message, t).thenApply(theVoid -> message));
 	}
 
 	@Override
-	public CompletableFuture<Collection<Message<T>>> process(Collection<Message<T>> messages) {
+	public CompletableFuture<Collection<Message<T>>> process(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
 		logger.debug("Processing {} messages", messages.size());
-		return CompletableFutures.exceptionallyCompose(wrapped.process(messages),
+		return CompletableFutures.exceptionallyCompose(wrapped.process(messages, context),
 			t -> errorHandler.handleError(messages, t).thenApply(theVoid -> messages));
 	}
 }

@@ -15,7 +15,6 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import io.awspring.cloud.sqs.listener.source.MessageSourceFactory;
 import org.springframework.context.SmartLifecycle;

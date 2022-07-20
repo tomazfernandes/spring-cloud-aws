@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 
 /**
- * {@link MessageListeningSink} implementation that processes provided messages sequentially and in order.
+ * {@link MessageProcessingPipelineSink} implementation that processes provided messages sequentially and in order.
  *
  * @param <T> the {@link Message} payload type.
  *
@@ -35,11 +35,10 @@ public class OrderedMessageListeningSink<T> extends AbstractMessageListeningSink
 	Logger logger = LoggerFactory.getLogger(OrderedMessageListeningSink.class);
 
 	@Override
-	protected CompletableFuture<MessageProcessingResult> doEmit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
-		logger.debug("Splitting {} messages", messages.size());
-		return messages.stream().reduce(CompletableFuture.completedFuture(MessageProcessingResult.empty()),
-				(resultFuture, msg) -> execute(msg, context).thenCombine(resultFuture, MessageProcessingResult::merge),
-			(a, b) -> a);
+	protected CompletableFuture<Void> doEmit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
+		logger.debug("Emitting {} messages", messages.size());
+		return messages.stream().reduce(CompletableFuture.completedFuture(null),
+				(resultFuture, msg) -> execute(msg, context), (a, b) -> a);
 	}
 
 }

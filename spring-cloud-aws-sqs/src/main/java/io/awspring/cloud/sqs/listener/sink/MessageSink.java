@@ -32,6 +32,7 @@ import java.util.concurrent.CompletableFuture;
  * @author Tomaz Fernandes
  * @since 3.0
  */
+@FunctionalInterface
 public interface MessageSink<T> extends ConfigurableContainerComponent {
 
 	/**
@@ -40,6 +41,6 @@ public interface MessageSink<T> extends ConfigurableContainerComponent {
 	 * @return a collection of {@link CompletableFuture} instances, each representing the completion signal of a single
 	 * message processing.
 	 */
-	CompletableFuture<MessageProcessingResult> emit(Collection<Message<T>> messages, MessageProcessingContext<T> context);
+	CompletableFuture<Void> emit(Collection<Message<T>> messages, MessageProcessingContext<T> context);
 
 }

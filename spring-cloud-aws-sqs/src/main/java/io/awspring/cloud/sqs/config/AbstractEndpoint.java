@@ -22,7 +22,7 @@ import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.adapter.AsyncMessagingMessageListenerAdapter;
 import io.awspring.cloud.sqs.listener.sink.BatchMessageSink;
 import io.awspring.cloud.sqs.listener.sink.FanOutMessageSink;
-import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
+import io.awspring.cloud.sqs.listener.sink.MessageProcessingPipelineSink;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -57,7 +57,7 @@ public abstract class AbstractEndpoint implements Endpoint {
 
 	private MessageHandlerMethodFactory handlerMethodFactory;
 
-	private MessageListeningSink<?> messageSink;
+	private MessageProcessingPipelineSink<?> messageSink;
 
 	protected AbstractEndpoint(Collection<String> logicalNames, @Nullable String listenerContainerFactoryName,
 			String id, Boolean async) {
@@ -100,11 +100,11 @@ public abstract class AbstractEndpoint implements Endpoint {
 	}
 
 	/**
-	 * Set a {@link MessageListeningSink} to handle messages polled from this endpoint. If none is provided, one will be
+	 * Set a {@link MessageProcessingPipelineSink} to handle messages polled from this endpoint. If none is provided, one will be
 	 * created depending on the endpoint's configuration.
 	 * @param messageSink the sink.
 	 */
-	public void setMessageSink(MessageListeningSink<?> messageSink) {
+	public void setMessageSink(MessageProcessingPipelineSink<?> messageSink) {
 		this.messageSink = messageSink;
 	}
 
@@ -144,7 +144,7 @@ public abstract class AbstractEndpoint implements Endpoint {
 				|| ((ParameterizedType) type).getRawType().equals(List.class));
 	}
 
-	private MessageListeningSink<?> createOrGetMessageSink() {
+	private MessageProcessingPipelineSink<?> createOrGetMessageSink() {
 		if (this.messageSink != null) {
 			return this.messageSink;
 		}

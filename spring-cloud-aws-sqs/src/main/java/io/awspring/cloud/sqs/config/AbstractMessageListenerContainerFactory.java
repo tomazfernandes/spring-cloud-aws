@@ -27,8 +27,7 @@ import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
-import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
-import io.awspring.cloud.sqs.listener.source.MessageSource;
+import io.awspring.cloud.sqs.listener.sink.MessageProcessingPipelineSink;
 import io.awspring.cloud.sqs.listener.source.MessageSourceFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,7 +56,7 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 
 	private AckHandler<T> ackHandler;
 
-	private Supplier<MessageListeningSink<T>> messageSinkSupplier;
+	private Supplier<MessageProcessingPipelineSink<T>> messageSinkSupplier;
 
 	private AsyncMessageListener<T> messageListener;
 
@@ -153,12 +152,12 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Abstr
 	}
 
 	/**
-	 * Set the {@link MessageListeningSink} supplier to be used to create instances for
+	 * Set the {@link MessageProcessingPipelineSink} supplier to be used to create instances for
 	 * containers created with this factory. If none is provided, a default will be
 	 * instantiated according to each endpoint's configuration.
 	 * @param messageSinkSupplier the instance.
 	 */
-	public void setMessageSinkSupplier(Supplier<MessageListeningSink<T>> messageSinkSupplier) {
+	public void setMessageSinkSupplier(Supplier<MessageProcessingPipelineSink<T>> messageSinkSupplier) {
 		Assert.notNull(messageSinkSupplier, "messageSplitter cannot be null");
 		this.messageSinkSupplier = messageSinkSupplier;
 	}

@@ -17,8 +17,14 @@ package io.awspring.cloud.sqs.listener;
 
 import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.LifecycleUtils;
-import io.awspring.cloud.sqs.listener.pipeline.ProcessingPipelineMessageListenerAdapter;
-import io.awspring.cloud.sqs.listener.sink.MessageListeningSink;
+import io.awspring.cloud.sqs.listener.pipeline.AckHandlerExecutionStage;
+import io.awspring.cloud.sqs.listener.pipeline.ErrorHandlerExecutionStage;
+import io.awspring.cloud.sqs.listener.pipeline.InterceptorExecutionStage;
+import io.awspring.cloud.sqs.listener.pipeline.MessageListenerExecutionStage;
+import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingConfiguration;
+import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
+import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipelineBuilder;
+import io.awspring.cloud.sqs.listener.sink.MessageProcessingPipelineSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import io.awspring.cloud.sqs.listener.sink.TaskExecutorAwareComponent;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
@@ -95,7 +101,20 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 			.acceptManyIfInstance(this.messageSources, PollingMessageSource.class, sms -> sms.setBackPressureHandler(createBackPressureHandler()))
 			.acceptManyIfInstance(this.messageSources, PollingMessageSource.class, sms -> sms.setMessageSink(this.messageSink))
 			.acceptIfInstance(this.messageSink, TaskExecutorAwareComponent.class, tea -> tea.setTaskExecutor(getOrCreateSinkTaskExecutor()))
-			.acceptIfInstance(this.messageSink, MessageListeningSink.class, mls -> mls.setMessageListener(decorateMessageListener()));
+			.acceptIfInstance(this.messageSink, MessageProcessingPipelineSink.class, mls -> mls.setMessagePipeline(getMessageProcessingPipeline()));
+	}
+
+	private MessageProcessingPipeline<T> getMessageProcessingPipeline() {
+		return MessageProcessingPipelineBuilder
+			.<T>first(InterceptorExecutionStage::new)
+			.then(MessageListenerExecutionStage::new)
+			.thenWrapWith(ErrorHandlerExecutionStage::new)
+			.thenWrapWith(AckHandlerExecutionStage::new)
+			.build(MessageProcessingConfiguration.<T>builder()
+				.interceptors(getMessageInterceptors())
+				.messageListener(getMessageListener())
+				.errorHandler(getErrorHandler())
+				.ackHandler(getAckHandler()).build());
 	}
 
 	private SemaphoreBackPressureHandler createBackPressureHandler() {
@@ -117,12 +136,6 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		executor.setThreadNamePrefix(this.getClass().getSimpleName().toLowerCase() + "-");
 		executor.afterPropertiesSet();
 		return executor;
-	}
-
-	private AsyncMessageListener<T> decorateMessageListener() {
-		return ProcessingPipelineMessageListenerAdapter.create(context -> context
-			.interceptors(getMessageInterceptors()).messageListener(getMessageListener()).errorHandler(getErrorHandler())
-			.ackHandler(getAckHandler()));
 	}
 
 	@Override

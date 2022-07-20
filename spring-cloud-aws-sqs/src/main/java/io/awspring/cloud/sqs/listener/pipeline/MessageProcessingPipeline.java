@@ -15,6 +15,8 @@
  */
 package io.awspring.cloud.sqs.listener.pipeline;
 
+import io.awspring.cloud.sqs.CompletableFutures;
+import io.awspring.cloud.sqs.listener.sink.MessageProcessingContext;
 import org.springframework.messaging.Message;
 
 import java.util.Collection;
@@ -26,10 +28,13 @@ import java.util.concurrent.CompletableFuture;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-interface MessageProcessingPipeline<T> {
+@FunctionalInterface
+public interface MessageProcessingPipeline<T> {
 
-	CompletableFuture<Message<T>> process(Message<T> message);
+	CompletableFuture<Message<T>> process(Message<T> message, MessageProcessingContext<T> context);
 
-	CompletableFuture<Collection<Message<T>>> process(Collection<Message<T>> messages);
+	default CompletableFuture<Collection<Message<T>>> process(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
+		return CompletableFutures.failedFuture(new UnsupportedOperationException("Batch not implemented by this pipeline"));
+	}
 
 }

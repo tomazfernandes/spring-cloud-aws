@@ -36,7 +36,6 @@ import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
 import io.awspring.cloud.sqs.listener.sink.FanOutMessageSink;
 import io.awspring.cloud.sqs.listener.sink.MessageProcessingContext;
-import io.awspring.cloud.sqs.listener.sink.MessageProcessingResult;
 import io.awspring.cloud.sqs.listener.sink.OrderedMessageListeningSink;
 import io.awspring.cloud.sqs.listener.source.SqsMessageSource;
 import java.lang.reflect.Method;
@@ -491,7 +490,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			});
 			factory.setMessageSinkSupplier(() -> new FanOutMessageSink<String>() {
 				@Override
-				public CompletableFuture<MessageProcessingResult> emit(Collection<Message<String>> collection, MessageProcessingContext<String> context) {
+				public CompletableFuture<Void> emit(Collection<Message<String>> collection, MessageProcessingContext<String> context) {
 					latchContainer.manuallyCreatedFactorySinkLatch.countDown();
 					return super.emit(collection, context);
 				}
