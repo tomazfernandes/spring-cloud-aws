@@ -8,7 +8,6 @@ import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.task.AsyncListenableTaskExecutor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.messaging.Message;
@@ -75,7 +74,22 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 	}
 
 	@Override
+	public void setTaskExecutor(TaskExecutor taskExecutor) {
+		Assert.notNull(taskExecutor, "taskExecutor cannot be null.");
+		addEndpointNameToPrefix(taskExecutor);
+		this.taskExecutor = taskExecutor;
+	}
+
+	private void addEndpointNameToPrefix(TaskExecutor taskExecutor) {
+		if (taskExecutor instanceof SimpleAsyncTaskExecutor) {
+			SimpleAsyncTaskExecutor sate = (SimpleAsyncTaskExecutor) taskExecutor;
+			sate.setThreadNamePrefix(sate.getThreadNamePrefix() + this.pollingEndpointName + "-");
+		}
+	}
+
+	@Override
 	public void setMessageSink(MessageSink<T> messageSink) {
+		Assert.notNull(messageSink, "messageSink cannot be null.");
 		this.messageSink = messageSink;
 	}
 
@@ -95,18 +109,11 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 			logger.debug("Starting MessageSource for queue {}", this.pollingEndpointName);
 			this.running = true;
 			doStart();
-			this.taskExecutor = createTaskExecutor();
 			startPollingThread();
 		}
 	}
 
 	protected void doStart() {
-	}
-
-	private AsyncListenableTaskExecutor createTaskExecutor() {
-		SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor();
-		executor.setThreadNamePrefix(this.pollingEndpointName + "-");
-		return executor;
 	}
 
 	private void startPollingThread() {
@@ -119,13 +126,13 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 				if (!isRunning()) {
 					continue;
 				}
-				logger.debug("Requesting {} permits for queue {}", this.messagesPerPoll, this.pollingEndpointName);
+				logger.trace("Requesting {} permits for queue {}", this.messagesPerPoll, this.pollingEndpointName);
 				int permits = this.backPressureHandler.request(this.messagesPerPoll);
 				if (permits == 0) {
-					logger.debug("No permits acquired.");
+					logger.trace("No permits acquired for queue {}.", this.pollingEndpointName);
 					continue;
 				}
-				logger.debug("{} permits acquired for queue {}", permits, this.pollingEndpointName);
+				logger.trace("{} permits acquired for queue {}", permits, this.pollingEndpointName);
 				if (!isRunning()) {
 					logger.debug("MessageSource was stopped after permits where acquired. Returning {} permits.", permits);
 					this.backPressureHandler.release(permits);
@@ -134,7 +141,7 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 				managePollingFuture(doPollForMessages())
 					.exceptionally(this::handlePollingException)
 					.thenApply(this::releaseUnusedPermits)
-					.thenCompose(this::emitMessages)
+					.thenCompose(this::emitMessagesToPipeline)
 					.exceptionally(this::handleSinkException);
 			}
 			catch (InterruptedException e) {
@@ -152,12 +159,12 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 
 	public Collection<Message<T>> releaseUnusedPermits(Collection<Message<T>> msgs) {
 		int permitsToRelease = this.messagesPerPoll - msgs.size();
-		logger.debug("Releasing {} unused permits for queue {}", permitsToRelease, this.pollingEndpointName);
+		logger.trace("Releasing {} unused permits for queue {}", permitsToRelease, this.pollingEndpointName);
 		this.backPressureHandler.release(permitsToRelease);
 		return msgs;
 	}
 
-	private CompletableFuture<Void> emitMessages(Collection<Message<T>> messages) {
+	private CompletableFuture<Void> emitMessagesToPipeline(Collection<Message<T>> messages) {
 		if (messages.isEmpty()) {
 			return CompletableFuture.completedFuture(null);
 		}

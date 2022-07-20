@@ -16,6 +16,7 @@
 package io.awspring.cloud.sqs.listener.sink;
 
 import java.util.Collection;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
@@ -23,10 +24,10 @@ import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.messaging.Message;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.Assert;
 
 /**
@@ -50,6 +51,8 @@ public abstract class AbstractMessageListeningSink<T> implements MessageProcessi
 
 	private MessageProcessingPipeline<T> messageProcessingPipeline;
 
+	private String id;
+
 	@Override
 	public void setMessagePipeline(MessageProcessingPipeline<T> messageProcessingPipeline) {
 		Assert.notNull(messageProcessingPipeline, "messageProcessingPipeline must not be null.");
@@ -57,14 +60,20 @@ public abstract class AbstractMessageListeningSink<T> implements MessageProcessi
 	}
 
 	@Override
+	public void setTaskExecutor(TaskExecutor taskExecutor) {
+		Assert.notNull(taskExecutor, "taskExecutor cannot be null");
+		this.taskExecutor = taskExecutor;
+	}
+
+	@Override
 	public CompletableFuture<Void> emit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
 		Assert.notNull(messages, "messages cannot be null");
 		if (!isRunning()) {
-			logger.debug("Sink not running, returning");
+			logger.debug("Sink {} not running, returning", this.id);
 			return CompletableFuture.completedFuture(null);
 		}
 		if (messages.size() == 0) {
-			logger.debug("No messages provided, returning.");
+			logger.debug("No messages provided for sink {}, returning.", this.id);
 			return CompletableFuture.completedFuture(null);
 		}
 		return doEmit(messages, context);
@@ -102,45 +111,39 @@ public abstract class AbstractMessageListeningSink<T> implements MessageProcessi
 	@Override
 	public void start() {
 		if (isRunning()) {
-			logger.debug("Sink already running");
+			logger.debug("Sink {} already running", this.id);
 			return;
 		}
 		synchronized (this.lifecycleMonitor) {
 			Assert.notNull(this.messageProcessingPipeline, "messageListener cannot be null");
-			logger.debug("Starting sink");
+			Assert.notNull(this.taskExecutor, "taskExecutor cannot be null");
+			this.id = getOrCreateId();
+			logger.debug("Starting sink {}", this.id);
 			this.running = true;
 		}
+	}
+
+	private String getOrCreateId() {
+		return taskExecutor instanceof ThreadPoolTaskExecutor
+			? ((ThreadPoolTaskExecutor) taskExecutor).getThreadNamePrefix()
+			: UUID.randomUUID().toString();
 	}
 
 	@Override
 	public void stop() {
 		if (!isRunning()) {
-			logger.debug("Sink already stopped");
+			logger.debug("Sink {} already stopped", this.id);
 			return;
 		}
 		synchronized (this.lifecycleMonitor) {
-			logger.debug("Stopping Sink");
+			logger.debug("Stopping sink {}", this.id);
 			this.running = false;
-			if (this.taskExecutor instanceof DisposableBean) {
-				try {
-					((DisposableBean) this.taskExecutor).destroy();
-				}
-				catch (Exception e) {
-					throw new IllegalStateException("Error destroying TaskExecutor for sink.");
-				}
-			}
 		}
 	}
 
 	@Override
 	public boolean isRunning() {
 		return this.running;
-	}
-
-	@Override
-	public void setTaskExecutor(TaskExecutor taskExecutor) {
-		Assert.notNull(taskExecutor, "taskExecutor cannot be null");
-		this.taskExecutor = taskExecutor;
 	}
 
 }
