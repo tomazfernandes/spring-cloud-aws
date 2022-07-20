@@ -19,6 +19,10 @@ import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
+import org.springframework.messaging.Message;
+
+import java.util.Collection;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Utility class for adapting blocking components to asynchronous
@@ -38,7 +42,17 @@ public class AsyncComponentAdapters {
 	 * @return the adapted component.
 	 */
 	public static <T> AsyncErrorHandler<T> adapt(ErrorHandler<T> errorHandler) {
-		return (message, t) -> AsyncExecutionAdapters.adaptFromBlocking(() -> errorHandler.handle(message, t));
+		return new AsyncErrorHandler<T>() {
+			@Override
+			public CompletableFuture<Void> handleError(Message<T> message, Throwable t) {
+				return AsyncExecutionAdapters.adaptFromBlocking(() -> errorHandler.handle(message, t));
+			}
+
+			@Override
+			public CompletableFuture<Void> handleError(Collection<Message<T>> messages, Throwable t) {
+				return AsyncExecutionAdapters.adaptFromBlocking(() -> errorHandler.handle(messages, t));
+			}
+		};
 	}
 
 	/**
@@ -48,7 +62,17 @@ public class AsyncComponentAdapters {
 	 * @return the adapted component.
 	 */
 	public static <T> AsyncMessageInterceptor<T> adapt(MessageInterceptor<T> messageInterceptor) {
-		return msg -> AsyncExecutionAdapters.adaptFromBlocking(() -> messageInterceptor.intercept(msg));
+		return new AsyncMessageInterceptor<T>() {
+			@Override
+			public CompletableFuture<Message<T>> intercept(Message<T> message) {
+				return AsyncExecutionAdapters.adaptFromBlocking(() -> messageInterceptor.intercept(message));
+			}
+
+			@Override
+			public CompletableFuture<Collection<Message<T>>> intercept(Collection<Message<T>> messages) {
+				return AsyncExecutionAdapters.adaptFromBlocking(() -> messageInterceptor.intercept(messages));
+			}
+		};
 	}
 
 	/**
@@ -58,7 +82,17 @@ public class AsyncComponentAdapters {
 	 * @return the adapted component.
 	 */
 	public static <T> AsyncMessageListener<T> adapt(MessageListener<T> messageListener) {
-		return msg -> AsyncExecutionAdapters.adaptFromBlocking(() -> messageListener.onMessage(msg));
+		return new AsyncMessageListener<T>() {
+			@Override
+			public CompletableFuture<Void> onMessage(Message<T> message) {
+				return AsyncExecutionAdapters.adaptFromBlocking(() -> messageListener.onMessage(message));
+			}
+
+			@Override
+			public CompletableFuture<Void> onMessage(Collection<Message<T>> messages) {
+				return AsyncExecutionAdapters.adaptFromBlocking(() -> messageListener.onMessage(messages));
+			}
+		};
 	}
 
 }

@@ -18,6 +18,9 @@ package io.awspring.cloud.sqs.listener;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+
+import io.awspring.cloud.sqs.ConfigUtils;
+import io.awspring.cloud.sqs.LifecycleUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.lang.Nullable;

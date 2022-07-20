@@ -17,6 +17,8 @@ package io.awspring.cloud.sqs.listener.interceptor;
 
 import org.springframework.messaging.Message;
 
+import java.util.Collection;
+
 /**
  * Interface for intercepting messages before being processed.
  *
@@ -31,5 +33,13 @@ public interface MessageInterceptor<T> {
 	 * @param message the message to be intercepted.
 	 */
 	Message<T> intercept(Message<T> message);
+
+	/**
+	 * Intercept the messages before processing.
+	 * @param messages the messages to be intercepted.
+	 */
+	default Collection<Message<T>> intercept(Collection<Message<T>> messages) {
+		throw new UnsupportedOperationException("Batch not implemented by this interceptor");
+	}
 
 }

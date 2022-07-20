@@ -17,6 +17,8 @@ package io.awspring.cloud.sqs.listener;
 
 import org.springframework.messaging.Message;
 
+import java.util.Collection;
+
 /**
  * Interface to process incoming {@link Message}s.
  *
@@ -29,5 +31,9 @@ import org.springframework.messaging.Message;
 public interface MessageListener<T> {
 
 	void onMessage(Message<T> message);
+
+	default void onMessage(Collection<Message<T>> messages) {
+		throw new UnsupportedOperationException("Batch not implemented by this message listener");
+	}
 
 }

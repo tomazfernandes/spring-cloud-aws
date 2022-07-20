@@ -219,7 +219,8 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 		}
 		boolean tasksFinished = this.backPressureHandler.drain(shutDownTimeout);
 		if (!tasksFinished) {
-			logger.warn("Tasks did not finish in {} seconds, proceeding with shutdown.", shutDownTimeout.getSeconds());
+			logger.warn("Tasks did not finish in {} seconds for queue {}, proceeding with shutdown.",
+				this.pollingEndpointName, shutDownTimeout.getSeconds());
 		}
 	}
 
