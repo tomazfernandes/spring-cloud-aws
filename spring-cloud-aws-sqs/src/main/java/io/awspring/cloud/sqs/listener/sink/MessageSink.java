@@ -17,6 +17,7 @@ package io.awspring.cloud.sqs.listener.sink;
 
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import io.awspring.cloud.sqs.listener.ConfigurableContainerComponent;
+import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import org.springframework.messaging.Message;
 
 import java.util.Collection;

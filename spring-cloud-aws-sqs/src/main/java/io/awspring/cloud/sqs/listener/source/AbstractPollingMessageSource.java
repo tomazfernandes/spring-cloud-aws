@@ -3,8 +3,8 @@ package io.awspring.cloud.sqs.listener.source;
 
 import io.awspring.cloud.sqs.listener.BackPressureHandler;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
-import io.awspring.cloud.sqs.listener.sink.MessageProcessingContext;
-import io.awspring.cloud.sqs.listener.sink.MessageProcessingResult;
+import io.awspring.cloud.sqs.listener.MessageProcessingContext;
+import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -161,8 +161,24 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 		if (messages.isEmpty()) {
 			return CompletableFuture.completedFuture(null);
 		}
-		return this.messageSink.emit(messages, MessageProcessingContext
-			.withCompletionCallback(msg -> this.backPressureHandler.release(1)));
+		return this.messageSink.emit(messages, new MessageProcessingContext<>(Collections.singletonList(getBackPressureReleaseInterceptor())));
+	}
+
+	private AsyncMessageInterceptor<T> getBackPressureReleaseInterceptor() {
+		return new AsyncMessageInterceptor<T>() {
+
+			@Override
+			public CompletableFuture<Message<T>> afterProcessing(Message<T> message) {
+				AbstractPollingMessageSource.this.backPressureHandler.release(1);
+				return CompletableFuture.completedFuture(message);
+			}
+
+			@Override
+			public CompletableFuture<Collection<Message<T>>> afterProcessing(Collection<Message<T>> messages) {
+				AbstractPollingMessageSource.this.backPressureHandler.release(messages.size());
+				return CompletableFuture.completedFuture(messages);
+			}
+		};
 	}
 
 	private Void handleSinkException(Throwable throwable) {

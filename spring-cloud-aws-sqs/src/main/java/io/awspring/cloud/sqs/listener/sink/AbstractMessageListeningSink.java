@@ -15,13 +15,11 @@
  */
 package io.awspring.cloud.sqs.listener.sink;
 
-import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
+import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,8 +74,6 @@ public abstract class AbstractMessageListeningSink<T> implements MessageProcessi
 
 	/**
 	 * Send the provided {@link Message} to the {@link TaskExecutor} as a unit of work.
-	 * A {@link MessageProcessingResult} instance will be created with the result of
-	 * the execution.
 	 * @param message the message to be executed.
 	 * @param context the processing context.
 	 * @return the processing result.
@@ -90,8 +86,6 @@ public abstract class AbstractMessageListeningSink<T> implements MessageProcessi
 	/**
 	 * Send the provided {@link Message} instances to the {@link TaskExecutor}
 	 * as a unit of work.
-	 * A {@link MessageProcessingResult} instance will be created with the result of
-	 * the execution.
 	 * @param messages the messages to be executed.
 	 * @param context the processing context.
 	 * @return the processing result.

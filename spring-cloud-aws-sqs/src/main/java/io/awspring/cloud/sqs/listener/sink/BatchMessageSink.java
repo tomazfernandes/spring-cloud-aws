@@ -18,6 +18,7 @@ package io.awspring.cloud.sqs.listener.sink;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 
+import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;

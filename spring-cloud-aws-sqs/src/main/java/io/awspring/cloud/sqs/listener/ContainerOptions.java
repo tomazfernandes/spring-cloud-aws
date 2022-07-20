@@ -71,7 +71,7 @@ public class ContainerOptions {
 	 * @param semaphoreAcquireTimeout the timeout.
 	 * @return this instance.
 	 */
-	public ContainerOptions semaphoreAcquireTimeout(Duration semaphoreAcquireTimeout) {
+	public ContainerOptions permitAcquireTimeout(Duration semaphoreAcquireTimeout) {
 		Assert.notNull(semaphoreAcquireTimeout, "semaphoreAcquireTimeout cannot be null");
 		this.semaphoreAcquireTimeout = semaphoreAcquireTimeout;
 		return this;

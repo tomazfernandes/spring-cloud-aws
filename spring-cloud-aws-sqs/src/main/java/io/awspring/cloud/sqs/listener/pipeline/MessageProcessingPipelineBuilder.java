@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sqs.listener.pipeline;
 
-import io.awspring.cloud.sqs.listener.sink.MessageProcessingContext;
+import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import org.springframework.messaging.Message;
 
 import java.util.Collection;

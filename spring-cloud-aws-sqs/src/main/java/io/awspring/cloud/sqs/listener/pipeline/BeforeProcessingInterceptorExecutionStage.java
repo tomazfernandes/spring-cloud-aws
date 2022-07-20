@@ -17,7 +17,7 @@ package io.awspring.cloud.sqs.listener.pipeline;
 
 import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
-import io.awspring.cloud.sqs.listener.sink.MessageProcessingContext;
+import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
@@ -31,14 +31,14 @@ import java.util.concurrent.CompletableFuture;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class InterceptorExecutionStage<T> implements MessageProcessingPipeline<T> {
+public class BeforeProcessingInterceptorExecutionStage<T> implements MessageProcessingPipeline<T> {
 
-	private static final Logger logger = LoggerFactory.getLogger(InterceptorExecutionStage.class);
+	private static final Logger logger = LoggerFactory.getLogger(BeforeProcessingInterceptorExecutionStage.class);
 
 	private final Collection<AsyncMessageInterceptor<T>> messageInterceptors;
 
-	public InterceptorExecutionStage(MessageProcessingConfiguration<T> configuration) {
-		messageInterceptors = configuration.getMessageInterceptors();
+	public BeforeProcessingInterceptorExecutionStage(MessageProcessingConfiguration<T> configuration) {
+		this.messageInterceptors = configuration.getMessageInterceptors();
 	}
 
 	@Override

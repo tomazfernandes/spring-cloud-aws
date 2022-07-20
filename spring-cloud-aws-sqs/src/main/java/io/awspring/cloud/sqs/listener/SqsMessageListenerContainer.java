@@ -19,7 +19,8 @@ import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.LifecycleUtils;
 import io.awspring.cloud.sqs.listener.pipeline.AckHandlerExecutionStage;
 import io.awspring.cloud.sqs.listener.pipeline.ErrorHandlerExecutionStage;
-import io.awspring.cloud.sqs.listener.pipeline.InterceptorExecutionStage;
+import io.awspring.cloud.sqs.listener.pipeline.BeforeProcessingInterceptorExecutionStage;
+import io.awspring.cloud.sqs.listener.pipeline.AfterProcessingInterceptorExecutionStage;
 import io.awspring.cloud.sqs.listener.pipeline.MessageListenerExecutionStage;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingConfiguration;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
@@ -106,10 +107,11 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	private MessageProcessingPipeline<T> getMessageProcessingPipeline() {
 		return MessageProcessingPipelineBuilder
-			.<T>first(InterceptorExecutionStage::new)
+			.<T>first(BeforeProcessingInterceptorExecutionStage::new)
 			.then(MessageListenerExecutionStage::new)
 			.thenWrapWith(ErrorHandlerExecutionStage::new)
 			.thenWrapWith(AckHandlerExecutionStage::new)
+			.then(AfterProcessingInterceptorExecutionStage::new)
 			.build(MessageProcessingConfiguration.<T>builder()
 				.interceptors(getMessageInterceptors())
 				.messageListener(getMessageListener())

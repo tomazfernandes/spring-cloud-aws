@@ -35,15 +35,40 @@ import org.springframework.messaging.Message;
 public interface AsyncMessageInterceptor<T> {
 
 	/**
-	 * Intercept the message before processing.
+	 * Perform an action on the message or return a different one before processing.
+	 * Executed before processing.
 	 * @param message the message to be intercepted.
 	 * @return a completable future containing the resulting message.
 	 */
-	CompletableFuture<Message<T>> intercept(Message<T> message);
+	default CompletableFuture<Message<T>> intercept(Message<T> message) {
+		return CompletableFuture.completedFuture(message);
+	}
 
+	/**
+	 * Perform an action on the messages or return different ones before processing.
+	 * @param messages the message to be intercepted.
+	 * @return a completable future containing the resulting message.
+	 */
 	default CompletableFuture<Collection<Message<T>>> intercept(Collection<Message<T>> messages) {
-		return CompletableFutures
-			.failedFuture(new UnsupportedOperationException("Batch not implemented for this Interceptor"));
+		return CompletableFuture.completedFuture(messages);
+	}
+
+	/**
+	 * Perform the message after the listener completes either with success or error.
+	 * @param message the messages to be intercepted.
+	 * @return a completable future containing the resulting message.
+	 */
+	default CompletableFuture<Message<T>> afterProcessing(Message<T> message) {
+		return CompletableFuture.completedFuture(message);
+	}
+
+	/**
+	 * Perform the messages after the listener completes either with success or error.
+	 * @param messages the messages to be intercepted.
+	 * @return a completable future containing the resulting message.
+	 */
+	default CompletableFuture<Collection<Message<T>>> afterProcessing(Collection<Message<T>> messages) {
+		return CompletableFuture.completedFuture(messages);
 	}
 
 }

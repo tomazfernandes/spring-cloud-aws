@@ -35,7 +35,7 @@ import io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
 import io.awspring.cloud.sqs.listener.sink.FanOutMessageSink;
-import io.awspring.cloud.sqs.listener.sink.MessageProcessingContext;
+import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.sink.OrderedMessageListeningSink;
 import io.awspring.cloud.sqs.listener.source.SqsMessageSource;
 import java.lang.reflect.Method;
@@ -157,7 +157,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 	@Test
 	void manuallyStartsContainerAndChangesComponent() throws Exception {
 		SqsMessageListenerContainer<String> container = new SqsMessageListenerContainer<>(createAsyncClient(),
-				ContainerOptions.create().semaphoreAcquireTimeout(Duration.ofSeconds(1))
+				ContainerOptions.create().permitAcquireTimeout(Duration.ofSeconds(1))
 						.pollTimeout(Duration.ofSeconds(1)));
 		container.setQueueNames(MANUALLY_START_CONTAINER);
 		container.setMessageListener(msg -> latchContainer.manuallyStartedContainerLatch.countDown());
@@ -437,7 +437,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Bean
 		public SqsMessageListenerContainerFactory<String> defaultSqsListenerContainerFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
-			factory.getContainerOptions().semaphoreAcquireTimeout(Duration.ofSeconds(1))
+			factory.getContainerOptions().permitAcquireTimeout(Duration.ofSeconds(1))
 					.pollTimeout(Duration.ofSeconds(1));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			return factory;
@@ -448,7 +448,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			// For load tests, set maxInflightMessagesPerQueue to a higher value - e.g. 600
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions().maxInflightMessagesPerQueue(10).pollTimeout(Duration.ofSeconds(1))
-					.messagesPerPoll(10).semaphoreAcquireTimeout(Duration.ofSeconds(1));
+					.messagesPerPoll(10).permitAcquireTimeout(Duration.ofSeconds(1));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			factory.setAckHandler(testAckHandler());
 			return factory;
@@ -457,8 +457,8 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Bean
 		public SqsMessageListenerContainerFactory<String> lowResourceFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
-			factory.getContainerOptions().maxInflightMessagesPerQueue(10).pollTimeout(Duration.ofSeconds(5))
-					.messagesPerPoll(1).semaphoreAcquireTimeout(Duration.ofSeconds(5));
+			factory.getContainerOptions().maxInflightMessagesPerQueue(10).pollTimeout(Duration.ofSeconds(1))
+					.messagesPerPoll(1).permitAcquireTimeout(Duration.ofSeconds(1));
 			factory.setMessageSinkSupplier(OrderedMessageListeningSink::new);
 			factory.setAckHandler(testAckHandler());
 			factory.setErrorHandler(testErrorHandler());
@@ -471,7 +471,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Bean
 		public MessageListenerContainer<String> manuallyCreatedContainer() {
 			SqsMessageListenerContainer<String> container = new SqsMessageListenerContainer<>(createAsyncClient(),
-					ContainerOptions.create().semaphoreAcquireTimeout(Duration.ofSeconds(1))
+					ContainerOptions.create().permitAcquireTimeout(Duration.ofSeconds(1))
 							.pollTimeout(Duration.ofSeconds(1)));
 			container.setQueueNames(MANUALLY_CREATE_CONTAINER_QUEUE_NAME);
 			container.setMessageListener(msg -> latchContainer.manuallyCreatedContainerLatch.countDown());
@@ -482,7 +482,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		public SqsMessageListenerContainer<String> manuallyCreatedFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions().maxInflightMessagesPerQueue(1).pollTimeout(Duration.ofSeconds(2))
-					.messagesPerPoll(1).semaphoreAcquireTimeout(Duration.ofSeconds(1))
+					.messagesPerPoll(1).permitAcquireTimeout(Duration.ofSeconds(1))
 					.pollTimeout(Duration.ofSeconds(1));
 			factory.setMessageSourceFactory(() -> {
 				latchContainer.manuallyCreatedFactorySourceFactoryLatch.countDown();

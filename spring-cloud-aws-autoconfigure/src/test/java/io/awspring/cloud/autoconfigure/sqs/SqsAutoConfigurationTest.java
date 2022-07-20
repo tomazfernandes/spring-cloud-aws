@@ -145,10 +145,10 @@ class SqsAutoConfigurationTest {
 //					.map(future -> future.thenApply(theVoid -> 1)).collect(Collectors.toList());
 //		}
 
-		@Bean
-		AsyncMessageInterceptor<?> asyncMessageInterceptor() {
-			return CompletableFuture::completedFuture;
-		}
+//		@Bean
+//		AsyncMessageInterceptor<?> asyncMessageInterceptor() {
+//			return CompletableFuture::completedFuture;
+//		}
 
 		@Bean
 		ContainerOptions containerOptions() {
