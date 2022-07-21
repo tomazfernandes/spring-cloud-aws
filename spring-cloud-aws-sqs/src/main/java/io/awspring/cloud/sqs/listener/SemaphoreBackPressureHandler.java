@@ -57,6 +57,7 @@ public class SemaphoreBackPressureHandler implements BackPressureHandler {
 			return this.semaphore.tryAcquire(totalPermits, (int) timeout.getSeconds(),
 				TimeUnit.SECONDS);
 		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 			throw new IllegalStateException("Interrupted while waiting to acquire permits", e);
 		}
 	}
