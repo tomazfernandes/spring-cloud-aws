@@ -47,15 +47,16 @@ public class ErrorHandlerExecutionStage<T> implements MessageProcessingPipeline<
 
 	@Override
 	public CompletableFuture<Message<T>> process(Message<T> message, MessageProcessingContext<T> context) {
-		logger.debug("Processing message {}", MessageHeaderUtils.getId(message));
+		logger.trace("Processing message {}", MessageHeaderUtils.getId(message));
 		return CompletableFutures.exceptionallyCompose(wrapped.process(message, context),
 			t -> errorHandler.handleError(message, t).thenApply(theVoid -> message));
 	}
 
 	@Override
 	public CompletableFuture<Collection<Message<T>>> process(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
-		logger.debug("Processing {} messages", messages.size());
+		logger.trace("Processing messages {}", MessageHeaderUtils.getId(messages));
 		return CompletableFutures.exceptionallyCompose(wrapped.process(messages, context),
 			t -> errorHandler.handleError(messages, t).thenApply(theVoid -> messages));
 	}
+
 }

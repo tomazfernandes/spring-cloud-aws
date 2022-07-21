@@ -16,41 +16,42 @@
 package io.awspring.cloud.sqs.listener.pipeline;
 
 import io.awspring.cloud.sqs.MessageHeaderUtils;
-import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
+import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Stage responsible for executing the {@link AsyncMessageListener}.
+ * Stage responsible for executing the {@link AsyncMessageInterceptor}s.
  *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class MessageListenerExecutionStage<T> implements MessageProcessingPipeline<T> {
+public class BeforeProcessingContextInterceptorExecutionStage<T> implements MessageProcessingPipeline<T> {
 
-	private static final Logger logger = LoggerFactory.getLogger(MessageListenerExecutionStage.class);
+	private static final Logger logger = LoggerFactory.getLogger(BeforeProcessingContextInterceptorExecutionStage.class);
 
-	private final AsyncMessageListener<T> messageListener;
-
-	public MessageListenerExecutionStage(MessageProcessingConfiguration<T> context) {
-		this.messageListener = context.getMessageListener();
+	public BeforeProcessingContextInterceptorExecutionStage(MessageProcessingConfiguration<T> configuration) {
 	}
 
 	@Override
 	public CompletableFuture<Message<T>> process(Message<T> message, MessageProcessingContext<T> context) {
 		logger.trace("Processing message {}", MessageHeaderUtils.getId(message));
-		return this.messageListener.onMessage(message).thenApply(theVoid -> message);
+		return context.getInterceptors().stream().reduce(CompletableFuture.completedFuture(message),
+			(messageFuture, interceptor) -> messageFuture.thenCompose(interceptor::intercept), (a, b) -> a);
 	}
 
 	@Override
 	public CompletableFuture<Collection<Message<T>>> process(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
 		logger.trace("Processing messages {}", MessageHeaderUtils.getId(messages));
-		return this.messageListener.onMessage(messages).thenApply(theVoid -> messages);
+		return context.getInterceptors().stream().reduce(CompletableFuture.completedFuture(messages),
+			(messageFuture, interceptor) -> messageFuture.thenCompose(interceptor::intercept), (a, b) -> a);
 	}
 
 }

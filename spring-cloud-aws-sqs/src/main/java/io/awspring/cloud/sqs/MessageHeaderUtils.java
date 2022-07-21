@@ -17,8 +17,12 @@ package io.awspring.cloud.sqs;
 
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
 import io.awspring.cloud.sqs.listener.acknowledgement.Acknowledgement;
+
+import java.util.Collection;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
@@ -65,5 +69,9 @@ public class MessageHeaderUtils {
 		Assert.isInstanceOf(classToCast, header,
 			() -> String.format("Header %s from message %s not instance of class %s", header, getId(message), classToCast));
 		return classToCast.cast(header);
+	}
+
+	public static <T> String getId(Collection<Message<T>> messages) {
+		return messages.stream().map(MessageHeaderUtils::getId).collect(Collectors.joining("; "));
 	}
 }

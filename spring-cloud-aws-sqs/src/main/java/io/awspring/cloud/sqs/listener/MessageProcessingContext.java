@@ -17,18 +17,18 @@ import java.util.List;
  */
 public class MessageProcessingContext<T> {
 
-	private final List<AsyncMessageInterceptor<T>> contextInterceptors;
+	private final List<AsyncMessageInterceptor<T>> interceptors;
 
-	public MessageProcessingContext(List<AsyncMessageInterceptor<T>> contextInterceptors) {
-		this.contextInterceptors = Collections.unmodifiableList(contextInterceptors);
+	public MessageProcessingContext(List<AsyncMessageInterceptor<T>> interceptors) {
+		this.interceptors = Collections.unmodifiableList(interceptors);
 	}
 
-	public List<AsyncMessageInterceptor<T>> getContextInterceptors() {
-		return this.contextInterceptors;
+	public List<AsyncMessageInterceptor<T>> getInterceptors() {
+		return this.interceptors;
 	}
 
 	public MessageProcessingContext<T> addInterceptor(AsyncMessageInterceptor<T> interceptor) {
-		List<AsyncMessageInterceptor<T>> interceptors = new ArrayList<>(this.contextInterceptors);
+		List<AsyncMessageInterceptor<T>> interceptors = new ArrayList<>(this.interceptors);
 		interceptors.add(interceptor);
 		return new MessageProcessingContext<>(interceptors);
 	}

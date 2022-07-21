@@ -47,17 +47,18 @@ public class AckHandlerExecutionStage<T> implements MessageProcessingPipeline<T>
 
 	@Override
 	public CompletableFuture<Message<T>> process(Message<T> message, MessageProcessingContext<T> context) {
-		logger.debug("Processing message {}", MessageHeaderUtils.getId(message));
+		logger.trace("Processing message {}", MessageHeaderUtils.getId(message));
 		return CompletableFutures.exceptionallyCompose(this.wrapped.process(message, context)
-			.thenCompose(ackHandler::onSuccess),
-			t -> ackHandler.onError(message, t)).thenApply(theVoid -> message);
+			.thenCompose(ackHandler::onSuccess), t -> ackHandler.onError(message, t))
+			.thenApply(theVoid -> message);
 	}
 
 	@Override
 	public CompletableFuture<Collection<Message<T>>> process(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
-		logger.debug("Processing {} messages", messages.size());
+		logger.trace("Processing messages {}", MessageHeaderUtils.getId(messages));
 		return CompletableFutures.exceptionallyCompose(this.wrapped.process(messages, context)
-			.thenCompose(ackHandler::onSuccess), t -> ackHandler.onError(messages, t)).thenApply(theVoid -> messages);
+			.thenCompose(ackHandler::onSuccess), t -> ackHandler.onError(messages, t))
+			.thenApply(theVoid -> messages);
 	}
 
 }
