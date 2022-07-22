@@ -29,7 +29,9 @@ import java.time.Duration;
  */
 public interface BackPressureHandler {
 
-	int request(int amount) throws InterruptedException;
+	void setClientId(String clientId);
+
+	int request() throws InterruptedException;
 
 	void release(int amount);
 

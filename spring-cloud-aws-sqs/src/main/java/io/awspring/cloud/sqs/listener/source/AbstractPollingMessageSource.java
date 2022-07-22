@@ -108,6 +108,7 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 			Assert.notNull(this.messageSink, "No MessageSink was set");
 			logger.debug("Starting MessageSource for queue {}", this.pollingEndpointName);
 			this.running = true;
+			this.backPressureHandler.setClientId(this.pollingEndpointName);
 			doStart();
 			startPollingThread();
 		}
@@ -126,21 +127,21 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 				if (!isRunning()) {
 					continue;
 				}
-				logger.trace("Requesting {} permits for queue {}", this.messagesPerPoll, this.pollingEndpointName);
-				int permits = this.backPressureHandler.request(this.messagesPerPoll);
-				if (permits == 0) {
+				logger.trace("Requesting permits for queue {}", this.pollingEndpointName);
+				final int acquiredPermits = this.backPressureHandler.request();
+				if (acquiredPermits == 0) {
 					logger.trace("No permits acquired for queue {}.", this.pollingEndpointName);
 					continue;
 				}
-				logger.trace("{} permits acquired for queue {}", permits, this.pollingEndpointName);
+				logger.trace("{} permits acquired for queue {}", acquiredPermits, this.pollingEndpointName);
 				if (!isRunning()) {
-					logger.debug("MessageSource was stopped after permits where acquired. Returning {} permits.", permits);
-					this.backPressureHandler.release(permits);
+					logger.debug("MessageSource was stopped after permits where acquired. Returning {} permits.", acquiredPermits);
+					this.backPressureHandler.release(acquiredPermits);
 					continue;
 				}
-				managePollingFuture(doPollForMessages())
+				managePollingFuture(doPollForMessages(acquiredPermits))
 					.exceptionally(this::handlePollingException)
-					.thenApply(this::releaseUnusedPermits)
+					.thenApply(msgs -> releaseUnusedPermits(acquiredPermits, msgs))
 					.thenCompose(this::emitMessagesToPipeline)
 					.exceptionally(this::handleSinkException);
 			}
@@ -155,10 +156,10 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 		logger.debug("Execution thread stopped for queue {}.", this.pollingEndpointName);
 	}
 
-	protected abstract CompletableFuture<Collection<Message<T>>> doPollForMessages();
+	protected abstract CompletableFuture<Collection<Message<T>>> doPollForMessages(int messagesToRequest);
 
-	public Collection<Message<T>> releaseUnusedPermits(Collection<Message<T>> msgs) {
-		int permitsToRelease = this.messagesPerPoll - msgs.size();
+	public Collection<Message<T>> releaseUnusedPermits(int permits, Collection<Message<T>> msgs) {
+		int permitsToRelease = permits - msgs.size();
 		logger.trace("Releasing {} unused permits for queue {}", permitsToRelease, this.pollingEndpointName);
 		this.backPressureHandler.release(permitsToRelease);
 		return msgs;

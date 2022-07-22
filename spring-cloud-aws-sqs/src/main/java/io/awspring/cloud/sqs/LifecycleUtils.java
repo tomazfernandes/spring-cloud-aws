@@ -25,7 +25,8 @@ public class LifecycleUtils {
 			if (object instanceof SmartLifecycle) {
 				action.accept((SmartLifecycle) object);
 			} else if (object instanceof Collection) {
-				((Collection<?>) object).forEach(innerObject -> manageLifecycle(action, innerObject));
+				((Collection<?>) object).parallelStream()
+					.forEach(innerObject -> manageLifecycle(action, innerObject));
 			}
 		});
 	}

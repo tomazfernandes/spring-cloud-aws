@@ -85,10 +85,10 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> {
 	}
 
 	@Override
-	protected CompletableFuture<Collection<Message<T>>> doPollForMessages() {
+	protected CompletableFuture<Collection<Message<T>>> doPollForMessages(int messagesToRequest) {
 		logger.trace("Polling queue {} for {} messages.", this.queueUrl, getMessagesPerPoll());
 		return sqsAsyncClient
-				.receiveMessage(req -> req.queueUrl(this.queueUrl).maxNumberOfMessages(getMessagesPerPoll())
+				.receiveMessage(req -> req.queueUrl(this.queueUrl).maxNumberOfMessages(messagesToRequest)
 					.attributeNames(QueueAttributeName.ALL).waitTimeSeconds((int) getPollTimeout().getSeconds()))
 				.thenApply(ReceiveMessageResponse::messages).thenApply(this::convertMessages);
 	}

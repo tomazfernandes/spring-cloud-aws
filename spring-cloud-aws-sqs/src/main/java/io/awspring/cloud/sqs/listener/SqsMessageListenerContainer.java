@@ -84,15 +84,14 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	}
 
 	private Collection<MessageSource<T>> createMessageSources() {
-		if (getMessageSourceFactory() == null) {
-			setMessageSourceFactory(DEFAULT_SQS_MESSAGE_SOURCE_FACTORY);
-		}
 		return getQueueNames().stream().map(this::createMessageSource)
 			.collect(Collectors.toList());
 	}
 
 	private MessageSource<T> createMessageSource(String queueName) {
-		MessageSource<T> messageSource = getMessageSourceFactory().create();
+		MessageSource<T> messageSource = getMessageSourceFactory() != null
+			? getMessageSourceFactory().create()
+			: DEFAULT_SQS_MESSAGE_SOURCE_FACTORY.create();
 		ConfigUtils.INSTANCE
 			.acceptIfInstance(messageSource, PollingMessageSource.class, pms -> pms.setPollingEndpointName(queueName));
 		return messageSource;
@@ -129,10 +128,13 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	}
 
 	private SemaphoreBackPressureHandler createBackPressureHandler() {
-		return new SemaphoreBackPressureHandler(getContainerOptions().getMaxInFlightMessagesPerQueue(),
-			super.getContainerOptions().getSemaphoreAcquireTimeout());
+		return SemaphoreBackPressureHandler.builder()
+			.batchSize(getContainerOptions().getMessagesPerPoll())
+			.totalPermits(getContainerOptions().getMaxInFlightMessagesPerQueue())
+			.acquireTimeout(getContainerOptions().getSemaphoreAcquireTimeout())
+			.throughputConfiguration(getContainerOptions().getBackPressureMode())
+			.build();
 	}
-
 
 	private TaskExecutor createSourceTaskExecutor() {
 		SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor();

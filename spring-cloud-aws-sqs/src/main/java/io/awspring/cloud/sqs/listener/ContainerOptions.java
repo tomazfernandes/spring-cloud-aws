@@ -18,12 +18,14 @@ package io.awspring.cloud.sqs.listener;
 import java.time.Duration;
 import java.util.Collection;
 
+import io.awspring.cloud.sqs.BackPressureMode;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 
 /**
- * Contains the options to be used by the {@link MessageListenerContainer} at runtime. Changes will be reflected upon
+ * Contains the options to be used by the {@link MessageListenerContainer} at runtime.
+ * If changes are made after the container has started, those changes will be reflected upon
  * container restart.
  *
  * @author Tomaz Fernandes
@@ -41,6 +43,8 @@ public class ContainerOptions {
 
 	private static final Duration DEFAULT_SHUTDOWN_TIMEOUT = Duration.ofSeconds(20);
 
+	private static final BackPressureMode DEFAULT_THROUGHPUT_CONFIGURATION = BackPressureMode.AUTO;
+
 	private int maxInflightMessagesPerQueue = DEFAULT_MAX_INFLIGHT_MSG_PER_QUEUE;
 
 	private int messagesPerPoll = DEFAULT_MESSAGES_PER_POLL;
@@ -52,6 +56,8 @@ public class ContainerOptions {
 	private Duration shutDownTimeout = DEFAULT_SHUTDOWN_TIMEOUT;
 
 	private TaskExecutor sinkTaskExecutor;
+
+	private BackPressureMode backPressureMode = DEFAULT_THROUGHPUT_CONFIGURATION;
 
 	public static ContainerOptions create() {
 		return new ContainerOptions();
@@ -109,6 +115,11 @@ public class ContainerOptions {
 		return this;
 	}
 
+	public ContainerOptions backPressureMode(BackPressureMode backPressureMode) {
+		this.backPressureMode = backPressureMode;
+		return this;
+	}
+
 	/**
 	 * Return the maximum allowed number of inflight messages for each queue.
 	 * @return the number.
@@ -149,8 +160,12 @@ public class ContainerOptions {
 		return this.shutDownTimeout;
 	}
 
+	public BackPressureMode getBackPressureMode() {
+		return this.backPressureMode;
+	}
+
 	/**
-	 * Creates a shallow copy of these options.
+	 * Create a shallow copy of these options.
 	 * @return the copy.
 	 */
 	public ContainerOptions createCopy() {
@@ -167,4 +182,13 @@ public class ContainerOptions {
 		configurables.forEach(this::configure);
 	}
 
+	/**
+	 * Validate these options.
+	 */
+	public void validate() {
+		Assert.isTrue(this.messagesPerPoll <= maxInflightMessagesPerQueue,
+			String.format("messagesPerPoll should be less than or equal to maxInflightMessagesPerQueue. Values provided: %s and %s respectively",
+				this.messagesPerPoll, this.maxInflightMessagesPerQueue));
+		Assert.isTrue(this.messagesPerPoll <= 10, "messagesPerPoll must be less than or equal to 10.");
+	}
 }

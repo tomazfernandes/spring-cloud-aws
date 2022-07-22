@@ -40,11 +40,12 @@ import io.awspring.cloud.sqs.listener.sink.OrderedMessageListeningSink;
 import io.awspring.cloud.sqs.listener.source.SqsMessageSource;
 import java.lang.reflect.Method;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -223,10 +224,10 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 
 	private void testWithLoad(String queue1, String queue2, CountDownLatch countDownLatch, CountDownLatch secondLatch,
 			BiFunction<Integer, Integer, String> bodyFunction) throws InterruptedException, ExecutionException {
-		StopWatch watch = new StopWatch();
-		watch.start();
 		String queueUrl1 = fetchQueueUrl(queue1);
 		String queueUrl2 = fetchQueueUrl(queue2);
+		StopWatch watch = new StopWatch();
+		watch.start();
 		IntStream.range(0, outerBatchSize).forEach(index -> {
 			sendMessageBatch(queueUrl1, index, innerBatchSize, bodyFunction);
 			sendMessageBatch(queueUrl2, index + outerBatchSize, innerBatchSize, bodyFunction);
@@ -245,7 +246,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			sqsAsyncClient.sendMessageBatch(req -> req.entries(getBatchEntries(batchSize, parentIndex, bodyFunction))
 					.queueUrl(queueUrl).build()).thenRun(() -> {
 						if (parentIndex % 5 == 0) {
-							logger.debug("Sent " + parentIndex * batchSize + " messages.");
+							logger.debug("Sent " + parentIndex * batchSize + " messages to queue {}", queueUrl);
 						}
 						logger.trace("Sending {} messages from parent index {}", batchSize, parentIndex);
 					});
@@ -342,15 +343,15 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 
 	static class ReceiveManyFromTwoQueuesListener {
 
-		List<String> messagesReceivedPayload = Collections.synchronizedList(new ArrayList<>());
+		Set<String> messagesReceivedPayload = Collections.synchronizedSet(new HashSet<>());
 
 		@Autowired
 		LatchContainer latchContainer;
 
 		AtomicInteger messagesReceived = new AtomicInteger();
 
-		@SqsListener(queueNames = { RECEIVE_FROM_MANY_1_QUEUE_NAME,
-				RECEIVE_FROM_MANY_2_QUEUE_NAME }, factory = HIGH_THROUGHPUT_FACTORY_NAME, id = "receive-many-from-two-queues")
+		@SqsListener(queueNames = { RECEIVE_FROM_MANY_1_QUEUE_NAME, RECEIVE_FROM_MANY_2_QUEUE_NAME},
+			factory = HIGH_THROUGHPUT_FACTORY_NAME, id = "receive-many-from-two-queues")
 		void listen(String message) {
 			logger.trace("Started processing " + message);
 			if (this.messagesReceivedPayload.contains(message)) {
@@ -358,7 +359,8 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			}
 			this.messagesReceivedPayload.add(message);
 			try {
-				Thread.sleep(1000);
+				int sleepTime = new Random().nextInt(1000);
+				Thread.sleep(sleepTime);
 			}
 			catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
@@ -448,8 +450,8 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			// For load tests, set maxInflightMessagesPerQueue to a higher value - e.g. 600
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions().maxInflightMessagesPerQueue(10).pollTimeout(Duration.ofSeconds(1))
-					.messagesPerPoll(10).permitAcquireTimeout(Duration.ofSeconds(1));
-			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
+					.messagesPerPoll(10).permitAcquireTimeout(Duration.ofSeconds(1)).backPressureMode(BackPressureMode.HIGH_THROUGHPUT);
+			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createHighThroughputAsyncClient);
 			factory.setAckHandler(testAckHandler());
 			return factory;
 		}

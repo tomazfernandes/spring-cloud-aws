@@ -30,6 +30,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
@@ -95,9 +96,19 @@ abstract class BaseSqsIntegrationTest {
 	}
 
 	protected static SqsAsyncClient createAsyncClient() {
-		return SqsAsyncClient.builder().credentialsProvider(credentialsProvider)
-				.endpointOverride(localstack.getEndpointOverride(SQS)).region(Region.of(localstack.getRegion()))
-				.build();
+		return SqsAsyncClient.builder()
+			.credentialsProvider(credentialsProvider)
+			.endpointOverride(localstack.getEndpointOverride(SQS)).region(Region.of(localstack.getRegion()))
+			.build();
+	}
+
+	protected static SqsAsyncClient createHighThroughputAsyncClient() {
+		return SqsAsyncClient.builder().httpClientBuilder(NettyNioAsyncHttpClient.builder()
+				//.maxConcurrency(6000)
+			)
+			.credentialsProvider(credentialsProvider)
+			.endpointOverride(localstack.getEndpointOverride(SQS)).region(Region.of(localstack.getRegion()))
+			.build();
 	}
 
 }
