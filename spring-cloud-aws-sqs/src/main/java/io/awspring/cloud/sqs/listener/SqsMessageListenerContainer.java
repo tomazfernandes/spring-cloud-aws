@@ -31,14 +31,12 @@ import io.awspring.cloud.sqs.listener.sink.MessageProcessingPipelineSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import io.awspring.cloud.sqs.listener.sink.TaskExecutorAwareComponent;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
-import io.awspring.cloud.sqs.listener.source.MessageSourceFactory;
 import io.awspring.cloud.sqs.listener.source.PollingMessageSource;
 import io.awspring.cloud.sqs.listener.source.SqsMessageSource;
 
 import java.util.Collection;
 import java.util.stream.Collectors;
 
-import io.awspring.cloud.sqs.listener.source.SqsMessageSourceFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -60,8 +58,6 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessageListenerContainer.class);
 
-	private final MessageSourceFactory<T> DEFAULT_SQS_MESSAGE_SOURCE_FACTORY = new SqsMessageSourceFactory<>();
-
 	private final SqsAsyncClient asyncClient;
 
 	private Collection<MessageSource<T>> messageSources;
@@ -77,10 +73,18 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	@Override
 	protected void doStart() {
+		determineAndConfigureComponentFactory();
 		this.messageSources = createMessageSources();
-		this.messageSink = super.getMessageSink();
+		this.messageSink = super.getContainerComponentFactory().createMessageSink();
 		configureComponents();
 		LifecycleUtils.start(this.messageSink, this.messageSources);
+	}
+
+	private void determineAndConfigureComponentFactory() {
+		if (getContainerComponentFactory() == null) {
+			setContainerComponentFactory(new StandardSqsComponentFactory<>());
+		}
+		getContainerOptions().configure(getContainerComponentFactory());
 	}
 
 	private Collection<MessageSource<T>> createMessageSources() {
@@ -89,9 +93,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	}
 
 	private MessageSource<T> createMessageSource(String queueName) {
-		MessageSource<T> messageSource = getMessageSourceFactory() != null
-			? getMessageSourceFactory().create()
-			: DEFAULT_SQS_MESSAGE_SOURCE_FACTORY.create();
+		MessageSource<T> messageSource = getContainerComponentFactory().createMessageSource();
 		ConfigUtils.INSTANCE
 			.acceptIfInstance(messageSource, PollingMessageSource.class, pms -> pms.setPollingEndpointName(queueName));
 		return messageSource;
@@ -99,9 +101,8 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	@SuppressWarnings("unchecked")
 	private void configureComponents() {
-		ContainerOptions options = getContainerOptions().createCopy();
-		options.configure(this.messageSources);
-		options.configure(this.messageSink);
+		getContainerOptions().configure(this.messageSources);
+		getContainerOptions().configure(this.messageSink);
 		ConfigUtils.INSTANCE
 			.acceptManyIfInstance(this.messageSources, SqsMessageSource.class, sms -> sms.setSqsAsyncClient(this.asyncClient))
 			.acceptManyIfInstance(this.messageSources, PollingMessageSource.class, sms -> sms.setBackPressureHandler(createBackPressureHandler()))
@@ -124,14 +125,14 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 				.interceptors(getMessageInterceptors())
 				.messageListener(getMessageListener())
 				.errorHandler(getErrorHandler())
-				.ackHandler(getAckHandler()).build());
+				.ackHandler(getContainerComponentFactory().createAckHandler()).build());
 	}
 
 	private SemaphoreBackPressureHandler createBackPressureHandler() {
 		return SemaphoreBackPressureHandler.builder()
 			.batchSize(getContainerOptions().getMessagesPerPoll())
 			.totalPermits(getContainerOptions().getMaxInFlightMessagesPerQueue())
-			.acquireTimeout(getContainerOptions().getSemaphoreAcquireTimeout())
+			.acquireTimeout(getContainerOptions().getPermitAcquireTimeout())
 			.throughputConfiguration(getContainerOptions().getBackPressureMode())
 			.build();
 	}

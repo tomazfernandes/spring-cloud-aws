@@ -58,23 +58,23 @@ public class SqsMessageListenerContainerFactory<T>
 	}
 
 	@Override
-	protected SqsMessageListenerContainer<T> createContainerInstance(Endpoint endpoint,
-			ContainerOptions containerOptions) {
+	protected SqsMessageListenerContainer<T> createContainerInstance(Endpoint endpoint, ContainerOptions containerOptions) {
 		logger.debug("Creating {} for endpoint {}", SqsMessageListenerContainer.class.getSimpleName(), endpoint);
 		Assert.notNull(this.sqsAsyncClientSupplier, "No asyncClient set");
 		SqsAsyncClient asyncClient = this.sqsAsyncClientSupplier.get();
-		return new SqsMessageListenerContainer<>(asyncClient, configureContainerOptions(endpoint, containerOptions));
+		return new SqsMessageListenerContainer<>(asyncClient, containerOptions);
 	}
 
-	private ContainerOptions configureContainerOptions(Endpoint endpoint, ContainerOptions options) {
-		if (endpoint instanceof SqsEndpoint) {
-			SqsEndpoint sqsEndpoint = (SqsEndpoint) endpoint;
-			ConfigUtils.INSTANCE
-					.acceptIfNotNull(sqsEndpoint.getMaxInflightMessagesPerQueue(), options::maxInflightMessagesPerQueue)
-					.acceptIfNotNull(sqsEndpoint.getPollTimeout(), options::pollTimeout)
-					.acceptIfNotNull(sqsEndpoint.getMinimumVisibility(), this::addVisibilityExtender);
-		}
-		return options;
+	protected void doConfigureContainerOptions(Endpoint endpoint, ContainerOptions options) {
+		ConfigUtils.INSTANCE
+			.acceptIfInstance(endpoint, SqsEndpoint.class, sqsEndpoint -> configureFromSqsEndpoint(sqsEndpoint, options));
+	}
+
+	private void configureFromSqsEndpoint(SqsEndpoint sqsEndpoint, ContainerOptions options) {
+		ConfigUtils.INSTANCE
+				.acceptIfNotNull(sqsEndpoint.getMaxInflightMessagesPerQueue(), options::maxInflightMessagesPerQueue)
+				.acceptIfNotNull(sqsEndpoint.getPollTimeout(), options::pollTimeout)
+				.acceptIfNotNull(sqsEndpoint.getMinimumVisibility(), this::addVisibilityExtender);
 	}
 
 	/**
