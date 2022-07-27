@@ -21,6 +21,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
+import io.awspring.cloud.sqs.listener.TaskExecutorAwareComponent;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,8 +89,8 @@ public abstract class AbstractMessageListeningSink<T> implements MessageProcessi
 	 * @return the processing result.
 	 */
 	protected CompletableFuture<Void> execute(Message<T> message, MessageProcessingContext<T> context) {
-		Assert.state(this.taskExecutor != null, "TaskExecutor cannot be null");
-		return doExecute(() -> this.messageProcessingPipeline.process(message, context));
+		return doExecute(() -> this.messageProcessingPipeline.process(message, context), context)
+			.whenComplete((v, t) -> context.getBackPressureReleaseCallback().run());
 	}
 
 	/**
@@ -100,12 +101,13 @@ public abstract class AbstractMessageListeningSink<T> implements MessageProcessi
 	 * @return the processing result.
 	 */
 	protected CompletableFuture<Void> execute(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
-		Assert.state(this.taskExecutor != null, "TaskExecutor cannot be null");
-		return doExecute(() -> this.messageProcessingPipeline.process(messages, context));
+		return doExecute(() -> this.messageProcessingPipeline.process(messages, context), context)
+			.whenComplete((v, t) -> messages.forEach(msg -> context.getBackPressureReleaseCallback().run()));
 	}
 
-	private CompletableFuture<Void> doExecute(Supplier<CompletableFuture<?>> supplier) {
-		return CompletableFuture.supplyAsync(supplier, this.taskExecutor).thenRun(() -> {});
+	private CompletableFuture<Void> doExecute(Supplier<CompletableFuture<?>> supplier, MessageProcessingContext<T> context) {
+		return CompletableFuture.supplyAsync(supplier, this.taskExecutor)
+			.thenCompose(x -> x).thenRun(() -> {});
 	}
 
 	@Override

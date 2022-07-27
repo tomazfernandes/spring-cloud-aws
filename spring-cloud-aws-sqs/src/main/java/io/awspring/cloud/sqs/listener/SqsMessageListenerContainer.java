@@ -29,20 +29,22 @@ import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipelineBuilder;
 import io.awspring.cloud.sqs.listener.sink.MessageProcessingPipelineSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
-import io.awspring.cloud.sqs.listener.sink.TaskExecutorAwareComponent;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
 import io.awspring.cloud.sqs.listener.source.PollingMessageSource;
 import io.awspring.cloud.sqs.listener.source.SqsMessageSource;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 
+import io.awspring.cloud.sqs.support.SqsMessageConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 /**
@@ -58,7 +60,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessageListenerContainer.class);
 
-	private final SqsAsyncClient asyncClient;
+	private final SqsAsyncClient sqsAsyncClient;
 
 	private Collection<MessageSource<T>> messageSources;
 
@@ -66,9 +68,9 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	private TaskExecutor sinkTaskExecutor;
 
-	public SqsMessageListenerContainer(SqsAsyncClient asyncClient, ContainerOptions options) {
+	public SqsMessageListenerContainer(SqsAsyncClient sqsAsyncClient, ContainerOptions options) {
 		super(options);
-		this.asyncClient = asyncClient;
+		this.sqsAsyncClient = sqsAsyncClient;
 	}
 
 	@Override
@@ -82,13 +84,27 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	private void determineAndConfigureComponentFactory() {
 		if (getContainerComponentFactory() == null) {
-			setContainerComponentFactory(new StandardSqsComponentFactory<>());
+			setContainerComponentFactory(determineComponentFactory());
 		}
 		getContainerOptions().configure(getContainerComponentFactory());
 	}
 
+	private ContainerComponentFactory<T> determineComponentFactory() {
+		Assert.isTrue(getQueueNames().stream().map(this::isFifoQueue).distinct().count() == 1,
+			"The container must contain either all FIFO or all Standard queues.");
+		return isFifoQueue(getQueueNames().iterator().next())
+			? new FifoSqsComponentFactory<>()
+			: new StandardSqsComponentFactory<>();
+	}
+
+	private boolean isFifoQueue(String name) {
+		return name.endsWith(".fifo");
+	}
+
 	private Collection<MessageSource<T>> createMessageSources() {
-		return getQueueNames().stream().map(this::createMessageSource)
+		return getQueueNames()
+			.stream()
+			.map(this::createMessageSource)
 			.collect(Collectors.toList());
 	}
 
@@ -104,7 +120,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		getContainerOptions().configure(this.messageSources);
 		getContainerOptions().configure(this.messageSink);
 		ConfigUtils.INSTANCE
-			.acceptManyIfInstance(this.messageSources, SqsMessageSource.class, sms -> sms.setSqsAsyncClient(this.asyncClient))
+			.acceptManyIfInstance(this.messageSources, SqsMessageSource.class, sms -> sms.setSqsAsyncClient(this.sqsAsyncClient))
 			.acceptManyIfInstance(this.messageSources, PollingMessageSource.class, sms -> sms.setBackPressureHandler(createBackPressureHandler()))
 			.acceptManyIfInstance(this.messageSources, PollingMessageSource.class, sms -> sms.setMessageSink(this.messageSink))
 			.acceptManyIfInstance(this.messageSources, TaskExecutorAwareComponent.class, teac -> teac.setTaskExecutor(createSourceTaskExecutor()))
@@ -129,7 +145,8 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	}
 
 	private SemaphoreBackPressureHandler createBackPressureHandler() {
-		return SemaphoreBackPressureHandler.builder()
+		return SemaphoreBackPressureHandler
+			.builder()
 			.batchSize(getContainerOptions().getMessagesPerPoll())
 			.totalPermits(getContainerOptions().getMaxInFlightMessagesPerQueue())
 			.acquireTimeout(getContainerOptions().getPermitAcquireTimeout())

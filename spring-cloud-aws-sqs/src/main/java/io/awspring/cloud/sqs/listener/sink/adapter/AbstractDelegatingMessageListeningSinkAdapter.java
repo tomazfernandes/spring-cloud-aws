@@ -17,13 +17,10 @@ package io.awspring.cloud.sqs.listener.sink.adapter;
 
 import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.LifecycleUtils;
-import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
-import io.awspring.cloud.sqs.listener.sink.AbstractMessageListeningSink;
 import io.awspring.cloud.sqs.listener.sink.MessageProcessingPipelineSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
-import io.awspring.cloud.sqs.listener.sink.TaskExecutorAwareComponent;
-import org.springframework.context.SmartLifecycle;
+import io.awspring.cloud.sqs.listener.TaskExecutorAwareComponent;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.util.Assert;
 

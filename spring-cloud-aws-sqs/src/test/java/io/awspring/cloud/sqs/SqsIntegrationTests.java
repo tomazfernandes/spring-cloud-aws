@@ -464,8 +464,11 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Bean
 		public SqsMessageListenerContainerFactory<String> lowResourceFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
-			factory.getContainerOptions().maxInflightMessagesPerQueue(10).pollTimeout(Duration.ofSeconds(1))
-					.messagesPerPoll(1).permitAcquireTimeout(Duration.ofSeconds(1));
+			factory.getContainerOptions()
+				.maxInflightMessagesPerQueue(1)
+				.pollTimeout(Duration.ofSeconds(1))
+				.messagesPerPoll(1)
+				.permitAcquireTimeout(Duration.ofSeconds(1));
 			factory.setErrorHandler(testErrorHandler());
 			factory.addMessageInterceptor(testInterceptor());
 			factory.addMessageInterceptor(testInterceptor());

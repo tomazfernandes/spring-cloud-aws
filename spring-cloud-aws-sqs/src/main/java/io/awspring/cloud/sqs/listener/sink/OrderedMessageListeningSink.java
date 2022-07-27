@@ -18,6 +18,8 @@ package io.awspring.cloud.sqs.listener.sink;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 
+import io.awspring.cloud.sqs.CompletableFutures;
+import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +41,13 @@ public class OrderedMessageListeningSink<T> extends AbstractMessageListeningSink
 	protected CompletableFuture<Void> doEmit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
 		logger.debug("Emitting {} messages", messages.size());
 		return messages.stream().reduce(CompletableFuture.completedFuture(null),
-				(resultFuture, msg) -> execute(msg, context), (a, b) -> a);
+				(resultFuture, msg) -> CompletableFutures.handleCompose(resultFuture, (v, t) -> {
+					if (t == null) {
+						return execute(msg, context);
+					}
+					context.getBackPressureReleaseCallback().run();
+					return CompletableFutures.failedFuture(t);
+				}), (a, b) -> a);
 	}
 
 }

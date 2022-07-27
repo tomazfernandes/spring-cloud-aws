@@ -169,28 +169,19 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 		if (messages.isEmpty()) {
 			return CompletableFuture.completedFuture(null);
 		}
-		return this.messageSink.emit(messages, new MessageProcessingContext<>(Collections.singletonList(getBackPressureReleaseInterceptor())));
+		return this.messageSink.emit(messages, createContext());
 	}
 
-	private AsyncMessageInterceptor<T> getBackPressureReleaseInterceptor() {
-		return new AsyncMessageInterceptor<T>() {
-
-			@Override
-			public CompletableFuture<Message<T>> afterProcessing(Message<T> message) {
-				AbstractPollingMessageSource.this.backPressureHandler.release(1);
-				return CompletableFuture.completedFuture(message);
-			}
-
-			@Override
-			public CompletableFuture<Collection<Message<T>>> afterProcessing(Collection<Message<T>> messages) {
-				AbstractPollingMessageSource.this.backPressureHandler.release(messages.size());
-				return CompletableFuture.completedFuture(messages);
-			}
-		};
+	private MessageProcessingContext<T> createContext() {
+		return MessageProcessingContext.<T>create()
+			.addBackPressureReleaseCallback(() -> {
+				logger.debug("Releasing permit for queue {}", this.pollingEndpointName);
+				this.backPressureHandler.release(1);
+			});
 	}
 
 	private Void handleSinkException(Throwable throwable) {
-		logger.error("Sink returned an error.", throwable);
+		logger.debug("Sink returned an error.", throwable);
 		return null;
 	}
 
@@ -207,6 +198,10 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 
 	protected Duration getPollTimeout() {
 		return this.pollTimeout;
+	}
+
+	protected int getPollTimeoutSeconds() {
+		return (int) this.pollTimeout.getSeconds();
 	}
 
 	protected String getPollingEndpointName() {
@@ -244,7 +239,7 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 		boolean tasksFinished = this.backPressureHandler.drain(shutDownTimeout);
 		if (!tasksFinished) {
 			logger.warn("Tasks did not finish in {} seconds for queue {}, proceeding with shutdown.",
-				this.pollingEndpointName, shutDownTimeout.getSeconds());
+				shutDownTimeout.getSeconds(), this.pollingEndpointName);
 		}
 	}
 

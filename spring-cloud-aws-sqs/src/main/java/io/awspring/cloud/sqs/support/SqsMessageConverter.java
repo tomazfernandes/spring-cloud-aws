@@ -1,5 +1,6 @@
 package io.awspring.cloud.sqs.support;
 
+import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.listener.QueueAttributes;
 import io.awspring.cloud.sqs.listener.QueueMessageVisibility;
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
@@ -29,30 +30,29 @@ public class SqsMessageConverter<T> {
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessageConverter.class);
 
-	private final String pollingEndpointName;
-
 	private final SqsAsyncClient sqsAsyncClient;
 
 	private final QueueAttributes queueAttributes;
 
-	public SqsMessageConverter(String pollingEndpointName, SqsAsyncClient sqsAsyncClient, QueueAttributes queueAttributes) {
-		this.pollingEndpointName = pollingEndpointName;
+	public SqsMessageConverter(QueueAttributes queueAttributes, SqsAsyncClient sqsAsyncClient) {
 		this.sqsAsyncClient = sqsAsyncClient;
 		this.queueAttributes = queueAttributes;
 	}
 
 	public Collection<Message<T>> toMessagingMessages(List<software.amazon.awssdk.services.sqs.model.Message> messages) {
-		logger.trace("Converting  {} messages from queue {}", messages.size(), this.pollingEndpointName);
+		logger.trace("Converting  {} messages from queue {}", messages.size(), this.queueAttributes.getQueueName());
 		return messages.stream().map(this::toMessagingMessage).collect(Collectors.toList());
 	}
 
 	public Message<T> toMessagingMessage(software.amazon.awssdk.services.sqs.model.Message message) {
 		logger.trace("Converting message {} to messaging message", message.messageId());
 		HashMap<String, Object> additionalHeaders = new HashMap<>();
-		additionalHeaders.put(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID, this.pollingEndpointName);
-		additionalHeaders.put(SqsMessageHeaders.RECEIVED_AT, Instant.now()); // Is this necessary?
+		additionalHeaders.put(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID, this.queueAttributes.getQueueName());
+		additionalHeaders.put(SqsMessageHeaders.RECEIVED_AT, Instant.now()); // TODO: Is this necessary?
 		additionalHeaders.put(SqsMessageHeaders.SQS_CLIENT_HEADER, this.sqsAsyncClient);
-		additionalHeaders.put(SqsMessageHeaders.QUEUE_VISIBILITY, this.queueAttributes.getVisibilityTimeout());
+		if (this.queueAttributes.getVisibilityTimeout() != null) {
+			additionalHeaders.put(SqsMessageHeaders.QUEUE_VISIBILITY, this.queueAttributes.getVisibilityTimeout());
+		}
 		additionalHeaders.put(SqsMessageHeaders.VISIBILITY,
 			new QueueMessageVisibility(this.sqsAsyncClient, this.queueAttributes.getQueueUrl(), message.receiptHandle()));
 		return createMessage(message, Collections.unmodifiableMap(additionalHeaders));
@@ -73,7 +73,6 @@ public class SqsMessageConverter<T> {
 		messageHeaders.putAll(getAttributesAsMessageHeaders(message));
 		messageHeaders.putAll(getMessageAttributesAsMessageHeaders(message));
 		return new GenericMessage<>((T) message.body(), new SqsMessageHeaders(messageHeaders));
-
 	}
 
 	// TODO: Review this logic using streams
@@ -81,8 +80,10 @@ public class SqsMessageConverter<T> {
 		software.amazon.awssdk.services.sqs.model.Message message) {
 
 		Map<String, Object> messageHeaders = new HashMap<>();
-		messageHeaders.put(SqsMessageHeaders.SQS_GROUP_ID_HEADER,
-			message.attributes().get(MessageSystemAttributeName.MESSAGE_GROUP_ID));
+		if (message.attributes().get(MessageSystemAttributeName.MESSAGE_GROUP_ID) != null) {
+			messageHeaders.put(SqsMessageHeaders.SQS_GROUP_ID_HEADER,
+				message.attributes().get(MessageSystemAttributeName.MESSAGE_GROUP_ID));
+		}
 		for (Map.Entry<MessageSystemAttributeName, String> messageAttribute : message.attributes().entrySet()) {
 			if (org.springframework.messaging.MessageHeaders.CONTENT_TYPE.equals(messageAttribute.getKey().name())) {
 				messageHeaders.put(org.springframework.messaging.MessageHeaders.CONTENT_TYPE,

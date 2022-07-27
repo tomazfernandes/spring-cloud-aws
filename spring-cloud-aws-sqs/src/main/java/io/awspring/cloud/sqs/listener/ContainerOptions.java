@@ -17,11 +17,13 @@ package io.awspring.cloud.sqs.listener;
 
 import java.time.Duration;
 import java.util.Collection;
+import java.util.Collections;
 
 import io.awspring.cloud.sqs.BackPressureMode;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
+import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
 
 /**
  * Contains the options to be used by the {@link MessageListenerContainer} at runtime.
@@ -62,6 +64,8 @@ public class ContainerOptions {
 	private BackPressureMode backPressureMode = DEFAULT_THROUGHPUT_CONFIGURATION;
 
 	private MessageDeliveryStrategy messageDeliveryStrategy = DEFAULT_MESSAGE_DELIVERY_STRATEGY;
+
+	private Collection<QueueAttributeName> queueAttributeNames = Collections.singletonList(QueueAttributeName.ALL);
 
 	public static ContainerOptions create() {
 		return new ContainerOptions();
@@ -130,6 +134,11 @@ public class ContainerOptions {
 		return this;
 	}
 
+	public ContainerOptions queueAttributes(Collection<QueueAttributeName> queueAttributeNames) {
+		this.queueAttributeNames = queueAttributeNames;
+		return this;
+	}
+
 	/**
 	 * Return the maximum allowed number of inflight messages for each queue.
 	 * @return the number.
@@ -176,6 +185,10 @@ public class ContainerOptions {
 
 	public MessageDeliveryStrategy getMessageDeliveryStrategy() {
 		return this.messageDeliveryStrategy;
+	}
+
+	public Collection<QueueAttributeName> getQueueAttributeNames() {
+		return this.queueAttributeNames;
 	}
 
 	/**

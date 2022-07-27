@@ -15,10 +15,11 @@
  */
 package io.awspring.cloud.sqs.listener.source;
 
+import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.QueueAttributes;
-import io.awspring.cloud.sqs.listener.QueueAttributesResolver;
 
 import java.util.Collection;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import io.awspring.cloud.sqs.support.SqsMessageConverter;
@@ -60,28 +61,39 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> {
 
 	private SqsMessageConverter<T> sqsMessageConverter;
 
+	private Collection<QueueAttributeName> queueAttributeNames;
+
 	public void setSqsAsyncClient(SqsAsyncClient sqsAsyncClient) {
 		Assert.notNull(sqsAsyncClient, "sqsAsyncClient cannot be null.");
 		this.sqsAsyncClient = sqsAsyncClient;
 	}
 
 	@Override
+	public void configure(ContainerOptions containerOptions) {
+		super.configure(containerOptions);
+		this.queueAttributeNames = containerOptions.getQueueAttributeNames();
+	}
+
+	@Override
 	protected void doStart() {
-		Assert.state(this.sqsAsyncClient != null, "sqsAsyncClient not set");
-		QueueAttributes queueAttributes = QueueAttributesResolver.resolveAttributes(getPollingEndpointName(),
-				this.sqsAsyncClient);
+		Assert.notNull(this.sqsAsyncClient, "sqsAsyncClient not set.");
+		QueueAttributes queueAttributes = QueueAttributes.fetchFor(getPollingEndpointName(), this.sqsAsyncClient);
 		this.queueUrl = queueAttributes.getQueueUrl();
-		this.sqsMessageConverter = new SqsMessageConverter<>(getPollingEndpointName(), this.sqsAsyncClient, queueAttributes);
-		super.doStart();
+		this.sqsMessageConverter = new SqsMessageConverter<>(queueAttributes, this.sqsAsyncClient);
 	}
 
 	@Override
 	protected CompletableFuture<Collection<Message<T>>> doPollForMessages(int messagesToRequest) {
-		logger.trace("Polling queue {} for {} messages.", this.queueUrl, getMessagesPerPoll());
+		logger.debug("Polling queue {} for {} messages.", this.queueUrl, messagesToRequest);
 		return sqsAsyncClient
-				.receiveMessage(req -> req.queueUrl(this.queueUrl).maxNumberOfMessages(messagesToRequest)
-					.attributeNames(QueueAttributeName.ALL).waitTimeSeconds((int) getPollTimeout().getSeconds()))
-				.thenApply(ReceiveMessageResponse::messages).thenApply(this.sqsMessageConverter::toMessagingMessages);
+				.receiveMessage(req -> req.queueUrl(this.queueUrl)
+					.receiveRequestAttemptId(UUID.randomUUID().toString())
+					.maxNumberOfMessages(messagesToRequest)
+					.attributeNames(this.queueAttributeNames)
+					.waitTimeSeconds(getPollTimeoutSeconds()))
+				.thenApply(ReceiveMessageResponse::messages)
+				.whenComplete((v, t) -> logger.trace("Received {} messages from queue {}", v.size(), this.queueUrl))
+				.thenApply(this.sqsMessageConverter::toMessagingMessages);
 	}
 
 }

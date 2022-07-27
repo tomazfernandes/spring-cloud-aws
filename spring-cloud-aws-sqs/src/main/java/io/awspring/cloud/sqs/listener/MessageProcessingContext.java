@@ -19,17 +19,32 @@ public class MessageProcessingContext<T> {
 
 	private final List<AsyncMessageInterceptor<T>> interceptors;
 
-	public MessageProcessingContext(List<AsyncMessageInterceptor<T>> interceptors) {
+	private final Runnable backPressureReleaseCallback;
+
+	private MessageProcessingContext(List<AsyncMessageInterceptor<T>> interceptors, Runnable backPressureReleaseCallback) {
 		this.interceptors = Collections.unmodifiableList(interceptors);
+		this.backPressureReleaseCallback = backPressureReleaseCallback;
+	}
+
+	public MessageProcessingContext<T> addInterceptor(AsyncMessageInterceptor<T> interceptor) {
+		List<AsyncMessageInterceptor<T>> interceptors = new ArrayList<>(this.interceptors);
+		interceptors.add(interceptor);
+		return new MessageProcessingContext<>(interceptors, this.backPressureReleaseCallback);
 	}
 
 	public List<AsyncMessageInterceptor<T>> getInterceptors() {
 		return this.interceptors;
 	}
 
-	public MessageProcessingContext<T> addInterceptor(AsyncMessageInterceptor<T> interceptor) {
-		List<AsyncMessageInterceptor<T>> interceptors = new ArrayList<>(this.interceptors);
-		interceptors.add(interceptor);
-		return new MessageProcessingContext<>(interceptors);
+	public MessageProcessingContext<T> addBackPressureReleaseCallback(Runnable backPressureReleaseCallback) {
+		return new MessageProcessingContext<>(this.interceptors, backPressureReleaseCallback);
+	}
+
+	public Runnable getBackPressureReleaseCallback() {
+		return this.backPressureReleaseCallback;
+	}
+
+	public static <T> MessageProcessingContext<T> create() {
+		return new MessageProcessingContext<>(Collections.emptyList(), () -> {});
 	}
 }

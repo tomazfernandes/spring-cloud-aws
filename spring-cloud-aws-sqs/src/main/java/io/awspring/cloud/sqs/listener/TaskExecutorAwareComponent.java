@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener.sink;
+package io.awspring.cloud.sqs.listener;
 
 import org.springframework.core.task.TaskExecutor;
 
