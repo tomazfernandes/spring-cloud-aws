@@ -170,7 +170,8 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 		int poolSize = getContainerOptions().getMaxInFlightMessagesPerQueue() * this.messageSources.size();
 		executor.setMaxPoolSize(poolSize);
-		executor.setCorePoolSize(poolSize);
+		executor.setCorePoolSize(getContainerOptions().getMessagesPerPoll());
+		executor.setQueueCapacity(0);
 		executor.setThreadNamePrefix(getId() + "#message_sink-");
 		executor.afterPropertiesSet();
 		this.sinkTaskExecutor = executor;

@@ -146,7 +146,7 @@ public class SemaphoreBackPressureHandler implements BackPressureHandler {
 
 	@Override
 	public boolean drain(Duration timeout) {
-		logger.debug("Waiting for up to {} seconds for approx. {} permits to be released for {}", timeout,
+		logger.debug("Waiting for up to {} seconds for approx. {} permits to be released for {}", timeout.getSeconds(),
 			this.totalPermits - this.semaphore.availablePermits(), this.clientId);
 		try {
 			return this.semaphore.tryAcquire(this.totalPermits, (int) timeout.getSeconds(),
