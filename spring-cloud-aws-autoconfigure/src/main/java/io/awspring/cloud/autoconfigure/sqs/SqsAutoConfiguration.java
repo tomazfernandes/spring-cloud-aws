@@ -71,16 +71,14 @@ public class SqsAutoConfiguration {
 	public SqsMessageListenerContainerFactory<Object> defaultSqsListenerContainerFactory(
 			ObjectProvider<SqsAsyncClient> sqsAsyncClient, ObjectProvider<ContainerOptions> containerOptions,
 			ObjectProvider<AsyncErrorHandler<Object>> errorHandler,
-			ObjectProvider<Collection<AsyncMessageInterceptor<Object>>> interceptors,
-			ObjectProvider<AsyncMessageInterceptor<Object>> interceptor) {
+			ObjectProvider<AsyncMessageInterceptor<Object>> interceptors) {
 
 		SqsMessageListenerContainerFactory<Object> factory = new SqsMessageListenerContainerFactory<>();
 		containerOptions
 				.ifAvailable(options -> ReflectionUtils.shallowCopyFieldState(options, factory.getContainerOptions()));
 		sqsAsyncClient.ifAvailable(factory::setSqsAsyncClient);
 		errorHandler.ifAvailable(factory::setAsyncErrorHandler);
-		interceptor.ifAvailable(factory::addAsyncMessageInterceptor);
-		interceptors.ifAvailable(interceptorList -> interceptorList.forEach(factory::addAsyncMessageInterceptor));
+		interceptors.forEach(factory::addAsyncMessageInterceptor);
 		return factory;
 	}
 

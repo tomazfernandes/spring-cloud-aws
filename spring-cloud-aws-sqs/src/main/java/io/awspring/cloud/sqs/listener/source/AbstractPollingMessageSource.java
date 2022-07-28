@@ -4,7 +4,6 @@ package io.awspring.cloud.sqs.listener.source;
 import io.awspring.cloud.sqs.listener.BackPressureHandler;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
-import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -174,14 +173,14 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 
 	private MessageProcessingContext<T> createContext() {
 		return MessageProcessingContext.<T>create()
-			.addBackPressureReleaseCallback(() -> {
+			.setBackPressureReleaseCallback(() -> {
 				logger.debug("Releasing permit for queue {}", this.pollingEndpointName);
 				this.backPressureHandler.release(1);
 			});
 	}
 
 	private Void handleSinkException(Throwable throwable) {
-		logger.debug("Sink returned an error.", throwable);
+		logger.warn("Sink returned an error.", throwable);
 		return null;
 	}
 

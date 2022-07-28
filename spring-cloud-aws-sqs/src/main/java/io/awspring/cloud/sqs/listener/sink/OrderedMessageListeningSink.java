@@ -39,13 +39,13 @@ public class OrderedMessageListeningSink<T> extends AbstractMessageListeningSink
 
 	@Override
 	protected CompletableFuture<Void> doEmit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
-		logger.debug("Emitting {} messages", messages.size());
+		logger.trace("Emitting messages {}", MessageHeaderUtils.getId(messages));
 		return messages.stream().reduce(CompletableFuture.completedFuture(null),
 				(resultFuture, msg) -> CompletableFutures.handleCompose(resultFuture, (v, t) -> {
 					if (t == null) {
 						return execute(msg, context);
 					}
-					context.getBackPressureReleaseCallback().run();
+					context.executeBackPressureReleaseCallback();
 					return CompletableFutures.failedFuture(t);
 				}), (a, b) -> a);
 	}

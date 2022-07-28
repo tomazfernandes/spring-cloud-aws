@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -97,22 +96,24 @@ abstract class BaseSqsIntegrationTest {
 						.attributes(singletonMap(QueueAttributeName.VISIBILITY_TIMEOUT, "1")).build()),
 				client.createQueue(req -> req.queueName(RECEIVE_FROM_MANY_1_QUEUE_NAME).build()),
 				client.createQueue(req -> req.queueName(RECEIVE_FROM_MANY_2_QUEUE_NAME).build()),
-				client.createQueue(req -> req.queueName(RECEIVE_BATCH_1_QUEUE_NAME).build()),
-				client.createQueue(req -> req.queueName(RECEIVE_BATCH_2_QUEUE_NAME).build()),
+				client.createQueue(req -> req.queueName(RECEIVE_BATCH_1_QUEUE_NAME)
+					.attributes(singletonMap(QueueAttributeName.VISIBILITY_TIMEOUT, "10")).build()),
+				client.createQueue(req -> req.queueName(RECEIVE_BATCH_2_QUEUE_NAME)
+					.attributes(singletonMap(QueueAttributeName.VISIBILITY_TIMEOUT, "10")).build()),
 				client.createQueue(req -> req.queueName(RESOLVES_PARAMETER_TYPES_QUEUE_NAME)
-						.attributes(singletonMap(QueueAttributeName.VISIBILITY_TIMEOUT, "1")).build()),
+						.attributes(singletonMap(QueueAttributeName.VISIBILITY_TIMEOUT, "20")).build()),
 				client.createQueue(req -> req.queueName(RESOLVES_POJO_TYPES_QUEUE_NAME).build()),
 				client.createQueue(req -> req.queueName(MANUALLY_CREATE_CONTAINER_QUEUE_NAME).build()),
 				client.createQueue(req -> req.queueName(MANUALLY_START_CONTAINER).build()),
 				client.createQueue(req -> req.queueName(MANUALLY_CREATE_FACTORY_QUEUE_NAME)),
 				client.createQueue(req -> req.queueName(FIFO_RECEIVES_MESSAGE_IN_ORDER_QUEUE_NAME)
-					.attributes(singletonMap(QueueAttributeName.FIFO_QUEUE, "true"))
+					.attributes(getAttributesFifoVisibility("20"))
 					.build()),
 				client.createQueue(req -> req.queueName(FIFO_RECEIVES_MESSAGE_IN_ORDER_MANY_GROUPS_QUEUE_NAME)
 					.attributes(singletonMap(QueueAttributeName.FIFO_QUEUE, "true"))
 					.build()),
 				client.createQueue(req -> req.queueName(FIFO_STOPS_PROCESSING_ON_ERROR_QUEUE_NAME)
-					.attributes(getAttributesFifoVisibility())
+					.attributes(getAttributesFifoVisibility("2"))
 					.build()),
 				client.createQueue(req -> req.queueName(FIFO_RECEIVES_BATCHES_MANY_GROUPS_QUEUE_NAME)
 					.attributes(singletonMap(QueueAttributeName.FIFO_QUEUE, "true"))
@@ -133,10 +134,10 @@ abstract class BaseSqsIntegrationTest {
 			.join();
 	}
 
-	private static Map<QueueAttributeName, String> getAttributesFifoVisibility() {
+	private static Map<QueueAttributeName, String> getAttributesFifoVisibility(String visibility) {
 		Map<QueueAttributeName, String> attributesMap = new HashMap<>();
 		attributesMap.put(QueueAttributeName.FIFO_QUEUE, "true");
-		attributesMap.put(QueueAttributeName.VISIBILITY_TIMEOUT, "2");
+		attributesMap.put(QueueAttributeName.VISIBILITY_TIMEOUT, visibility);
 		return attributesMap;
 	}
 

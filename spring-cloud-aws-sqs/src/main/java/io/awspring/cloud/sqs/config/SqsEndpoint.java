@@ -16,6 +16,7 @@
 package io.awspring.cloud.sqs.config;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
+import org.springframework.lang.Nullable;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -34,15 +35,15 @@ public class SqsEndpoint extends AbstractEndpoint {
 
 	private final Integer pollTimeoutSeconds;
 
-	private final Integer minimumVisibility;
+	private final Integer messageVisibility;
 
 	private SqsEndpoint(Collection<String> logicalEndpointNames, String listenerContainerFactoryName,
-			Integer maxInflightMessagesPerQueue, Integer pollTimeoutSeconds, Integer minTimeToProcess, Boolean async,
+			Integer maxInflightMessagesPerQueue, Integer pollTimeoutSeconds, Integer messageVisibility, Boolean async,
 			String id) {
 		super(logicalEndpointNames, listenerContainerFactoryName, id, async);
 		this.maxInflightMessagesPerQueue = maxInflightMessagesPerQueue;
 		this.pollTimeoutSeconds = pollTimeoutSeconds;
-		this.minimumVisibility = minTimeToProcess;
+		this.messageVisibility = messageVisibility;
 	}
 
 	/**
@@ -58,6 +59,7 @@ public class SqsEndpoint extends AbstractEndpoint {
 	 * The maximum number of inflight messages each queue in this endpoint can process simultaneously.
 	 * @return the maximum number of inflight messages.
 	 */
+	@Nullable
 	public Integer getMaxInflightMessagesPerQueue() {
 		return this.maxInflightMessagesPerQueue;
 	}
@@ -66,6 +68,7 @@ public class SqsEndpoint extends AbstractEndpoint {
 	 * The maximum duration to wait for messages in a given poll.
 	 * @return the poll timeout.
 	 */
+	@Nullable
 	public Duration getPollTimeout() {
 		return this.pollTimeoutSeconds != null ? Duration.ofSeconds(this.pollTimeoutSeconds) : null;
 	}
@@ -76,8 +79,9 @@ public class SqsEndpoint extends AbstractEndpoint {
 	 * @return the minimum visibility for this endpoint.
 	 * @see io.awspring.cloud.sqs.listener.interceptor.MessageVisibilityExtenderInterceptor
 	 */
-	public Integer getMinimumVisibility() {
-		return this.minimumVisibility;
+	@Nullable
+	public Duration getMessageVisibilityDuration() {
+		return this.messageVisibility != null ? Duration.ofSeconds(this.messageVisibility) : null;
 	}
 
 	public static class SqsEndpointBuilder {
@@ -90,7 +94,7 @@ public class SqsEndpoint extends AbstractEndpoint {
 
 		private String factoryName;
 
-		private Integer minimumVisibility;
+		private Integer messageVisibility;
 
 		private Boolean async;
 
@@ -115,8 +119,8 @@ public class SqsEndpoint extends AbstractEndpoint {
 			return this;
 		}
 
-		public SqsEndpointBuilder minimumVisibility(Integer minimumVisibility) {
-			this.minimumVisibility = minimumVisibility;
+		public SqsEndpointBuilder messageVisibility(Integer messageVisibility) {
+			this.messageVisibility = messageVisibility;
 			return this;
 		}
 
@@ -132,7 +136,7 @@ public class SqsEndpoint extends AbstractEndpoint {
 
 		public SqsEndpoint build() {
 			return new SqsEndpoint(this.logicalEndpointNames, this.factoryName, this.maxInflightMessagesPerQueue,
-					this.pollTimeoutSeconds, this.minimumVisibility, this.async, this.id);
+					this.pollTimeoutSeconds, this.messageVisibility, this.async, this.id);
 		}
 	}
 

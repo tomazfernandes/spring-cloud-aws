@@ -15,6 +15,8 @@
  */
 package io.awspring.cloud.sqs.listener.source;
 
+import io.awspring.cloud.sqs.MessageHeaderUtils;
+import io.awspring.cloud.sqs.listener.SqsAsyncClientAware;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.QueueAttributes;
 
@@ -51,7 +53,7 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> {
+public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> implements SqsAsyncClientAware {
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessageSource.class);
 
@@ -63,6 +65,7 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> {
 
 	private Collection<QueueAttributeName> queueAttributeNames;
 
+	@Override
 	public void setSqsAsyncClient(SqsAsyncClient sqsAsyncClient) {
 		Assert.notNull(sqsAsyncClient, "sqsAsyncClient cannot be null.");
 		this.sqsAsyncClient = sqsAsyncClient;
@@ -92,8 +95,11 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> {
 					.attributeNames(this.queueAttributeNames)
 					.waitTimeSeconds(getPollTimeoutSeconds()))
 				.thenApply(ReceiveMessageResponse::messages)
-				.whenComplete((v, t) -> logger.trace("Received {} messages from queue {}", v.size(), this.queueUrl))
-				.thenApply(this.sqsMessageConverter::toMessagingMessages);
+				.thenApply(this.sqsMessageConverter::toMessagingMessages)
+			.whenComplete((v, t) -> {
+				if (v != null) {
+					logger.trace("Received {} messages: {} from queue {}", v.size(), MessageHeaderUtils.getId(v), this.queueUrl);
+				}
+			});
 	}
-
 }

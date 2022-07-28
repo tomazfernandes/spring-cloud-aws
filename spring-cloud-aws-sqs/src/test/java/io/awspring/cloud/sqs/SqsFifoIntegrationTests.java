@@ -26,11 +26,6 @@ import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.MessageListenerContainerRegistry;
 import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
 import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
-import io.awspring.cloud.sqs.listener.StandardSqsComponentFactory;
-import io.awspring.cloud.sqs.listener.acknowledgement.AckHandler;
-import io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler;
-import io.awspring.cloud.sqs.listener.sink.MessageSink;
-import io.awspring.cloud.sqs.listener.source.MessageSource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.slf4j.Logger;
@@ -57,7 +52,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -223,7 +217,7 @@ class SqsFifoIntegrationTests extends BaseSqsIntegrationTest {
 		@Autowired
 		LatchContainer latchContainer;
 
-		@SqsListener(queueNames = FIFO_RECEIVES_MESSAGE_IN_ORDER_QUEUE_NAME)
+		@SqsListener(queueNames = FIFO_RECEIVES_MESSAGE_IN_ORDER_QUEUE_NAME, messageVisibilitySeconds = "5")
 		void listen(String message) throws Exception {
 			logger.debug("Received message in listener method: " + message);
 //			int sleep = new Random().nextInt(1000);
@@ -264,7 +258,7 @@ class SqsFifoIntegrationTests extends BaseSqsIntegrationTest {
 		@Autowired
 		LatchContainer latchContainer;
 
-		@SqsListener(queueNames = FIFO_STOPS_PROCESSING_ON_ERROR_QUEUE_NAME)
+		@SqsListener(queueNames = FIFO_STOPS_PROCESSING_ON_ERROR_QUEUE_NAME, messageVisibilitySeconds = "2")
 		void listen(String message) throws Exception {
 			logger.debug("Received message in listener method: " + message);
 //			int sleep = new Random().nextInt(1000);
@@ -292,7 +286,7 @@ class SqsFifoIntegrationTests extends BaseSqsIntegrationTest {
 		@Autowired
 		LatchContainer latchContainer;
 
-		@SqsListener(queueNames = FIFO_RECEIVES_BATCHES_MANY_GROUPS_QUEUE_NAME)
+		@SqsListener(queueNames = FIFO_RECEIVES_BATCHES_MANY_GROUPS_QUEUE_NAME, messageVisibilitySeconds = "20")
 		void listen(Collection<Message<String>> messages) {
 			String firstMessage = messages.iterator().next().getPayload();// Make sure we got the right type
 			Assert.isTrue(MessageHeaderUtils.getHeader(messages, SqsMessageHeaders.SQS_GROUP_ID_HEADER, String.class)
@@ -338,9 +332,6 @@ class SqsFifoIntegrationTests extends BaseSqsIntegrationTest {
 		CountDownLatch stopsProcessingOnErrorLatch1 = new CountDownLatch(1);
 		CountDownLatch stopsProcessingOnErrorLatch2 = new CountDownLatch(1);
 		CountDownLatch receivesBatchManyGroupsLatch = new CountDownLatch(1);
-
-		CountDownLatch messageAckLatch = new CountDownLatch(1);
-		CountDownLatch batchesAckLatch = new CountDownLatch(1);
 
 	}
 
@@ -497,31 +488,6 @@ class SqsFifoIntegrationTests extends BaseSqsIntegrationTest {
 			return BaseSqsIntegrationTest.createAsyncClient();
 		}
 
-//		private StandardSqsComponentFactory<String> getTestAckHandlerComponentFactory() {
-//			return new StandardSqsComponentFactory<String>() {
-//				@Override
-//				public AckHandler<String> createAckHandler() {
-//					return testAckHandler();
-//				}
-//			};
-//		}
-//
-//		private AckHandler<String> testAckHandler() {
-//			return new OnSuccessAckHandler<String>() {
-//				@Override
-//				public CompletableFuture<Void> onSuccess(Message<String> message) {
-//					return super.onSuccess(message).thenRun(() -> latchContainer.messageAckLatch.countDown());
-//				}
-//
-//				@Override
-//				public CompletableFuture<Void> onSuccess(Collection<Message<String>> messages) {
-//					return super.onSuccess(messages).exceptionally(t -> {
-//						logger.error("Error acknowledging test batch", t);
-//						return null;
-//					}).thenRun(() -> messages.forEach(msg -> latchContainer.batchesAckLatch.countDown()));
-//				}
-//			};
-//		}
 	}
 
 }

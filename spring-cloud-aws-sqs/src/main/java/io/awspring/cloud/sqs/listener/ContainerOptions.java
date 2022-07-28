@@ -66,6 +66,7 @@ public class ContainerOptions {
 	private MessageDeliveryStrategy messageDeliveryStrategy = DEFAULT_MESSAGE_DELIVERY_STRATEGY;
 
 	private Collection<QueueAttributeName> queueAttributeNames = Collections.singletonList(QueueAttributeName.ALL);
+	private Duration messageVisibility;
 
 	public static ContainerOptions create() {
 		return new ContainerOptions();
@@ -139,6 +140,11 @@ public class ContainerOptions {
 		return this;
 	}
 
+	public ContainerOptions messageVisibility(Duration messageVisibility) {
+		this.messageVisibility = messageVisibility;
+		return this;
+	}
+
 	/**
 	 * Return the maximum allowed number of inflight messages for each queue.
 	 * @return the number.
@@ -191,6 +197,10 @@ public class ContainerOptions {
 		return this.queueAttributeNames;
 	}
 
+	public Duration getMessageVisibility() {
+		return this.messageVisibility;
+	}
+
 	/**
 	 * Create a shallow copy of these options.
 	 * @return the copy.
@@ -201,12 +211,14 @@ public class ContainerOptions {
 		return newCopy;
 	}
 
-	public void configure(ConfigurableContainerComponent configurable) {
+	public ContainerOptions configure(ConfigurableContainerComponent configurable) {
 		configurable.configure(createCopy());
+		return this;
 	}
 
-	public void configure(Collection<? extends ConfigurableContainerComponent> configurables) {
+	public ContainerOptions configure(Collection<? extends ConfigurableContainerComponent> configurables) {
 		configurables.forEach(this::configure);
+		return this;
 	}
 
 	/**
@@ -218,4 +230,5 @@ public class ContainerOptions {
 				this.messagesPerPoll, this.maxInflightMessagesPerQueue));
 		Assert.isTrue(this.messagesPerPoll <= 10, "messagesPerPoll must be less than or equal to 10.");
 	}
+
 }

@@ -85,6 +85,7 @@ public class SemaphoreBackPressureHandler implements BackPressureHandler {
 	private int requestInLowThroughputMode() throws InterruptedException {
 		// Although LTM can be set / unset by many processes, only the MessageSource thread gets here,
 		// so no actual concurrency
+		logger.trace("Trying to acquire full permits for {}. Permits left: {}", this.clientId, this.semaphore.availablePermits());
 		boolean hasAcquired = tryAcquire(this.totalPermits);
 		if (hasAcquired) {
 			// We've acquired all permits - there's no other process currently processing messages

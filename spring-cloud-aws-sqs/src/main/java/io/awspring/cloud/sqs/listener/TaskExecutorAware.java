@@ -25,7 +25,7 @@ import org.springframework.core.task.TaskExecutor;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public interface TaskExecutorAwareComponent {
+public interface TaskExecutorAware {
 
 	/**
 	 * Set the task executor.

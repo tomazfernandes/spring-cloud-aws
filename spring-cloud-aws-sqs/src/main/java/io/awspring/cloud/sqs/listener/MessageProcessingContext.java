@@ -2,10 +2,12 @@ package io.awspring.cloud.sqs.listener;
 
 
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
+import org.springframework.messaging.Message;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Representation of a processing context that can be used for communication
@@ -21,7 +23,7 @@ public class MessageProcessingContext<T> {
 
 	private final Runnable backPressureReleaseCallback;
 
-	private MessageProcessingContext(List<AsyncMessageInterceptor<T>> interceptors, Runnable backPressureReleaseCallback) {
+	public MessageProcessingContext(List<AsyncMessageInterceptor<T>> interceptors, Runnable backPressureReleaseCallback) {
 		this.interceptors = Collections.unmodifiableList(interceptors);
 		this.backPressureReleaseCallback = backPressureReleaseCallback;
 	}
@@ -36,12 +38,12 @@ public class MessageProcessingContext<T> {
 		return this.interceptors;
 	}
 
-	public MessageProcessingContext<T> addBackPressureReleaseCallback(Runnable backPressureReleaseCallback) {
+	public MessageProcessingContext<T> setBackPressureReleaseCallback(Runnable backPressureReleaseCallback) {
 		return new MessageProcessingContext<>(this.interceptors, backPressureReleaseCallback);
 	}
 
-	public Runnable getBackPressureReleaseCallback() {
-		return this.backPressureReleaseCallback;
+	public void executeBackPressureReleaseCallback() {
+		this.backPressureReleaseCallback.run();
 	}
 
 	public static <T> MessageProcessingContext<T> create() {

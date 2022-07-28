@@ -31,13 +31,10 @@ import io.awspring.cloud.sqs.listener.sink.MessageProcessingPipelineSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
 import io.awspring.cloud.sqs.listener.source.PollingMessageSource;
-import io.awspring.cloud.sqs.listener.source.SqsMessageSource;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.stream.Collectors;
 
-import io.awspring.cloud.sqs.support.SqsMessageConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -117,15 +114,17 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	@SuppressWarnings("unchecked")
 	private void configureComponents() {
-		getContainerOptions().configure(this.messageSources);
-		getContainerOptions().configure(this.messageSink);
+		getContainerOptions()
+			.configure(this.messageSources)
+			.configure(this.messageSink);
 		ConfigUtils.INSTANCE
-			.acceptManyIfInstance(this.messageSources, SqsMessageSource.class, sms -> sms.setSqsAsyncClient(this.sqsAsyncClient))
-			.acceptManyIfInstance(this.messageSources, PollingMessageSource.class, sms -> sms.setBackPressureHandler(createBackPressureHandler()))
-			.acceptManyIfInstance(this.messageSources, PollingMessageSource.class, sms -> sms.setMessageSink(this.messageSink))
-			.acceptManyIfInstance(this.messageSources, TaskExecutorAwareComponent.class, teac -> teac.setTaskExecutor(createSourceTaskExecutor()))
-			.acceptIfInstance(this.messageSink, TaskExecutorAwareComponent.class, teac -> teac.setTaskExecutor(getOrCreateSinkTaskExecutor()))
-			.acceptIfInstance(this.messageSink, MessageProcessingPipelineSink.class, mls -> mls.setMessagePipeline(createMessageProcessingPipeline()));
+			.acceptMany(this.messageSources, source -> source.setMessageSink(this.messageSink))
+			.acceptManyIfInstance(this.messageSources, SqsAsyncClientAware.class, asca -> asca.setSqsAsyncClient(this.sqsAsyncClient))
+			.acceptManyIfInstance(this.messageSources, PollingMessageSource.class, pms -> pms.setBackPressureHandler(createBackPressureHandler()))
+			.acceptManyIfInstance(this.messageSources, TaskExecutorAware.class, teac -> teac.setTaskExecutor(createSourceTaskExecutor()))
+			.acceptIfInstance(this.messageSink, TaskExecutorAware.class, teac -> teac.setTaskExecutor(getOrCreateSinkTaskExecutor()))
+			.acceptIfInstance(this.messageSink, MessageProcessingPipelineSink.class, mls -> mls.setMessagePipeline(createMessageProcessingPipeline()))
+			.acceptIfInstance(this.messageSink, SqsAsyncClientAware.class, asca -> asca.setSqsAsyncClient(this.sqsAsyncClient));
 	}
 
 	private MessageProcessingPipeline<T> createMessageProcessingPipeline() {

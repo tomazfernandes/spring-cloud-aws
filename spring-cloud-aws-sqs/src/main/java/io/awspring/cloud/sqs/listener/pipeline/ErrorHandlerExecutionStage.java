@@ -52,7 +52,7 @@ public class ErrorHandlerExecutionStage<T> implements MessageProcessingPipeline<
 	}
 
 	private CompletableFuture<Void> handleError(Message<T> message, Throwable t) {
-		logger.debug("Handling error for message {}", MessageHeaderUtils.getId(message));
+		logger.debug("Handling error {} for message {}", t.getMessage(), MessageHeaderUtils.getId(message));
 		return errorHandler.handleError(message, t);
 	}
 

@@ -48,8 +48,8 @@ public class SqsMessageConverter<T> {
 		logger.trace("Converting message {} to messaging message", message.messageId());
 		HashMap<String, Object> additionalHeaders = new HashMap<>();
 		additionalHeaders.put(SqsMessageHeaders.SQS_LOGICAL_RESOURCE_ID, this.queueAttributes.getQueueName());
+		additionalHeaders.put(SqsMessageHeaders.SQS_QUEUE_URL, this.queueAttributes.getQueueUrl());
 		additionalHeaders.put(SqsMessageHeaders.RECEIVED_AT, Instant.now()); // TODO: Is this necessary?
-		additionalHeaders.put(SqsMessageHeaders.SQS_CLIENT_HEADER, this.sqsAsyncClient);
 		if (this.queueAttributes.getVisibilityTimeout() != null) {
 			additionalHeaders.put(SqsMessageHeaders.QUEUE_VISIBILITY, this.queueAttributes.getVisibilityTimeout());
 		}
