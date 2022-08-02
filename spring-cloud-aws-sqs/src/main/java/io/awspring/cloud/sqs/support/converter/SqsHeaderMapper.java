@@ -29,6 +29,7 @@ public class SqsHeaderMapper implements ContextAwareHeaderMapper<Message> {
 
 	@Override
 	public void fromHeaders(MessageHeaders headers, Message target) {
+		// We'll probably use this for SqsTemplate later
 	}
 
 	@Override

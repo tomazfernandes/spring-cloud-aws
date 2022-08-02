@@ -18,6 +18,7 @@ package io.awspring.cloud.sqs.listener;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -27,7 +28,6 @@ import io.awspring.cloud.sqs.support.converter.PayloadHeaderMessagingMessageConv
 import io.awspring.cloud.sqs.support.converter.SqsMessagingMessageConverter;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
@@ -57,7 +57,11 @@ public class ContainerOptions {
 
 	private static final MessageDeliveryStrategy DEFAULT_MESSAGE_DELIVERY_STRATEGY = MessageDeliveryStrategy.SINGLE_MESSAGE;
 
-	private final PayloadHeaderMessagingMessageConverter<?> DEFAULT_MESSAGE_CONVERTER = new SqsMessagingMessageConverter();
+	private static final List<QueueAttributeName> DEFAULT_QUEUE_ATTRIBUTES_NAMES = Collections.singletonList(QueueAttributeName.ALL);
+
+	private static final List<String> DEFAULT_MESSAGE_ATTRIBUTES_NAMES = Collections.singletonList(QueueAttributeName.ALL.toString());
+
+	private static final List<String> DEFAULT_MESSAGE_SYSTEM_ATTRIBUTES = Collections.singletonList(QueueAttributeName.ALL.toString());
 
 	private int maxInflightMessagesPerQueue = DEFAULT_MAX_INFLIGHT_MSG_PER_QUEUE;
 
@@ -69,21 +73,21 @@ public class ContainerOptions {
 
 	private Duration shutDownTimeout = DEFAULT_SHUTDOWN_TIMEOUT;
 
-	private TaskExecutor sinkTaskExecutor;
-
 	private BackPressureMode backPressureMode = DEFAULT_THROUGHPUT_CONFIGURATION;
 
 	private MessageDeliveryStrategy messageDeliveryStrategy = DEFAULT_MESSAGE_DELIVERY_STRATEGY;
 
-	private MessagingMessageConverter<?> messageConverter = DEFAULT_MESSAGE_CONVERTER;
+	private Collection<QueueAttributeName> queueAttributeNames = DEFAULT_QUEUE_ATTRIBUTES_NAMES;
+
+	private Collection<String> messageAttributeNames = DEFAULT_MESSAGE_ATTRIBUTES_NAMES;
+
+	private Collection<String> messageSystemAttributeNames = DEFAULT_MESSAGE_SYSTEM_ATTRIBUTES;
+
+	private MessagingMessageConverter<?> messageConverter = new SqsMessagingMessageConverter();
+
+	private TaskExecutor sinkTaskExecutor;
 
 	private Duration messageVisibility;
-
-	private Collection<QueueAttributeName> queueAttributeNames = Collections.singletonList(QueueAttributeName.ALL);
-
-	private Collection<String> messageAttributeNames = Collections.singletonList(QueueAttributeName.ALL.toString());
-
-	private Collection<String> messageSystemAttributeNames = Collections.singletonList(QueueAttributeName.ALL.toString());
 
 	public static ContainerOptions create() {
 		return new ContainerOptions();

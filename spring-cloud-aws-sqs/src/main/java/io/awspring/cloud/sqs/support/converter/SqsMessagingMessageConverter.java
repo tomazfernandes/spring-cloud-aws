@@ -27,11 +27,13 @@ public class SqsMessagingMessageConverter implements PayloadHeaderMessagingMessa
 
 	private static final MessageConverter DEFAULT_MESSAGE_CONVERTER = new MappingJackson2MessageConverter();
 
+	private static final SqsHeaderMapper DEFAULT_HEADER_MAPPER = new SqsHeaderMapper();
+
 	private MessageConverter payloadMessageConverter = DEFAULT_MESSAGE_CONVERTER;
 
-	private Function<Message<?>, Class<?>> payloadTypeMapper;
+	private HeaderMapper<software.amazon.awssdk.services.sqs.model.Message> headerMapper = DEFAULT_HEADER_MAPPER;
 
-	private HeaderMapper<software.amazon.awssdk.services.sqs.model.Message> headerMapper = new SqsHeaderMapper();
+	private Function<Message<?>, Class<?>> payloadTypeMapper;
 
 	@Override
 	public void setPayloadTypeMapper(Function<Message<?>, Class<?>> payloadTypeMapper) {

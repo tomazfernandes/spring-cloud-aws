@@ -14,6 +14,9 @@ import java.util.function.Consumer;
  */
 public class LifecycleUtils {
 
+	private LifecycleUtils() {
+	}
+
 	/**
 	 * Execute the provided action if the provided objects
 	 * are {@link SmartLifecycle} instances.

@@ -52,6 +52,9 @@ public class SqsHeaders {
 
 	public static class MessageSystemAttribute {
 
+		private MessageSystemAttribute(){
+		}
+
 		/**
 		 * MessageSystemAttributes prefix
 		 */
