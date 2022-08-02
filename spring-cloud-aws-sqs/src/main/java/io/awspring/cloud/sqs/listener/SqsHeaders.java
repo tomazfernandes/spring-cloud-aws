@@ -36,7 +36,7 @@ public class SqsHeaders {
 
 	public static final String SQS_QUEUE_NAME_HEADER = SQS_HEADER_PREFIX + "QueueName";
 
-	public static final String SQS_QUEUE_URL = SQS_HEADER_PREFIX + "QueueUrl";
+	public static final String SQS_QUEUE_URL_HEADER = SQS_HEADER_PREFIX + "QueueUrl";
 
 	public static final String SQS_RECEIPT_HANDLE_HEADER = SQS_HEADER_PREFIX + "ReceiptHandle";
 
@@ -49,6 +49,8 @@ public class SqsHeaders {
 	public static final String SQS_RECEIVED_AT_HEADER = SQS_HEADER_PREFIX + "ReceivedAt";
 
 	public static final String SQS_ACKNOWLEDGMENT_HEADER = SQS_HEADER_PREFIX + "Acknowledgement";
+
+	public static final String SQS_DEFAULT_TYPE_HEADER = "JavaType";
 
 	public static class MessageSystemAttribute {
 

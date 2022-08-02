@@ -15,23 +15,19 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
 import io.awspring.cloud.sqs.BackPressureMode;
 import io.awspring.cloud.sqs.support.converter.MessagingMessageConverter;
-import io.awspring.cloud.sqs.support.converter.PayloadHeaderMessagingMessageConverter;
-import io.awspring.cloud.sqs.support.converter.SqsMessagingMessageConverter;
 import org.springframework.core.task.TaskExecutor;
-import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
 import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
+
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Contains the options to be used by the {@link MessageListenerContainer} at runtime.
@@ -83,7 +79,7 @@ public class ContainerOptions {
 
 	private Collection<String> messageSystemAttributeNames = DEFAULT_MESSAGE_SYSTEM_ATTRIBUTES;
 
-	private MessagingMessageConverter<?> messageConverter = new SqsMessagingMessageConverter();
+	private MessagingMessageConverter<?> messageConverter;
 
 	private TaskExecutor sinkTaskExecutor;
 
@@ -178,12 +174,6 @@ public class ContainerOptions {
 
 	public ContainerOptions messageConverter(MessagingMessageConverter<?> messageConverter) {
 		this.messageConverter = messageConverter;
-		return this;
-	}
-
-	public ContainerOptions payloadTypeMapper(Function<Message<?>, Class<?>> payloadTypeMapper) {
-		Assert.isInstanceOf(PayloadHeaderMessagingMessageConverter.class, this.messageConverter);
-		((PayloadHeaderMessagingMessageConverter<?>) this.messageConverter).setPayloadTypeMapper(payloadTypeMapper);
 		return this;
 	}
 

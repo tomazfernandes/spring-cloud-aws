@@ -31,9 +31,11 @@
 	<logger name="io.awspring.cloud.sqs.listener.source.SqsMessageSource" level="INFO"/>
 	<logger name="io.awspring.cloud.sqs.listener.acknowledgement" level="INFO"/>
 	<logger name="io.awspring.cloud.sqs.listener.SemaphoreBackPressureHandler" level="INFO"/>
+
 	<logger name="io.awspring.cloud.sqs.SqsIntegrationTests" level="INFO"/>
 	<logger name="io.awspring.cloud.sqs.SqsIntegrationLoadTests" level="INFO"/>
 	<logger name="io.awspring.cloud.sqs.SqsFifoIntegrationTests" level="INFO"/>
+	<logger name="io.awspring.cloud.sqs.SqsPojoConversionIntegrationTests" level="INFO"/>
 	<logger name="io.awspring.cloud.sqs.BaseSqsIntegrationTest" level="INFO"/>
 
 	<root level="warn">

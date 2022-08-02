@@ -27,6 +27,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import io.awspring.cloud.sqs.support.converter.SqsMessagingMessageConverter;
 import io.awspring.cloud.sqs.support.converter.context.ContextAwareMessagingMessageConverter;
 import io.awspring.cloud.sqs.support.converter.context.MessageConversionContext;
 import io.awspring.cloud.sqs.support.converter.MessagingMessageConverter;
@@ -84,13 +85,12 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public void configure(ContainerOptions containerOptions) {
 		super.configure(containerOptions);
 		this.queueAttributeNames = containerOptions.getQueueAttributeNames();
 		this.messageAttributeNames = containerOptions.getMessageAttributeNames();
 		this.messageSystemAttributeNames = containerOptions.getMessageSystemAttributeNames();
-		this.messagingMessageConverter = (MessagingMessageConverter<Message>) containerOptions.getMessageConverter();
+		this.messagingMessageConverter = getOrCreateMessageConverter(containerOptions);
 	}
 
 	@Override
@@ -147,6 +147,13 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 
 	private ContextAwareMessagingMessageConverter<Message> getContextAwareConverter() {
 		return (ContextAwareMessagingMessageConverter<Message>) this.messagingMessageConverter;
+	}
+
+	@SuppressWarnings("unchecked")
+	private MessagingMessageConverter<Message> getOrCreateMessageConverter(ContainerOptions containerOptions) {
+		return containerOptions.getMessageConverter() != null
+			? (MessagingMessageConverter<Message>) containerOptions.getMessageConverter()
+			: new SqsMessagingMessageConverter();
 	}
 
 	private void logMessagesReceived(Collection<Message> v, Throwable t) {

@@ -1,6 +1,8 @@
 package io.awspring.cloud.sqs.support.converter;
 
+import io.awspring.cloud.sqs.listener.SqsHeaders;
 import io.awspring.cloud.sqs.support.converter.context.ContextAwareHeaderMapper;
+import io.awspring.cloud.sqs.support.converter.context.ContextAwareMessagingMessageConverter;
 import io.awspring.cloud.sqs.support.converter.context.MessageConversionContext;
 import io.awspring.cloud.sqs.support.converter.context.SqsMessageConversionContext;
 import org.slf4j.Logger;
@@ -21,7 +23,7 @@ import java.util.function.Function;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SqsMessagingMessageConverter implements PayloadHeaderMessagingMessageConverter<software.amazon.awssdk.services.sqs.model.Message> {
+public class SqsMessagingMessageConverter implements ContextAwareMessagingMessageConverter<software.amazon.awssdk.services.sqs.model.Message> {
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessagingMessageConverter.class);
 
@@ -29,28 +31,37 @@ public class SqsMessagingMessageConverter implements PayloadHeaderMessagingMessa
 
 	private static final SqsHeaderMapper DEFAULT_HEADER_MAPPER = new SqsHeaderMapper();
 
+	private String typeHeader = SqsHeaders.SQS_MA_HEADER_PREFIX + SqsHeaders.SQS_DEFAULT_TYPE_HEADER;
+
 	private MessageConverter payloadMessageConverter = DEFAULT_MESSAGE_CONVERTER;
 
 	private HeaderMapper<software.amazon.awssdk.services.sqs.model.Message> headerMapper = DEFAULT_HEADER_MAPPER;
 
-	private Function<Message<?>, Class<?>> payloadTypeMapper;
+	private Function<Message<?>, Class<?>> payloadTypeMapper = this::defaultHeaderTypeMapping;
 
-	@Override
 	public void setPayloadTypeMapper(Function<Message<?>, Class<?>> payloadTypeMapper) {
 		Assert.notNull(payloadTypeMapper, "payloadTypeMapper cannot be null");
 		this.payloadTypeMapper = payloadTypeMapper;
 	}
 
-	@Override
 	public void setPayloadMessageConverter(MessageConverter messageConverter) {
 		Assert.notNull(messageConverter, "messageConverter cannot be null");
 		this.payloadMessageConverter = messageConverter;
 	}
 
-	@Override
+	public void setPayloadTypeHeader(String typeHeader) {
+		Assert.notNull(typeHeader, "typeHeader cannot be null");
+		this.typeHeader = typeHeader;
+	}
+
 	public void setHeaderMapper(HeaderMapper<software.amazon.awssdk.services.sqs.model.Message> headerMapper) {
 		Assert.notNull(headerMapper, "headerMapper cannot be null");
 		this.headerMapper = headerMapper;
+	}
+
+	@Override
+	public MessageConversionContext createMessageConversionContext() {
+		return new SqsMessageConversionContext();
 	}
 
 	@Override
@@ -79,16 +90,25 @@ public class SqsMessagingMessageConverter implements PayloadHeaderMessagingMessa
 		return ((ContextAwareHeaderMapper<software.amazon.awssdk.services.sqs.model.Message>) this.headerMapper).getContextHeaders(message, context);
 	}
 
-	@Override
-	public MessageConversionContext createMessageConversionContext() {
-		return new SqsMessageConversionContext();
-	}
-
 	private Object convertPayload(software.amazon.awssdk.services.sqs.model.Message message, MessageHeaders messageHeaders) {
 		Message<String> messagingMessage = MessageBuilder.createMessage(message.body(), messageHeaders);
-		return this.payloadTypeMapper != null
-			? this.payloadMessageConverter.fromMessage(messagingMessage, this.payloadTypeMapper.apply(messagingMessage))
+		Class<?> targetType = this.payloadTypeMapper.apply(messagingMessage);
+		return targetType != null
+			? this.payloadMessageConverter.fromMessage(messagingMessage, targetType)
 			: message.body();
+	}
+
+	@Nullable
+	private Class<?> defaultHeaderTypeMapping(Message<?> message) {
+		String header = message.getHeaders().get(this.typeHeader, String.class);
+		if (header == null) {
+			return null;
+		}
+		try {
+			return Class.forName(header);
+		} catch (ClassNotFoundException e) {
+			throw new IllegalArgumentException("No class found with name " + header);
+		}
 	}
 
 }

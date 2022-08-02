@@ -114,7 +114,7 @@ public class MessageVisibilityExtendingSinkAdapter<T> extends AbstractDelegating
 	}
 
 	private String getQueueUrl(Collection<Message<T>> messages) {
-		return messages.iterator().next().getHeaders().get(SqsHeaders.SQS_QUEUE_URL, String.class);
+		return messages.iterator().next().getHeaders().get(SqsHeaders.SQS_QUEUE_URL_HEADER, String.class);
 	}
 
 	private Collection<ChangeMessageVisibilityBatchRequestEntry> getEntries(Collection<Message<T>> messages) {
