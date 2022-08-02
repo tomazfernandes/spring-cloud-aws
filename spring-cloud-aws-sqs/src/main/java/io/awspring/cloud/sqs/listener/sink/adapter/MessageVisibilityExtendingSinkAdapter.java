@@ -18,7 +18,7 @@ package io.awspring.cloud.sqs.listener.sink.adapter;
 import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.SqsAsyncClientAware;
-import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
+import io.awspring.cloud.sqs.listener.SqsHeaders;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import org.slf4j.Logger;
@@ -35,7 +35,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -115,12 +114,12 @@ public class MessageVisibilityExtendingSinkAdapter<T> extends AbstractDelegating
 	}
 
 	private String getQueueUrl(Collection<Message<T>> messages) {
-		return MessageHeaderUtils.getHeader(messages.iterator().next(), SqsMessageHeaders.SQS_QUEUE_URL, String.class);
+		return messages.iterator().next().getHeaders().get(SqsHeaders.SQS_QUEUE_URL, String.class);
 	}
 
 	private Collection<ChangeMessageVisibilityBatchRequestEntry> getEntries(Collection<Message<T>> messages) {
 		return MessageHeaderUtils
-			.getHeader(messages, SqsMessageHeaders.RECEIPT_HANDLE_MESSAGE_ATTRIBUTE_NAME, String.class)
+			.getHeader(messages, SqsHeaders.SQS_RECEIPT_HANDLE_HEADER, String.class)
 			.stream()
 			.map(handle -> ChangeMessageVisibilityBatchRequestEntry.builder()
 				.receiptHandle(handle).id(UUID.randomUUID().toString())

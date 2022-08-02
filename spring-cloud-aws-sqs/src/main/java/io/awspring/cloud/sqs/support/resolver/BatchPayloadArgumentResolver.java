@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.support;
+package io.awspring.cloud.sqs.support.resolver;
 
 import java.lang.annotation.Annotation;
 import java.util.Collection;
@@ -79,9 +79,12 @@ public class BatchPayloadArgumentResolver implements HandlerMethodArgumentResolv
 		Class<?> targetClass = resolveTargetClass(parameter);
 		boolean isMessageParameter = Message.class
 				.isAssignableFrom(ResolvableType.forMethodParameter(parameter).getNested(2).toClass());
-		return getPayloadAsCollection(message).stream().filter(msg -> msg instanceof Message).map(Message.class::cast)
-				.map(msg -> convertAndValidatePayload(parameter, msg, targetClass, isMessageParameter))
-				.collect(Collectors.toList());
+		return getPayloadAsCollection(message)
+			.stream()
+			.filter(msg -> Message.class.isAssignableFrom(msg.getClass()))
+			.map(Message.class::cast)
+			.map(msg -> convertAndValidatePayload(parameter, msg, targetClass, isMessageParameter))
+			.collect(Collectors.toList());
 	}
 
 	private Collection<?> getPayloadAsCollection(Message<?> message) {
@@ -89,7 +92,7 @@ public class BatchPayloadArgumentResolver implements HandlerMethodArgumentResolv
 		if (payload instanceof Collection && !((Collection<?>) payload).isEmpty()) {
 			return (Collection<?>) payload;
 		}
-		throw new IllegalArgumentException("Payload must be a non-empty Collection: " + payload);
+		throw new IllegalArgumentException("Payload must be a non-empty Collection: " + message);
 	}
 
 	private Object convertAndValidatePayload(MethodParameter parameter, Message<?> message, Class<?> targetClass,

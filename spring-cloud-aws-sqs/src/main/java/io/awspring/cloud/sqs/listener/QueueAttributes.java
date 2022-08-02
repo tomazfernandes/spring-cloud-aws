@@ -19,9 +19,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.lang.Nullable;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
-import software.amazon.awssdk.services.sqs.model.GetQueueAttributesResponse;
 import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
@@ -97,12 +97,12 @@ public class QueueAttributes {
 		return this.queueName;
 	}
 
-	public static QueueAttributes fetchFor(String queueName, SqsAsyncClient sqsAsyncClient) {
+	public static QueueAttributes fetchFor(String queueName, SqsAsyncClient sqsAsyncClient, Collection<QueueAttributeName> queueAttributeNames) {
 		try {
 			logger.debug("Fetching attributes for queue {}", queueName);
 			String queueUrl = sqsAsyncClient.getQueueUrl(req -> req.queueName(queueName)).get().queueUrl();
 			Map<QueueAttributeName, String> attributes = sqsAsyncClient
-				.getQueueAttributes(req -> req.queueUrl(queueUrl).attributeNames(QueueAttributeName.ALL)).get().attributes();
+				.getQueueAttributes(req -> req.queueUrl(queueUrl).attributeNames(queueAttributeNames)).get().attributes();
 			boolean hasRedrivePolicy = attributes.containsKey(QueueAttributeName.REDRIVE_POLICY);
 			boolean isFifo = queueName.endsWith(".fifo");
 			return new QueueAttributes(queueName, queueUrl, hasRedrivePolicy, getVisibility(attributes), isFifo);

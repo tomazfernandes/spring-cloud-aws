@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.support;
+package io.awspring.cloud.sqs.support.resolver;
 
-import io.awspring.cloud.sqs.listener.SqsMessageHeaders;
+import io.awspring.cloud.sqs.listener.SqsHeaders;
 import org.springframework.core.MethodParameter;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
@@ -35,6 +35,6 @@ public class SqsMessageMethodArgumentResolver implements HandlerMethodArgumentRe
 
 	@Override
 	public Object resolveArgument(MethodParameter parameter, Message<?> message) {
-		return message.getHeaders().get(SqsMessageHeaders.SOURCE_DATA_HEADER);
+		return message.getHeaders().get(SqsHeaders.SQS_SOURCE_DATA_HEADER);
 	}
 }

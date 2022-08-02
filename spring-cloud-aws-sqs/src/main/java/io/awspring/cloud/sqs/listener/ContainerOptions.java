@@ -18,11 +18,19 @@ package io.awspring.cloud.sqs.listener;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import io.awspring.cloud.sqs.BackPressureMode;
+import io.awspring.cloud.sqs.support.converter.MessagingMessageConverter;
+import io.awspring.cloud.sqs.support.converter.PayloadHeaderMessagingMessageConverter;
+import io.awspring.cloud.sqs.support.converter.SqsMessagingMessageConverter;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
+import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
 import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
 
 /**
@@ -49,6 +57,8 @@ public class ContainerOptions {
 
 	private static final MessageDeliveryStrategy DEFAULT_MESSAGE_DELIVERY_STRATEGY = MessageDeliveryStrategy.SINGLE_MESSAGE;
 
+	private final PayloadHeaderMessagingMessageConverter<?> DEFAULT_MESSAGE_CONVERTER = new SqsMessagingMessageConverter();
+
 	private int maxInflightMessagesPerQueue = DEFAULT_MAX_INFLIGHT_MSG_PER_QUEUE;
 
 	private int messagesPerPoll = DEFAULT_MESSAGES_PER_POLL;
@@ -65,8 +75,15 @@ public class ContainerOptions {
 
 	private MessageDeliveryStrategy messageDeliveryStrategy = DEFAULT_MESSAGE_DELIVERY_STRATEGY;
 
-	private Collection<QueueAttributeName> queueAttributeNames = Collections.singletonList(QueueAttributeName.ALL);
+	private MessagingMessageConverter<?> messageConverter = DEFAULT_MESSAGE_CONVERTER;
+
 	private Duration messageVisibility;
+
+	private Collection<QueueAttributeName> queueAttributeNames = Collections.singletonList(QueueAttributeName.ALL);
+
+	private Collection<String> messageAttributeNames = Collections.singletonList(QueueAttributeName.ALL.toString());
+
+	private Collection<String> messageSystemAttributeNames = Collections.singletonList(QueueAttributeName.ALL.toString());
 
 	public static ContainerOptions create() {
 		return new ContainerOptions();
@@ -140,8 +157,29 @@ public class ContainerOptions {
 		return this;
 	}
 
+	public ContainerOptions messageAttributes(Collection<String> messageAttributeNames) {
+		this.messageAttributeNames = messageAttributeNames;
+		return this;
+	}
+
+	public ContainerOptions messageSystemAttributes(Collection<MessageSystemAttributeName> messageSystemAttributeNames) {
+		this.messageSystemAttributeNames = messageSystemAttributeNames.stream().map(MessageSystemAttributeName::toString).collect(Collectors.toList());
+		return this;
+	}
+
 	public ContainerOptions messageVisibility(Duration messageVisibility) {
 		this.messageVisibility = messageVisibility;
+		return this;
+	}
+
+	public ContainerOptions messageConverter(MessagingMessageConverter<?> messageConverter) {
+		this.messageConverter = messageConverter;
+		return this;
+	}
+
+	public ContainerOptions payloadTypeMapper(Function<Message<?>, Class<?>> payloadTypeMapper) {
+		Assert.isInstanceOf(PayloadHeaderMessagingMessageConverter.class, this.messageConverter);
+		((PayloadHeaderMessagingMessageConverter<?>) this.messageConverter).setPayloadTypeMapper(payloadTypeMapper);
 		return this;
 	}
 
@@ -197,8 +235,20 @@ public class ContainerOptions {
 		return this.queueAttributeNames;
 	}
 
+	public Collection<String> getMessageAttributeNames() {
+		return this.messageAttributeNames;
+	}
+
+	public Collection<String> getMessageSystemAttributeNames() {
+		return this.messageSystemAttributeNames;
+	}
+
 	public Duration getMessageVisibility() {
 		return this.messageVisibility;
+	}
+
+	public MessagingMessageConverter<?> getMessageConverter() {
+		return this.messageConverter;
 	}
 
 	/**
