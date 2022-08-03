@@ -53,7 +53,7 @@ public class ContainerOptions {
 
 	private static final MessageDeliveryStrategy DEFAULT_MESSAGE_DELIVERY_STRATEGY = MessageDeliveryStrategy.SINGLE_MESSAGE;
 
-	private static final List<QueueAttributeName> DEFAULT_QUEUE_ATTRIBUTES_NAMES = Collections.singletonList(QueueAttributeName.ALL);
+	private static final List<QueueAttributeName> DEFAULT_QUEUE_ATTRIBUTES_NAMES = Collections.emptyList();
 
 	private static final List<String> DEFAULT_MESSAGE_ATTRIBUTES_NAMES = Collections.singletonList(QueueAttributeName.ALL.toString());
 

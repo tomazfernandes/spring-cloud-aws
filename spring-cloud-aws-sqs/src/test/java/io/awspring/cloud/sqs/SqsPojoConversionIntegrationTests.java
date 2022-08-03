@@ -224,8 +224,9 @@ class SqsPojoConversionIntegrationTests extends BaseSqsIntegrationTest {
 		@Bean
 		public SqsMessageListenerContainerFactory<String> defaultSqsListenerContainerFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
-			factory.getContainerOptions().permitAcquireTimeout(Duration.ofSeconds(1))
-				.pollTimeout(Duration.ofSeconds(1));
+			factory.getContainerOptions()
+				.permitAcquireTimeout(Duration.ofSeconds(1))
+				.pollTimeout(Duration.ofSeconds(3));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			return factory;
 		}

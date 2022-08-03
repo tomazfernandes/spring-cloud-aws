@@ -255,7 +255,7 @@ class SqsIntegrationLoadTests extends BaseSqsIntegrationTest {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions()
 				.maxInflightMessagesPerQueue(10)
-				.pollTimeout(Duration.ofSeconds(1))
+				.pollTimeout(Duration.ofSeconds(3))
 				.messagesPerPoll(10)
 				.permitAcquireTimeout(Duration.ofSeconds(1))
 				.backPressureMode(BackPressureMode.HIGH_THROUGHPUT)

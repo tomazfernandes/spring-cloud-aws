@@ -45,7 +45,6 @@ public class FifoSqsComponentFactory<T> implements ContainerComponentFactory<T> 
 
 	private MessageVisibilityExtendingSinkAdapter<T> addMessageVisibilityExtendingSinkAdapter(MessageSink<T> deliverySink, Duration messageVisibility) {
 		MessageVisibilityExtendingSinkAdapter<T> visibilityAdapter = new MessageVisibilityExtendingSinkAdapter<>(deliverySink);
-		visibilityAdapter.setVisibilityStrategy(MessageVisibilityExtendingSinkAdapter.Strategy.REMAINING_ORIGINAL_BATCH_MESSAGES);
 		visibilityAdapter.setMessageVisibility(messageVisibility);
 		return visibilityAdapter;
 	}

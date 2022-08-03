@@ -227,8 +227,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	private String resolveContainerId() {
-		return "io.awspring.cloud.sqs.sqsListenerEndpointContainer#"
-				+ this.queueNames.stream().findFirst().orElseGet(() -> UUID.randomUUID().toString());
+		return "io.awspring.cloud.sqs.sqsListenerEndpointContainer#" + UUID.randomUUID();
 	}
 
 	protected void doStart() {

@@ -48,6 +48,8 @@ abstract class BaseSqsIntegrationTest {
 
 	protected static final boolean useLocalStackClient = true;
 
+	protected static final boolean purgeQueues = false;
+
 	private static final String LOCAL_STACK_VERSION = "localstack/localstack:1.0.3";
 
 	private static final Object beforeAllMonitor = new Object();
@@ -97,9 +99,14 @@ abstract class BaseSqsIntegrationTest {
 					logger.error("Error creating queue {} with attributes {}", queueName, attributes, t);
 					return CompletableFutures.failedFuture(t);
 				}
-				String queueUrl = v.queueUrl();
-				logger.debug("Purging queue {}", queueName);
-				return client.purgeQueue(req -> req.queueUrl(queueUrl).build());
+				if (purgeQueues) {
+					String queueUrl = v.queueUrl();
+					logger.debug("Purging queue {}", queueName);
+					return client.purgeQueue(req -> req.queueUrl(queueUrl).build());
+				} else {
+					logger.debug("Skipping purge for queue {}", queueName);
+					return CompletableFuture.completedFuture(null);
+				}
 			}).thenCompose(x -> x).whenComplete((v, t) -> {
 				if (t != null) {
 					logger.error("Error purging queue {}", queueName, t);
@@ -135,7 +142,7 @@ abstract class BaseSqsIntegrationTest {
 		return useLocalStackClient
 			? createLocalStackClient()
 			: SqsAsyncClient.builder().httpClientBuilder(NettyNioAsyncHttpClient.builder()
-				.maxConcurrency(6000)
+				//.maxConcurrency(6000)
 			)
 			.build();
 	}

@@ -50,6 +50,8 @@ public class SqsHeaders {
 
 	public static final String SQS_ACKNOWLEDGMENT_HEADER = SQS_HEADER_PREFIX + "Acknowledgement";
 
+	public static final String SQS_QUEUE_ATTRIBUTES_HEADER = SQS_HEADER_PREFIX + "QueueAttributes";
+
 	public static final String SQS_DEFAULT_TYPE_HEADER = "JavaType";
 
 	public static class MessageSystemAttribute {

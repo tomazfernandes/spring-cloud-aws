@@ -76,7 +76,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		this.messageSources = createMessageSources(componentFactory);
 		this.messageSink = componentFactory.createMessageSink(getContainerOptions());
 		configureComponents(componentFactory);
-		LifecycleUtils.start(this.messageSink, this.messageSources);
+		LifecycleUtils.startParallel(this.messageSink, this.messageSources);
 	}
 
 	private ContainerComponentFactory<T> determineComponentFactory() {
@@ -178,7 +178,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	@Override
 	protected void doStop() {
-		LifecycleUtils.stop(this.messageSources, this.messageSink);
+		LifecycleUtils.stopParallel(this.messageSources, this.messageSink);
 		disposeSinkTaskExecutor();
 		logger.debug("Container {} stopped", getId());
 	}

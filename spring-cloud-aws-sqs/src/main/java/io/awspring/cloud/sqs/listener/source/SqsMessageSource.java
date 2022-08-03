@@ -16,6 +16,7 @@
 package io.awspring.cloud.sqs.listener.source;
 
 import io.awspring.cloud.sqs.ConfigUtils;
+import io.awspring.cloud.sqs.QueueAttributesProvider;
 import io.awspring.cloud.sqs.listener.QueueAttributesAware;
 import io.awspring.cloud.sqs.listener.SqsAsyncClientAware;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
@@ -37,6 +38,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.Message;
 
@@ -78,6 +80,8 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 
 	private Collection<String> messageSystemAttributeNames;
 
+	private int messageVisibility;
+
 	@Override
 	public void setSqsAsyncClient(SqsAsyncClient sqsAsyncClient) {
 		Assert.notNull(sqsAsyncClient, "sqsAsyncClient cannot be null.");
@@ -91,6 +95,7 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 		this.messageAttributeNames = containerOptions.getMessageAttributeNames();
 		this.messageSystemAttributeNames = containerOptions.getMessageSystemAttributeNames();
 		this.messagingMessageConverter = getOrCreateMessageConverter(containerOptions);
+		this.messageVisibility = containerOptions.getMessageVisibility() != null ? (int) containerOptions.getMessageVisibility().getSeconds() : -1;
 	}
 
 	@Override
@@ -98,7 +103,7 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 		Assert.notNull(this.sqsAsyncClient, "sqsAsyncClient not set.");
 		Assert.notNull(this.queueAttributeNames, "queueAttributeNames not set.");
 		Assert.notNull(this.messagingMessageConverter, "messagingMessageConverter not set.");
-		QueueAttributes queueAttributes = QueueAttributes.fetchFor(getPollingEndpointName(), this.sqsAsyncClient, this.queueAttributeNames);
+		QueueAttributes queueAttributes = QueueAttributesProvider.fetch(getPollingEndpointName(), this.sqsAsyncClient, this.queueAttributeNames);
 		this.queueUrl = queueAttributes.getQueueUrl();
 		this.messageConversionContext = maybeCreateConversionContext();
 		configureConversionContext(queueAttributes);
@@ -121,15 +126,26 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 	protected CompletableFuture<Collection<org.springframework.messaging.Message<T>>> doPollForMessages(int maxNumberOfMessages) {
 		logger.debug("Polling queue {} for {} messages.", this.queueUrl, maxNumberOfMessages);
 		return sqsAsyncClient
-			.receiveMessage(req -> req.queueUrl(this.queueUrl)
-				.receiveRequestAttemptId(UUID.randomUUID().toString())
-				.maxNumberOfMessages(maxNumberOfMessages)
-				.attributeNamesWithStrings(this.messageSystemAttributeNames)
-				.messageAttributeNames(this.messageAttributeNames)
-				.waitTimeSeconds(getPollTimeoutSeconds()))
+			.receiveMessage(createRequest(maxNumberOfMessages))
 			.thenApply(ReceiveMessageResponse::messages)
 			.whenComplete(this::logMessagesReceived)
 			.thenApply(this::convertMessages);
+	}
+
+	private ReceiveMessageRequest createRequest(int maxNumberOfMessages) {
+		ReceiveMessageRequest.Builder builder = ReceiveMessageRequest
+			.builder()
+			.queueUrl(this.queueUrl)
+			.receiveRequestAttemptId(UUID.randomUUID().toString())
+			.maxNumberOfMessages(maxNumberOfMessages)
+			.attributeNamesWithStrings(this.messageSystemAttributeNames)
+			.messageAttributeNames(this.messageAttributeNames)
+			.waitTimeSeconds(getPollTimeoutSeconds());
+
+		if (this.messageVisibility >= 0) {
+			builder.visibilityTimeout(this.messageVisibility);
+		}
+		return builder.build();
 	}
 
 	private Collection<org.springframework.messaging.Message<T>> convertMessages(List<Message> msgs) {

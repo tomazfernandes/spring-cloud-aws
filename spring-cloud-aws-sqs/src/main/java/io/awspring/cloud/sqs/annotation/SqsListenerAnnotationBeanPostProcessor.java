@@ -25,7 +25,8 @@ import io.awspring.cloud.sqs.config.SqsEndpoint;
 import io.awspring.cloud.sqs.config.SqsListenerCustomizer;
 import io.awspring.cloud.sqs.listener.SqsHeaders;
 import io.awspring.cloud.sqs.support.resolver.AsyncAcknowledgmentHandlerMethodArgumentResolver;
-import io.awspring.cloud.sqs.support.resolver.BatchPayloadArgumentResolver;
+import io.awspring.cloud.sqs.support.resolver.BatchPayloadMethodArgumentResolver;
+import io.awspring.cloud.sqs.support.resolver.QueueAttributesMethodArgumentResolver;
 import io.awspring.cloud.sqs.support.resolver.SqsMessageMethodArgumentResolver;
 import io.awspring.cloud.sqs.support.resolver.VisibilityHandlerMethodArgumentResolver;
 import java.lang.reflect.Method;
@@ -77,6 +78,10 @@ import org.springframework.util.StringUtils;
  */
 public class SqsListenerAnnotationBeanPostProcessor
 		implements BeanPostProcessor, BeanFactoryAware, SmartInitializingSingleton {
+
+	private static final String GENERATED_ID_PREFIX = "io.awspring.cloud.sqs.sqsListenerEndpointContainer#";
+
+	private final AtomicInteger counter = new AtomicInteger();
 
 	private final Collection<Class<?>> nonAnnotatedClasses = Collections.synchronizedSet(new HashSet<>());
 
@@ -161,10 +166,6 @@ public class SqsListenerAnnotationBeanPostProcessor
 		return new CompositeMessageConverter(messageConverters);
 	}
 
-	private static final String GENERATED_ID_PREFIX = "io.awspring.cloud.sqs.sqsListenerEndpointContainer#";
-
-	private final AtomicInteger counter = new AtomicInteger();
-
 	private Endpoint doCreateEndpointFromAnnotation(Object bean, Method method,
 			SqsListener sqsListenerAnnotation) {
 		return SqsEndpoint.from(resolveDestinationNames(sqsListenerAnnotation.value()))
@@ -198,9 +199,10 @@ public class SqsListenerAnnotationBeanPostProcessor
 		return Arrays.asList(new AsyncAcknowledgmentHandlerMethodArgumentResolver(SqsHeaders.SQS_ACKNOWLEDGMENT_HEADER),
 				new VisibilityHandlerMethodArgumentResolver(SqsHeaders.SQS_VISIBILITY_HEADER),
 				new SqsMessageMethodArgumentResolver(),
+				new QueueAttributesMethodArgumentResolver(),
 				new HeaderMethodArgumentResolver(new DefaultConversionService(), getConfigurableBeanFactory()),
 				new HeadersMethodArgumentResolver(),
-				new BatchPayloadArgumentResolver(messageConverter),
+				new BatchPayloadMethodArgumentResolver(messageConverter),
 				new MessageMethodArgumentResolver(messageConverter),
 				new PayloadMethodArgumentResolver(messageConverter));
 	}
