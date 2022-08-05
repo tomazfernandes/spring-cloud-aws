@@ -4,6 +4,7 @@ package io.awspring.cloud.sqs.listener.source;
 import io.awspring.cloud.sqs.listener.BackPressureHandler;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
+import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementProcessor;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,15 +36,13 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 
 	private String pollingEndpointName;
 
-	private int messagesPerPoll;
-
-	private Duration pollTimeout;
+	private Duration shutdownTimeout;
 
 	private TaskExecutor taskExecutor;
 
 	private BackPressureHandler backPressureHandler;
 
-	private Duration shutdownTimeout;
+	private AcknowledgementProcessor<T> acknowledgmentProcessor;
 
 	private MessageSink<T> messageSink;
 
@@ -53,11 +52,10 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 
 	private final Collection<CompletableFuture<?>> pollingFutures = Collections.synchronizedCollection(new ArrayList<>());
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void configure(ContainerOptions containerOptions) {
-		this.messagesPerPoll = containerOptions.getMessagesPerPoll();
-		this.pollTimeout = containerOptions.getPollTimeout();
-		this.shutdownTimeout = containerOptions.getShutDownTimeout();
+		this.shutdownTimeout = containerOptions.getSourceShutdownTimeout();
 	}
 
 	@Override
@@ -70,6 +68,12 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 	public void setBackPressureHandler(BackPressureHandler backPressureHandler) {
 		Assert.notNull(backPressureHandler, "backPressureHandler cannot be null");
 		this.backPressureHandler = backPressureHandler;
+	}
+
+	@Override
+	public void setAcknowledgementProcessor(AcknowledgementProcessor<T> acknowledgementProcessor) {
+		Assert.notNull(acknowledgementProcessor, "acknowledgementProcessor cannot be null");
+		this.acknowledgmentProcessor = acknowledgementProcessor;
 	}
 
 	@Override
@@ -109,6 +113,7 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 			this.running = true;
 			this.backPressureHandler.setClientId(this.pollingEndpointName);
 			doStart();
+			this.acknowledgmentProcessor.start();
 			startPollingThread();
 		}
 	}
@@ -176,7 +181,8 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 			.setBackPressureReleaseCallback(() -> {
 				logger.debug("Releasing permit for queue {}", this.pollingEndpointName);
 				this.backPressureHandler.release(1);
-			});
+			})
+			.setAcknowledgmentCallback(this.acknowledgmentProcessor.getAcknowledgementCallback());
 	}
 
 	private Void handleSinkException(Throwable throwable) {
@@ -195,20 +201,12 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 		return pollingFuture;
 	}
 
-	protected Duration getPollTimeout() {
-		return this.pollTimeout;
-	}
-
-	protected int getPollTimeoutSeconds() {
-		return (int) this.pollTimeout.getSeconds();
-	}
-
 	protected String getPollingEndpointName() {
 		return this.pollingEndpointName;
 	}
 
-	protected int getMessagesPerPoll() {
-		return this.messagesPerPoll;
+	protected AcknowledgementProcessor<T> getAcknowledgmentProcessor() {
+		return this.acknowledgmentProcessor;
 	}
 
 	@Override

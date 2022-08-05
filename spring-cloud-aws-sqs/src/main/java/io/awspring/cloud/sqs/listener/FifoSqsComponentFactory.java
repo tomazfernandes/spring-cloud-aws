@@ -1,7 +1,14 @@
 package io.awspring.cloud.sqs.listener;
 
-import io.awspring.cloud.sqs.listener.acknowledgement.AckHandler;
-import io.awspring.cloud.sqs.listener.acknowledgement.OnSuccessAckHandler;
+import io.awspring.cloud.sqs.ConfigUtils;
+import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementOrdering;
+import io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementHandler;
+import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementProcessor;
+import io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementMode;
+import io.awspring.cloud.sqs.listener.acknowledgement.handler.AlwaysAcknowledgementHandler;
+import io.awspring.cloud.sqs.listener.acknowledgement.handler.NeverAcknowledgementHandler;
+import io.awspring.cloud.sqs.listener.acknowledgement.handler.OnSuccessAcknowledgementHandler;
+import io.awspring.cloud.sqs.listener.acknowledgement.SqsAcknowledgementProcessor;
 import io.awspring.cloud.sqs.listener.sink.BatchMessageSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import io.awspring.cloud.sqs.listener.sink.OrderedMessageListeningSink;
@@ -19,6 +26,13 @@ import java.util.function.Function;
  * @since 3.0
  */
 public class FifoSqsComponentFactory<T> implements ContainerComponentFactory<T> {
+
+	// Immediate (sync) ack
+	private static final Duration DEFAULT_FIFO_SQS_ACK_INTERVAL = Duration.ZERO;
+
+	private static final Integer DEFAULT_FIFO_SQS_ACK_THRESHOLD = 0;
+
+	private static final AcknowledgementOrdering DEFAULT_FIFO_SQS_ACK_ORDERING = AcknowledgementOrdering.ORDERED;
 
 	@Override
 	public MessageSource<T> createMessageSource(ContainerOptions options) {
@@ -54,8 +68,23 @@ public class FifoSqsComponentFactory<T> implements ContainerComponentFactory<T> 
 	}
 
 	@Override
-	public AckHandler<T> createAckHandler(ContainerOptions containerOptions) {
-		return new OnSuccessAckHandler<>();
+	public AcknowledgementHandler<T> createAcknowledgementHandler(ContainerOptions options) {
+		AcknowledgementMode mode = options.getAcknowledgementMode();
+		return AcknowledgementMode.ON_SUCCESS.equals(mode)
+			? new OnSuccessAcknowledgementHandler<>()
+			: AcknowledgementMode.ALWAYS.equals(mode)
+				? new AlwaysAcknowledgementHandler<>()
+				: new NeverAcknowledgementHandler<>();
+	}
+
+	@Override
+	public AcknowledgementProcessor<T> createAcknowledgementProcessor(ContainerOptions options) {
+		SqsAcknowledgementProcessor<T> processor = new SqsAcknowledgementProcessor<>();
+		ConfigUtils.INSTANCE
+			.acceptIfNotNullOrElse(processor::setAcknowledgementInterval, options.getAcknowledgementInterval(), DEFAULT_FIFO_SQS_ACK_INTERVAL)
+			.acceptIfNotNullOrElse(processor::setAcknowledgementThreshold, options.getAcknowledgementThreshold(), DEFAULT_FIFO_SQS_ACK_THRESHOLD)
+			.acceptIfNotNullOrElse(processor::setAcknowledgementOrdering, options.getAcknowledgementOrdering(), DEFAULT_FIFO_SQS_ACK_ORDERING);
+		return processor;
 	}
 
 }

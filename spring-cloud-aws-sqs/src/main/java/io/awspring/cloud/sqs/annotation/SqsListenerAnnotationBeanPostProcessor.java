@@ -24,6 +24,7 @@ import io.awspring.cloud.sqs.config.EndpointRegistrar;
 import io.awspring.cloud.sqs.config.SqsEndpoint;
 import io.awspring.cloud.sqs.config.SqsListenerCustomizer;
 import io.awspring.cloud.sqs.listener.SqsHeaders;
+import io.awspring.cloud.sqs.support.resolver.AcknowledgementHandlerMethodArgumentResolver;
 import io.awspring.cloud.sqs.support.resolver.AsyncAcknowledgmentHandlerMethodArgumentResolver;
 import io.awspring.cloud.sqs.support.resolver.BatchPayloadMethodArgumentResolver;
 import io.awspring.cloud.sqs.support.resolver.QueueAttributesMethodArgumentResolver;
@@ -196,7 +197,9 @@ public class SqsListenerAnnotationBeanPostProcessor
 	}
 
 	private List<HandlerMethodArgumentResolver> createArgumentResolvers(MessageConverter messageConverter) {
-		return Arrays.asList(new AsyncAcknowledgmentHandlerMethodArgumentResolver(SqsHeaders.SQS_ACKNOWLEDGMENT_HEADER),
+		return Arrays.asList(
+				new AcknowledgementHandlerMethodArgumentResolver(),
+				new AsyncAcknowledgmentHandlerMethodArgumentResolver(),
 				new VisibilityHandlerMethodArgumentResolver(SqsHeaders.SQS_VISIBILITY_HEADER),
 				new SqsMessageMethodArgumentResolver(),
 				new QueueAttributesMethodArgumentResolver(),

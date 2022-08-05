@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 the original author or authors.
+ * Copyright 2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,25 +18,17 @@ package io.awspring.cloud.sqs.listener.acknowledgement;
 import java.util.concurrent.CompletableFuture;
 
 /**
+ * Interface representing a message acknowledgement.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-// TODO: TBD
-public interface AckFrequencyHandler {
+public interface AsyncAcknowledgement {
 
-	CompletableFuture<Void> registerAck(Acknowledgement ack);
+	/**
+	 * Acknowledge the message asynchronously.
+	 * @return a completable future.
+	 */
+	CompletableFuture<Void> acknowledgeAsync();
 
-	enum AckFrequency {
-
-		EACH,
-
-		BATCH,
-
-		TIME,
-
-		COUNT,
-
-		COUNT_OR_TIME
-
-	}
 }

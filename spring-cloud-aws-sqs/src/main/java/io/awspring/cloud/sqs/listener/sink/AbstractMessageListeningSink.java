@@ -90,7 +90,7 @@ public abstract class AbstractMessageListeningSink<T> implements MessageProcessi
 	 */
 	protected CompletableFuture<Void> execute(Message<T> message, MessageProcessingContext<T> context) {
 		return doExecute(() -> this.messageProcessingPipeline.process(message, context), context)
-			.whenComplete((v, t) -> context.executeBackPressureReleaseCallback());
+			.whenComplete((v, t) -> context.runBackPressureReleaseCallback());
 	}
 
 	/**
@@ -102,7 +102,7 @@ public abstract class AbstractMessageListeningSink<T> implements MessageProcessi
 	 */
 	protected CompletableFuture<Void> execute(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
 		return doExecute(() -> this.messageProcessingPipeline.process(messages, context), context)
-			.whenComplete((v, t) -> messages.forEach(msg -> context.executeBackPressureReleaseCallback()));
+			.whenComplete((v, t) -> messages.forEach(msg -> context.runBackPressureReleaseCallback()));
 	}
 
 	private CompletableFuture<Void> doExecute(Supplier<CompletableFuture<?>> supplier, MessageProcessingContext<T> context) {

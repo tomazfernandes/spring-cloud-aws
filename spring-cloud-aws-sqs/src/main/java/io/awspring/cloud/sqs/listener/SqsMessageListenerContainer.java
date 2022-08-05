@@ -17,7 +17,7 @@ package io.awspring.cloud.sqs.listener;
 
 import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.LifecycleUtils;
-import io.awspring.cloud.sqs.listener.pipeline.AckHandlerExecutionStage;
+import io.awspring.cloud.sqs.listener.pipeline.AcknowledgementHandlerExecutionStage;
 import io.awspring.cloud.sqs.listener.pipeline.AfterProcessingContextInterceptorExecutionStage;
 import io.awspring.cloud.sqs.listener.pipeline.BeforeProcessingContextInterceptorExecutionStage;
 import io.awspring.cloud.sqs.listener.pipeline.ErrorHandlerExecutionStage;
@@ -29,6 +29,7 @@ import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipelineBuilder;
 import io.awspring.cloud.sqs.listener.sink.MessageProcessingPipelineSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
+import io.awspring.cloud.sqs.listener.source.AcknowledgingMessageSource;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
 import io.awspring.cloud.sqs.listener.source.PollingMessageSource;
 
@@ -120,6 +121,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 			.acceptMany(this.messageSources, source -> source.setMessageSink(this.messageSink))
 			.acceptManyIfInstance(this.messageSources, SqsAsyncClientAware.class, asca -> asca.setSqsAsyncClient(this.sqsAsyncClient))
 			.acceptManyIfInstance(this.messageSources, PollingMessageSource.class, pms -> pms.setBackPressureHandler(createBackPressureHandler()))
+			.acceptManyIfInstance(this.messageSources, AcknowledgingMessageSource.class, ams -> ams.setAcknowledgementProcessor(componentFactory.createAcknowledgementProcessor(getContainerOptions())))
 			.acceptManyIfInstance(this.messageSources, TaskExecutorAware.class, teac -> teac.setTaskExecutor(createSourceTaskExecutor()))
 			.acceptIfInstance(this.messageSink, SqsAsyncClientAware.class, asca -> asca.setSqsAsyncClient(this.sqsAsyncClient))
 			.acceptIfInstance(this.messageSink, TaskExecutorAware.class, teac -> teac.setTaskExecutor(getOrCreateSinkTaskExecutor()))
@@ -132,14 +134,14 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 			.then(BeforeProcessingInterceptorExecutionStage::new)
 			.then(MessageListenerExecutionStage::new)
 			.thenWrapWith(ErrorHandlerExecutionStage::new)
-			.thenWrapWith(AckHandlerExecutionStage::new)
+			.thenWrapWith(AcknowledgementHandlerExecutionStage::new)
 			.then(AfterProcessingInterceptorExecutionStage::new)
 			.thenWrapWith(AfterProcessingContextInterceptorExecutionStage::new)
 			.build(MessageProcessingConfiguration.<T>builder()
 				.interceptors(getMessageInterceptors())
 				.messageListener(getMessageListener())
 				.errorHandler(getErrorHandler())
-				.ackHandler(componentFactory.createAckHandler(getContainerOptions())).build());
+				.ackHandler(componentFactory.createAcknowledgementHandler(getContainerOptions())).build());
 	}
 
 	private SemaphoreBackPressureHandler createBackPressureHandler() {
