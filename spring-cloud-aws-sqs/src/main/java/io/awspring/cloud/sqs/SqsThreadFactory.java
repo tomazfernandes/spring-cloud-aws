@@ -13,24 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.listener;
+package io.awspring.cloud.sqs;
 
-import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 /**
- * Enables a class to receive a container managed {@link TaskExecutor}.
- * Note that this is not automatic - changes to the container should be necessary
- * to actually receive the instance.
- *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public interface TaskExecutorAware {
+public class SqsThreadFactory extends CustomizableThreadFactory {
 
-	/**
-	 * Set the task executor.
-	 * @param taskExecutor the task e.xecutor
-	 */
-	void setTaskExecutor(TaskExecutor taskExecutor);
+	@Override
+	public Thread createThread(Runnable runnable) {
+		SqsThread thread = new SqsThread(getThreadGroup(), runnable, nextThreadName());
+		thread.setDaemon(false);
+		thread.setPriority(Thread.NORM_PRIORITY);
+		return thread;
+	}
 
 }

@@ -1,6 +1,7 @@
 package io.awspring.cloud.sqs.listener.source;
 
 
+import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.listener.BackPressureHandler;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
@@ -8,10 +9,9 @@ import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementProcessor;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
+import org.springframework.util.CustomizableThreadCreator;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 /**
  * Base {@link PollingMessageSource} implementation with
@@ -38,7 +39,7 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 
 	private Duration shutdownTimeout;
 
-	private TaskExecutor taskExecutor;
+	private Executor executor;
 
 	private BackPressureHandler backPressureHandler;
 
@@ -77,17 +78,16 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 	}
 
 	@Override
-	public void setTaskExecutor(TaskExecutor taskExecutor) {
-		Assert.notNull(taskExecutor, "taskExecutor cannot be null.");
-		addEndpointNameToPrefix(taskExecutor);
-		this.taskExecutor = taskExecutor;
+	public void setExecutor(Executor executor) {
+		Assert.notNull(executor, "executor cannot be null.");
+		addEndpointNameToPrefix(executor);
+		this.executor = executor;
 	}
 
-	private void addEndpointNameToPrefix(TaskExecutor taskExecutor) {
-		if (taskExecutor instanceof SimpleAsyncTaskExecutor) {
-			SimpleAsyncTaskExecutor sate = (SimpleAsyncTaskExecutor) taskExecutor;
-			sate.setThreadNamePrefix(sate.getThreadNamePrefix() + this.pollingEndpointName + "-");
-		}
+	private void addEndpointNameToPrefix(Executor taskExecutor) {
+		ConfigUtils.INSTANCE
+			.acceptIfInstance(taskExecutor, CustomizableThreadCreator.class,
+				ctc -> ctc.setThreadNamePrefix(ctc.getThreadNamePrefix() + this.pollingEndpointName + "-"));
 	}
 
 	@Override
@@ -122,7 +122,7 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 	}
 
 	private void startPollingThread() {
-		this.taskExecutor.execute(this::pollAndEmitMessages);
+		this.executor.execute(this::pollAndEmitMessages);
 	}
 
 	private void pollAndEmitMessages() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 the original author or authors.
+ * Copyright 2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package io.awspring.cloud.sqs.listener;
 
 import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.LifecycleUtils;
+import io.awspring.cloud.sqs.SqsThreadFactory;
 import io.awspring.cloud.sqs.listener.pipeline.AcknowledgementHandlerExecutionStage;
 import io.awspring.cloud.sqs.listener.pipeline.AfterProcessingContextInterceptorExecutionStage;
 import io.awspring.cloud.sqs.listener.pipeline.BeforeProcessingContextInterceptorExecutionStage;
@@ -34,13 +35,14 @@ import io.awspring.cloud.sqs.listener.source.MessageSource;
 import io.awspring.cloud.sqs.listener.source.PollingMessageSource;
 
 import java.util.Collection;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
@@ -64,7 +66,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	private MessageSink<T> messageSink;
 
-	private TaskExecutor sinkTaskExecutor;
+	private Executor componentsTaskExecutor;
 
 	public SqsMessageListenerContainer(SqsAsyncClient sqsAsyncClient, ContainerOptions options) {
 		super(options);
@@ -114,6 +116,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	@SuppressWarnings("unchecked")
 	private void configureComponents(ContainerComponentFactory<T> componentFactory) {
+		this.componentsTaskExecutor = resolveTaskExecutor();
 		getContainerOptions()
 			.configure(this.messageSources)
 			.configure(this.messageSink);
@@ -122,10 +125,13 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 			.acceptManyIfInstance(this.messageSources, SqsAsyncClientAware.class, asca -> asca.setSqsAsyncClient(this.sqsAsyncClient))
 			.acceptManyIfInstance(this.messageSources, PollingMessageSource.class, pms -> pms.setBackPressureHandler(createBackPressureHandler()))
 			.acceptManyIfInstance(this.messageSources, AcknowledgingMessageSource.class, ams -> ams.setAcknowledgementProcessor(componentFactory.createAcknowledgementProcessor(getContainerOptions())))
-			.acceptManyIfInstance(this.messageSources, TaskExecutorAware.class, teac -> teac.setTaskExecutor(createSourceTaskExecutor()))
+			.acceptManyIfInstance(this.messageSources, ExecutorAware.class, teac -> teac.setExecutor(createSourceTaskExecutor()))
 			.acceptIfInstance(this.messageSink, SqsAsyncClientAware.class, asca -> asca.setSqsAsyncClient(this.sqsAsyncClient))
-			.acceptIfInstance(this.messageSink, TaskExecutorAware.class, teac -> teac.setTaskExecutor(getOrCreateSinkTaskExecutor()))
-			.acceptIfInstance(this.messageSink, MessageProcessingPipelineSink.class, mls -> mls.setMessagePipeline(createMessageProcessingPipeline(componentFactory)));
+			.acceptIfInstance(this.messageSink, ExecutorAware.class, teac -> teac.setExecutor(this.componentsTaskExecutor))
+			.acceptIfInstance(this.messageSink, MessageProcessingPipelineSink.class, mls -> mls.setMessagePipeline(createMessageProcessingPipeline(componentFactory)))
+			.acceptManyIfInstance(getMessageInterceptors(), ExecutorAware.class, teac -> teac.setExecutor(this.componentsTaskExecutor))
+			.acceptIfInstance(getMessageListener(), ExecutorAware.class, teac -> teac.setExecutor(this.componentsTaskExecutor))
+			.acceptIfInstance(getErrorHandler(), ExecutorAware.class, teac -> teac.setExecutor(this.componentsTaskExecutor));
 	}
 
 	private MessageProcessingPipeline<T> createMessageProcessingPipeline(ContainerComponentFactory<T> componentFactory) {
@@ -141,7 +147,14 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 				.interceptors(getMessageInterceptors())
 				.messageListener(getMessageListener())
 				.errorHandler(getErrorHandler())
-				.ackHandler(componentFactory.createAcknowledgementHandler(getContainerOptions())).build());
+				.ackHandler(componentFactory.createAcknowledgementHandler(getContainerOptions()))
+				.build());
+	}
+
+	private Executor resolveTaskExecutor() {
+		return getContainerOptions().getContainerComponentsTaskExecutor() != null
+			? getContainerOptions().getContainerComponentsTaskExecutor()
+			: createComponentsTaskExecutor();
 	}
 
 	private SemaphoreBackPressureHandler createBackPressureHandler() {
@@ -154,45 +167,48 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 			.build();
 	}
 
-	private TaskExecutor createSourceTaskExecutor() {
+	private Executor createSourceTaskExecutor() {
 		SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor();
-		executor.setThreadNamePrefix(getId() + "#message_source-");
+		executor.setThreadNamePrefix(getId() + "#message_source");
 		return executor;
 	}
 
-	private TaskExecutor getOrCreateSinkTaskExecutor() {
-		return getContainerOptions().getSinkTaskExecutor() != null
-			? getContainerOptions().getSinkTaskExecutor()
-			: createSinkTaskExecutor();
-	}
-
-	private ThreadPoolTaskExecutor createSinkTaskExecutor() {
+	private Executor createComponentsTaskExecutor() {
 		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 		int poolSize = getContainerOptions().getMaxInFlightMessagesPerQueue() * this.messageSources.size();
 		executor.setMaxPoolSize(poolSize);
 		executor.setCorePoolSize(getContainerOptions().getMessagesPerPoll());
 		executor.setQueueCapacity(0);
-		executor.setThreadNamePrefix(getId() + "#message_sink-");
+		executor.setAllowCoreThreadTimeOut(true);
+		executor.setThreadFactory(createSqsThreadFactory());
 		executor.afterPropertiesSet();
-		this.sinkTaskExecutor = executor;
 		return executor;
+	}
+
+	private SqsThreadFactory createSqsThreadFactory() {
+		SqsThreadFactory threadFactory = new SqsThreadFactory();
+		threadFactory.setThreadNamePrefix(getId() + "-");
+		return threadFactory;
 	}
 
 	@Override
 	protected void doStop() {
 		LifecycleUtils.stopParallel(this.messageSources, this.messageSink);
-		disposeSinkTaskExecutor();
+		shutdownComponentsTaskExecutor();
 		logger.debug("Container {} stopped", getId());
 	}
 
-	private void disposeSinkTaskExecutor() {
-		if (this.sinkTaskExecutor instanceof DisposableBean) {
+	private void shutdownComponentsTaskExecutor() {
+		if (this.componentsTaskExecutor instanceof DisposableBean) {
 			try {
-				((DisposableBean) this.sinkTaskExecutor).destroy();
+				((DisposableBean) this.componentsTaskExecutor).destroy();
 			}
 			catch (Exception e) {
 				throw new IllegalStateException("Error destroying TaskExecutor for sink in container " + getId());
 			}
+		}
+		else if (this.componentsTaskExecutor instanceof ExecutorService) {
+			((ExecutorService) this.componentsTaskExecutor).shutdownNow();
 		}
 	}
 

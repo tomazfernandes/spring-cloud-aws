@@ -20,7 +20,6 @@ import io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementMod
 import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementOrdering;
 import io.awspring.cloud.sqs.support.converter.MessagingMessageConverter;
 import io.awspring.cloud.sqs.support.converter.SqsMessagingMessageConverter;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
@@ -30,6 +29,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 /**
@@ -96,7 +96,7 @@ public class ContainerOptions {
 
 	private Integer acknowledgementThreshold;
 
-	private TaskExecutor sinkTaskExecutor;
+	private Executor containerComponentsTaskExecutor;
 
 	private Duration messageVisibility;
 
@@ -151,9 +151,9 @@ public class ContainerOptions {
 		return this;
 	}
 
-	public ContainerOptions sinkTaskExecutor(TaskExecutor sinkTaskExecutor) {
-		Assert.notNull(sinkTaskExecutor, "sinkTaskExecutor cannot be null");
-		this.sinkTaskExecutor = sinkTaskExecutor;
+	public ContainerOptions containerComponentsTaskExecutor(Executor executor) {
+		Assert.notNull(executor, "executor cannot be null");
+		this.containerComponentsTaskExecutor = executor;
 		return this;
 	}
 
@@ -244,8 +244,8 @@ public class ContainerOptions {
 		return this.permitAcquireTimeout;
 	}
 
-	public TaskExecutor getSinkTaskExecutor() {
-		return this.sinkTaskExecutor;
+	public Executor getContainerComponentsTaskExecutor() {
+		return this.containerComponentsTaskExecutor;
 	}
 
 	public Duration getSourceShutdownTimeout() {
