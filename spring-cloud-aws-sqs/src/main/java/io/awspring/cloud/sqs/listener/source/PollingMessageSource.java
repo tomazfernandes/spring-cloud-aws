@@ -24,7 +24,7 @@ import org.springframework.context.SmartLifecycle;
  *
  * @param <T> the message payload type.
  */
-public interface PollingMessageSource<T> extends AcknowledgingMessageSource<T>, SmartLifecycle, ExecutorAware {
+public interface PollingMessageSource<T> extends AcknowledgementProcessingMessageSource<T>, SmartLifecycle, ExecutorAware {
 
 	/**
 	 * Set the endpoint logical name that will be polled by this source.

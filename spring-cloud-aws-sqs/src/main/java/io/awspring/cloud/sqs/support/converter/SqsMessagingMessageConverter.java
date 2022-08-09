@@ -87,7 +87,7 @@ public class SqsMessagingMessageConverter implements ContextAwareMessagingMessag
 	}
 
 	private MessageHeaders getContextHeaders(software.amazon.awssdk.services.sqs.model.Message message, MessageConversionContext context) {
-		return ((ContextAwareHeaderMapper<software.amazon.awssdk.services.sqs.model.Message>) this.headerMapper).getContextHeaders(message, context);
+		return ((ContextAwareHeaderMapper<software.amazon.awssdk.services.sqs.model.Message>) this.headerMapper).createContextHeaders(message, context);
 	}
 
 	private Object convertPayload(software.amazon.awssdk.services.sqs.model.Message message, MessageHeaders messageHeaders) {

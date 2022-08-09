@@ -25,21 +25,30 @@ import java.util.Collection;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-@FunctionalInterface
 public interface MessageInterceptor<T> {
 
 	/**
 	 * Intercept the message before processing.
 	 * @param message the message to be intercepted.
 	 */
-	Message<T> intercept(Message<T> message);
+	default Message<T> intercept(Message<T> message) {
+		return message;
+	}
 
 	/**
 	 * Intercept the messages before processing.
 	 * @param messages the messages to be intercepted.
 	 */
 	default Collection<Message<T>> intercept(Collection<Message<T>> messages) {
-		throw new UnsupportedOperationException("Batch not implemented by this interceptor");
+		return messages;
+	}
+
+	default Message<T> afterProcessing(Message<T> message) {
+		return message;
+	}
+
+	default Collection<Message<T>> afterProcessing(Collection<Message<T>> messages) {
+		return messages;
 	}
 
 }

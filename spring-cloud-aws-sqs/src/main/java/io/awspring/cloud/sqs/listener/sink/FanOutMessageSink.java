@@ -33,7 +33,7 @@ import org.springframework.messaging.Message;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class FanOutMessageSink<T> extends AbstractMessageListeningSink<T> {
+public class FanOutMessageSink<T> extends AbstractMessageProcessingPipelineSink<T> {
 
 	Logger logger = LoggerFactory.getLogger(FanOutMessageSink.class);
 

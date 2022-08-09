@@ -119,6 +119,15 @@ public class AsyncComponentAdapters {
 			return execute(() -> this.blockingMessageInterceptor.intercept(messages));
 		}
 
+		@Override
+		public CompletableFuture<Message<T>> afterProcessing(Message<T> message) {
+			return execute(() -> this.blockingMessageInterceptor.afterProcessing(message));
+		}
+
+		@Override
+		public CompletableFuture<Collection<Message<T>>> afterProcessing(Collection<Message<T>> messages) {
+			return execute(() -> this.blockingMessageInterceptor.afterProcessing(messages));
+		}
 	}
 
 	public static class BlockingMessageListenerAdapter<T> extends AbstractThreadingComponentAdapter implements AsyncMessageListener<T> {
@@ -149,12 +158,12 @@ public class AsyncComponentAdapters {
 		}
 
 		@Override
-		public CompletableFuture<Void> handleError(Message<T> message, Throwable t) {
+		public CompletableFuture<Void> handle(Message<T> message, Throwable t) {
 			return execute(() -> this.blockingErrorHandler.handle(message, t));
 		}
 
 		@Override
-		public CompletableFuture<Void> handleError(Collection<Message<T>> messages, Throwable t) {
+		public CompletableFuture<Void> handle(Collection<Message<T>> messages, Throwable t) {
 			return execute(() -> this.blockingErrorHandler.handle(messages, t));
 		}
 

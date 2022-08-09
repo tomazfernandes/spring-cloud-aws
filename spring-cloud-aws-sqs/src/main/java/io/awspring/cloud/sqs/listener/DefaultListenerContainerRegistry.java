@@ -15,9 +15,10 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import io.awspring.cloud.sqs.LifecycleUtils;
 import org.slf4j.Logger;
@@ -44,7 +45,7 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 
 	private static final Logger logger = LoggerFactory.getLogger(DefaultListenerContainerRegistry.class);
 
-	private final Collection<MessageListenerContainer<?>> listenerContainers = new ArrayList<>();
+	private final Map<String, MessageListenerContainer<?>> listenerContainers = new ConcurrentHashMap<>();
 
 	private boolean isParallelLifecycleManagement = true;
 
@@ -54,23 +55,22 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 
 	@Override
 	public void registerListenerContainer(MessageListenerContainer<?> listenerContainer) {
-		logger.debug("Registering listener container {}", listenerContainer);
 		Assert.state(getContainerById(listenerContainer.getId()) == null,
 				() -> "Already registered container with id " + listenerContainer.getId());
-		this.listenerContainers.add(listenerContainer);
+		logger.debug("Registering listener container {}", listenerContainer.getId());
+		this.listenerContainers.put(listenerContainer.getId(), listenerContainer);
 	}
 
 	@Override
 	public Collection<MessageListenerContainer<?>> getListenerContainers() {
-		return Collections.unmodifiableCollection(this.listenerContainers);
+		return Collections.unmodifiableCollection(this.listenerContainers.values());
 	}
 
 	@Nullable
 	@Override
 	public MessageListenerContainer<?> getContainerById(String id) {
 		Assert.notNull(id, "id cannot be null.");
-		return this.listenerContainers.stream().filter(container -> container.getId().equals(id)).findFirst()
-				.orElse(null);
+		return this.listenerContainers.get(id);
 	}
 
 	/**
@@ -85,36 +85,30 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 	@Override
 	public void start() {
 		synchronized (this.lifecycleMonitor) {
-			logger.debug("Starting registry {}", this);
+			logger.debug("Starting {}", getClass().getSimpleName());
 			this.running = true;
 			if (this.isParallelLifecycleManagement) {
-				LifecycleUtils.startParallel(this.listenerContainers);
+				LifecycleUtils.startParallel(this.listenerContainers.values());
 			}
 			else {
-				this.listenerContainers.forEach(MessageListenerContainer::start);
+				this.listenerContainers.values().forEach(MessageListenerContainer::start);
 			}
-			logger.debug("Registry {} started", this);
+			logger.debug("{} started", getClass().getSimpleName());
 		}
 	}
 
 	@Override
 	public void stop() {
 		synchronized (this.lifecycleMonitor) {
-			logger.debug("Stopping registry {}", this);
+			logger.debug("Stopping {}", getClass().getSimpleName());
 			this.running = false;
 			if (this.isParallelLifecycleManagement) {
-				LifecycleUtils.stopParallel(this.listenerContainers);
+				LifecycleUtils.stopParallel(this.listenerContainers.values());
 			}
 			else {
-				this.listenerContainers.forEach(MessageListenerContainer::stop);
+				this.listenerContainers.values().forEach(MessageListenerContainer::stop);
 			}
 		}
-	}
-
-	@Override
-	public void stop(Runnable callback) {
-		stop();
-		callback.run();
 	}
 
 	@Override

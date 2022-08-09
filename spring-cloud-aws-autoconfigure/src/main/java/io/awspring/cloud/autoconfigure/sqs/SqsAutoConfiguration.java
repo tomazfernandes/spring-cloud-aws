@@ -73,8 +73,8 @@ public class SqsAutoConfiguration {
 		containerOptions
 				.ifAvailable(options -> ReflectionUtils.shallowCopyFieldState(options, factory.getContainerOptions()));
 		sqsAsyncClient.ifAvailable(factory::setSqsAsyncClient);
-		errorHandler.ifAvailable(factory::setAsyncErrorHandler);
-		interceptors.forEach(factory::addAsyncMessageInterceptor);
+		errorHandler.ifAvailable(factory::setErrorHandler);
+		interceptors.forEach(factory::addMessageInterceptor);
 		return factory;
 	}
 

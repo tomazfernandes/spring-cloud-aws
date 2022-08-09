@@ -169,7 +169,7 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 	}
 
 	private void process(Endpoint endpoint) {
-		logger.debug("Processing endpoint {}", endpoint);
+		logger.debug("Processing endpoint {}", endpoint.getId());
 		this.listenerContainerRegistry.registerListenerContainer(createContainerFor(endpoint));
 	}
 

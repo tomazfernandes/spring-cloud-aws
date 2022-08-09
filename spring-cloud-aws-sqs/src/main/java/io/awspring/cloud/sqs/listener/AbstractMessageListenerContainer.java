@@ -58,7 +58,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	private AsyncMessageListener<T> messageListener;
 
-	private AsyncErrorHandler<T> errorHandler = (m, t) -> CompletableFutures.failedFuture(t);
+	private AsyncErrorHandler<T> errorHandler = new AsyncErrorHandler<T>() {};
 
 	private final Collection<AsyncMessageInterceptor<T>> messageInterceptors = new ArrayList<>();
 
@@ -70,11 +70,11 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	}
 
 	/**
-	 * Set the id for this container instance. The id will be used for creating the processing thread name.
+	 * Set the id for this container instance.
 	 * @param id the id.
 	 */
 	public void setId(String id) {
-		Assert.state(this.id == null, () -> "id already set for container " + this.id);
+		Assert.notNull(id, "id cannot be null");
 		this.id = id;
 	}
 
@@ -103,7 +103,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	 * @param messageInterceptor the interceptor instances.
 	 */
 	public void addMessageInterceptor(MessageInterceptor<T> messageInterceptor) {
-		Assert.notNull(messageInterceptor, "messageInterceptors cannot be null");
+		Assert.notNull(messageInterceptor, "messageInterceptor cannot be null");
 		this.messageInterceptors.add(AsyncComponentAdapters.adapt(messageInterceptor));
 	}
 
@@ -113,7 +113,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	 * @param messageInterceptor the interceptor instances.
 	 */
 	public void addAsyncMessageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
-		Assert.notNull(messageInterceptor, "messageInterceptors cannot be null");
+		Assert.notNull(messageInterceptor, "messageInterceptor cannot be null");
 		this.messageInterceptors.add(messageInterceptor);
 	}
 
@@ -223,11 +223,14 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 			logger.debug("Starting container {}", getId());
 			doStart();
 		}
-		logger.debug("Container started {}", this.id);
+		logger.debug("Container {} started", this.id);
 	}
 
 	private String resolveContainerId() {
-		return "io.awspring.cloud.sqs.sqsListenerEndpointContainer#" + UUID.randomUUID();
+		String firstQueueName = this.queueNames.iterator().next();
+		return firstQueueName.startsWith("http")
+			? firstQueueName.substring(Math.max(firstQueueName.length() - 10, 0)) + "-container"
+			: firstQueueName.substring(0, Math.min(15, firstQueueName.length())) + "-container";
 	}
 
 	protected void doStart() {

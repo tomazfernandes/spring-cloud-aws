@@ -129,17 +129,12 @@ class SqsAutoConfigurationTest {
 
 		@Bean
 		AsyncErrorHandler<Object> asyncErrorHandler() {
-			return (t, msg) -> CompletableFuture.completedFuture(null);
+			return new AsyncErrorHandler<Object>() {};
 		}
 
 		@Bean
 		AsyncMessageInterceptor<?> asyncMessageInterceptor() {
-			return new AsyncMessageInterceptor<Object>() {
-				@Override
-				public CompletableFuture<Message<Object>> intercept(Message<Object> message) {
-					return CompletableFuture.completedFuture(message);
-				}
-			};
+			return new AsyncMessageInterceptor<Object>() {};
 		}
 
 		@Bean

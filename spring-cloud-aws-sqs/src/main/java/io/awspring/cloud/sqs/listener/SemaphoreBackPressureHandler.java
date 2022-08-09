@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SemaphoreBackPressureHandler implements BackPressureHandler {
+public class SemaphoreBackPressureHandler implements BackPressureHandler, IdentifiableContainerComponent {
 
 	private static final Logger logger = LoggerFactory.getLogger(SemaphoreBackPressureHandler.class);
 
@@ -34,7 +34,7 @@ public class SemaphoreBackPressureHandler implements BackPressureHandler {
 
 	private final AtomicBoolean hasAcquiredFullPermits = new AtomicBoolean(false);
 
-	private String clientId;
+	private String id;
 
 	private SemaphoreBackPressureHandler(Builder builder) {
 		this.batchSize = builder.batchSize;
@@ -53,8 +53,8 @@ public class SemaphoreBackPressureHandler implements BackPressureHandler {
 	}
 
 	@Override
-	public void setClientId(String clientId) {
-		this.clientId = clientId;
+	public void setId(String id) {
+		this.id = id;
 	}
 
 	@Override
@@ -77,7 +77,7 @@ public class SemaphoreBackPressureHandler implements BackPressureHandler {
 		}
 		int permitsToRequest = Math.min(availablePermits, this.batchSize);
 		logger.trace("Trying to acquire partial batch of {} permits from {} available for {} in TM {}", permitsToRequest,
-			availablePermits, this.clientId, this.currentThroughputMode);
+			availablePermits, this.id, this.currentThroughputMode);
 		boolean hasAcquiredPartial = tryAcquire(permitsToRequest);
 		return hasAcquiredPartial ? permitsToRequest : 0;
 	}
@@ -85,10 +85,10 @@ public class SemaphoreBackPressureHandler implements BackPressureHandler {
 	private int requestInLowThroughputMode() throws InterruptedException {
 		// Although LTM can be set / unset by many processes, only the MessageSource thread gets here,
 		// so no actual concurrency
-		logger.debug("Trying to acquire full permits for {}. Permits left: {}", this.clientId, this.semaphore.availablePermits());
+		logger.debug("Trying to acquire full permits for {}. Permits left: {}", this.id, this.semaphore.availablePermits());
 		boolean hasAcquired = tryAcquire(this.totalPermits);
 		if (hasAcquired) {
-			logger.debug("Acquired full permits for {}. Permits left: {}", this.clientId, this.semaphore.availablePermits());
+			logger.debug("Acquired full permits for {}. Permits left: {}", this.id, this.semaphore.availablePermits());
 			// We've acquired all permits - there's no other process currently processing messages
 			if (!this.hasAcquiredFullPermits.compareAndSet(false, true)) {
 				logger.warn("hasAcquiredFullPermits was already true");
@@ -101,15 +101,15 @@ public class SemaphoreBackPressureHandler implements BackPressureHandler {
 	}
 
 	private boolean tryAcquire(int amount) throws InterruptedException {
-		logger.trace("Acquiring {} permits for {} in TM {}", amount, this.clientId, this.currentThroughputMode);
+		logger.trace("Acquiring {} permits for {} in TM {}", amount, this.id, this.currentThroughputMode);
 		boolean hasAcquired = this.semaphore.tryAcquire(amount, this.acquireTimeout.getSeconds(), TimeUnit.SECONDS);
 		if (hasAcquired) {
-			logger.trace("{} permits acquired for {} in TM {}. Permits left: {}", amount, this.clientId,
+			logger.trace("{} permits acquired for {} in TM {}. Permits left: {}", amount, this.id,
 				this.currentThroughputMode, this.semaphore.availablePermits());
 		}
 		else {
 			logger.trace("Not able to acquire {} permits in {} seconds for {} in TM {}. Permits left: {}", amount,
-				this.acquireTimeout.getSeconds(), this.clientId, this.currentThroughputMode, this.semaphore.availablePermits());
+				this.acquireTimeout.getSeconds(), this.id, this.currentThroughputMode, this.semaphore.availablePermits());
 		}
 		return hasAcquired;
 	}
@@ -119,7 +119,7 @@ public class SemaphoreBackPressureHandler implements BackPressureHandler {
 		maybeSwitchThroughputMode(amount);
 		int permitsToRelease = getPermitsToRelease(amount);
 		this.semaphore.release(permitsToRelease);
-		logger.trace("Released {} permits for {}. Permits left: {}", permitsToRelease, this.clientId, this.semaphore.availablePermits());
+		logger.trace("Released {} permits for {}. Permits left: {}", permitsToRelease, this.id, this.semaphore.availablePermits());
 	}
 
 	private int getPermitsToRelease(int amount) {
@@ -136,12 +136,12 @@ public class SemaphoreBackPressureHandler implements BackPressureHandler {
 		}
 		if (amount == this.batchSize && ThroughputMode.HIGH.equals(this.currentThroughputMode)) {
 			logger.debug("All {} permits were returned for {}, setting low throughput mode. Permits left: {}",
-				this.batchSize, this.clientId, this.semaphore.availablePermits());
+				this.batchSize, this.id, this.semaphore.availablePermits());
 			this.currentThroughputMode = ThroughputMode.LOW;
 		}
 		else if (amount != this.batchSize && ThroughputMode.LOW.equals(this.currentThroughputMode)) {
 			logger.debug("Only {} permit(s) returned, setting high throughput mode for {}. Permits left: {}",
-				amount, this.clientId, this.semaphore.availablePermits());
+				amount, this.id, this.semaphore.availablePermits());
 			this.currentThroughputMode = ThroughputMode.HIGH;
 		}
 	}
@@ -149,7 +149,7 @@ public class SemaphoreBackPressureHandler implements BackPressureHandler {
 	@Override
 	public boolean drain(Duration timeout) {
 		logger.debug("Waiting for up to {} seconds for approx. {} permits to be released for {}", timeout.getSeconds(),
-			this.totalPermits - this.semaphore.availablePermits(), this.clientId);
+			this.totalPermits - this.semaphore.availablePermits(), this.id);
 		try {
 			return this.semaphore.tryAcquire(this.totalPermits, (int) timeout.getSeconds(),
 				TimeUnit.SECONDS);

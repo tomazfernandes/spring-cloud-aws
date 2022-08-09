@@ -21,6 +21,7 @@ import io.awspring.cloud.sqs.annotation.SqsListener;
 import io.awspring.cloud.sqs.config.SqsBootstrapConfiguration;
 import io.awspring.cloud.sqs.config.SqsMessageListenerContainerFactory;
 import io.awspring.cloud.sqs.listener.SqsHeaders;
+import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -238,19 +239,21 @@ class SqsPojoConversionIntegrationTests extends BaseSqsIntegrationTest {
 				.permitAcquireTimeout(Duration.ofSeconds(1))
 				.pollTimeout(Duration.ofSeconds(1));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
-			factory.addMessageInterceptor((message -> {
-				MyInterface payload = message.getPayload();
-				Assert.notNull(payload, "null payload");
-				if (payload instanceof MyPojo) {
-					Assert.notNull(((MyPojo) payload).firstField, "null firstField");
-					latchContainer.resolvesPojoFromMappingLatch.countDown();
+			factory.addMessageInterceptor(new AsyncMessageInterceptor<MyInterface>() {
+				@Override
+				public CompletableFuture<Message<MyInterface>> intercept(Message<MyInterface> message) {
+					MyInterface payload = message.getPayload();
+					Assert.notNull(payload, "null payload");
+					if (payload instanceof MyPojo) {
+						Assert.notNull(((MyPojo) payload).firstField, "null firstField");
+						latchContainer.resolvesPojoFromMappingLatch.countDown();
+					} else if (payload instanceof MyOtherPojo) {
+						Assert.notNull(((MyOtherPojo) payload).otherFirstField, "null otherFirstField");
+						latchContainer.resolvesMyOtherPojoFromMappingLatch.countDown();
+					}
+					return CompletableFuture.completedFuture(message);
 				}
-				else if (payload instanceof MyOtherPojo) {
-					Assert.notNull(((MyOtherPojo) payload).otherFirstField, "null otherFirstField");
-					latchContainer.resolvesMyOtherPojoFromMappingLatch.countDown();
-				}
-				return message;
-			}));
+			});
 			return factory;
 		}
 

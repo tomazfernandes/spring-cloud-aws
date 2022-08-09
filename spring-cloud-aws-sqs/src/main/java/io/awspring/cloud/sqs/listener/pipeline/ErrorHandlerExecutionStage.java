@@ -53,7 +53,7 @@ public class ErrorHandlerExecutionStage<T> implements MessageProcessingPipeline<
 
 	private CompletableFuture<Void> handleError(Message<T> message, Throwable t) {
 		logger.debug("Handling error {} for message {}", t.getMessage(), MessageHeaderUtils.getId(message));
-		return errorHandler.handleError(message, t);
+		return errorHandler.handle(message, t);
 	}
 
 	@Override
@@ -64,7 +64,7 @@ public class ErrorHandlerExecutionStage<T> implements MessageProcessingPipeline<
 
 	private CompletableFuture<Void> handleErrors(Collection<Message<T>> messages, Throwable t) {
 		logger.debug("Handling error for messages {}", MessageHeaderUtils.getId(messages));
-		return errorHandler.handleError(messages, t);
+		return errorHandler.handle(messages, t);
 	}
 
 }

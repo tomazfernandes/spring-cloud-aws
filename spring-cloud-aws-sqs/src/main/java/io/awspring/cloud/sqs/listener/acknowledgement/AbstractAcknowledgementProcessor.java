@@ -1,6 +1,7 @@
 package io.awspring.cloud.sqs.listener.acknowledgement;
 
 import io.awspring.cloud.sqs.MessageHeaderUtils;
+import io.awspring.cloud.sqs.listener.IdentifiableContainerComponent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
@@ -19,7 +20,7 @@ import java.util.stream.IntStream;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAcknowledgementProcessor<T>, AcknowledgementCallback<T>{
+public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAcknowledgementProcessor<T>, AcknowledgementCallback<T>, IdentifiableContainerComponent {
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractAcknowledgementProcessor.class);
 
@@ -34,6 +35,8 @@ public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAc
 	private CompletableFuture<Void> lastAcknowledgementFuture = CompletableFuture.completedFuture(null);
 
 	private boolean running;
+
+	private String id;
 
 	@Override
 	public AcknowledgementCallback<T> getAcknowledgementCallback() {
@@ -53,11 +56,18 @@ public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAc
 	}
 
 	@Override
+	public void setId(String id) {
+		Assert.notNull(id, "id cannot be null");
+		this.id = id;
+	}
+
+	@Override
 	public void start() {
 		synchronized (this.lifecycleMonitor) {
 			Assert.notNull(this.acknowledgementExecutor, "acknowledgementExecutor not set");
 			Assert.notNull(this.acknowledgementOrdering, "acknowledgementOrdering not set");
-			logger.debug("Starting {}", getClass().getSimpleName());
+			Assert.notNull(this.id, "id not set");
+			logger.debug("Starting {}", this.id);
 			this.running = true;
 			doStart();
 		}
@@ -69,7 +79,7 @@ public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAc
 	@Override
 	public CompletableFuture<Void> onAcknowledge(Message<T> message) {
 		if (!isRunning()) {
-			logger.debug("{} not running, returning for message {}", getClass().getSimpleName(), MessageHeaderUtils.getId(message));
+			logger.debug("{} not running, returning for message {}", this.id, MessageHeaderUtils.getId(message));
 			return CompletableFuture.completedFuture(null);
 		}
 		return doOnAcknowledge(message);
@@ -78,7 +88,7 @@ public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAc
 	@Override
 	public CompletableFuture<Void> onAcknowledge(Collection<Message<T>> messages) {
 		if (!isRunning()) {
-			logger.debug("{} not running, returning for messages {}", getClass().getSimpleName(), MessageHeaderUtils.getId(messages));
+			logger.debug("{} not running, returning for messages {}", this.id, MessageHeaderUtils.getId(messages));
 			return CompletableFuture.completedFuture(null);
 		}
 		return doOnAcknowledge(messages);
@@ -87,7 +97,7 @@ public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAc
 	@Override
 	public void stop() {
 		synchronized (this.lifecycleMonitor) {
-			logger.info("Stopping {}", getClass().getSimpleName());
+			logger.info("Stopping {}", this.id);
 			this.running = false;
 			doStop();
 		}
@@ -131,6 +141,7 @@ public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAc
 	}
 
 	private Collection<Collection<Message<T>>> partitionMessages(Collection<Message<T>> messagesToAck) {
+		logger.trace("Partitioning {} messages in {}", messagesToAck.size(), this.id);
 		List<Message<T>> messagesToUse = getMessagesAsList(messagesToAck);
 		int totalSize = messagesToUse.size();
 		return IntStream.rangeClosed(0, (totalSize - 1) / 10)

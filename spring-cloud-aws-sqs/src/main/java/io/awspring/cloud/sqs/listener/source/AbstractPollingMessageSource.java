@@ -4,6 +4,8 @@ package io.awspring.cloud.sqs.listener.source;
 import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.listener.BackPressureHandler;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
+import io.awspring.cloud.sqs.listener.ExecutorAware;
+import io.awspring.cloud.sqs.listener.IdentifiableContainerComponent;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementProcessor;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
@@ -11,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
-import org.springframework.util.CustomizableThreadCreator;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
@@ -31,7 +32,7 @@ import java.util.concurrent.Executor;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractPollingMessageSource<T> implements PollingMessageSource<T> {
+public abstract class AbstractPollingMessageSource<T> implements PollingMessageSource<T>, IdentifiableContainerComponent {
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractPollingMessageSource.class);
 
@@ -53,10 +54,17 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 
 	private final Collection<CompletableFuture<?>> pollingFutures = Collections.synchronizedCollection(new ArrayList<>());
 
-	@SuppressWarnings("unchecked")
+	private String id;
+
 	@Override
 	public void configure(ContainerOptions containerOptions) {
 		this.shutdownTimeout = containerOptions.getSourceShutdownTimeout();
+	}
+
+	@Override
+	public void setId(String id) {
+		Assert.notNull(id, "id cannot be null");
+		this.id = id;
 	}
 
 	@Override
@@ -80,14 +88,7 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 	@Override
 	public void setExecutor(Executor executor) {
 		Assert.notNull(executor, "executor cannot be null.");
-		addEndpointNameToPrefix(executor);
 		this.executor = executor;
-	}
-
-	private void addEndpointNameToPrefix(Executor taskExecutor) {
-		ConfigUtils.INSTANCE
-			.acceptIfInstance(taskExecutor, CustomizableThreadCreator.class,
-				ctc -> ctc.setThreadNamePrefix(ctc.getThreadNamePrefix() + this.pollingEndpointName + "-"));
 	}
 
 	@Override
@@ -104,14 +105,20 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 	@Override
 	public void start() {
 		if (isRunning()) {
-			logger.debug("Message source for queue {} already running.", this.pollingEndpointName);
+			logger.debug("{} for queue {} already running.", getClass().getSimpleName(), this.pollingEndpointName);
 			return;
 		}
 		synchronized (this.lifecycleMonitor) {
-			Assert.notNull(this.messageSink, "No MessageSink was set");
-			logger.debug("Starting MessageSource for queue {}", this.pollingEndpointName);
+			Assert.notNull(this.id, "id not set");
+			Assert.notNull(this.messageSink, "messageSink not set");
+			Assert.notNull(this.backPressureHandler, "backPressureHandler not set");
+			Assert.notNull(this.acknowledgmentProcessor, "acknowledgmentProcessor not set");
+			logger.debug("Starting {} for queue {}", getClass().getSimpleName(), this.pollingEndpointName);
 			this.running = true;
-			this.backPressureHandler.setClientId(this.pollingEndpointName);
+			ConfigUtils.INSTANCE
+				.acceptIfInstance(this.backPressureHandler, IdentifiableContainerComponent.class, icc -> icc.setId(this.id))
+				.acceptIfInstance(this.acknowledgmentProcessor, IdentifiableContainerComponent.class, icc -> icc.setId(this.id))
+				.acceptIfInstance(this.acknowledgmentProcessor, ExecutorAware.class, ea -> ea.setExecutor(this.executor));
 			doStart();
 			this.acknowledgmentProcessor.start();
 			startPollingThread();
@@ -186,7 +193,7 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 	}
 
 	private Void handleSinkException(Throwable throwable) {
-		logger.warn("Sink returned an error.", throwable);
+		logger.warn("{} returned an error.", this.messageSink.getClass().getSimpleName(), throwable);
 		return null;
 	}
 
@@ -212,15 +219,15 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 	@Override
 	public void stop() {
 		if (!isRunning()) {
-			logger.debug("Message source for queue {} not running.", this.pollingEndpointName);
+			logger.debug("{} for queue {} not running.", getClass().getSimpleName(), this.pollingEndpointName);
 		}
 		synchronized (this.lifecycleMonitor) {
-			logger.debug("Stopping MessageSource for queue {}", this.pollingEndpointName);
+			logger.debug("Stopping {} for queue {}", getClass().getSimpleName(), this.pollingEndpointName);
 			this.running = false;
 			waitExistingTasksToFinish();
 			doStop();
 			this.pollingFutures.forEach(pollingFuture -> pollingFuture.cancel(true));
-			logger.debug("MessageSource for queue {} stopped", this.pollingEndpointName);
+			logger.debug("{} for queue {} stopped", getClass().getSimpleName(), this.pollingEndpointName);
 		}
 	}
 
@@ -228,15 +235,14 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 	}
 
 	private void waitExistingTasksToFinish() {
-		Duration shutDownTimeout = this.shutdownTimeout;
-		if (shutDownTimeout.isZero()) {
-			logger.debug("Container shutdown timeout set to zero - not waiting for tasks to finish.");
+		if (this.shutdownTimeout.isZero()) {
+			logger.debug("Shutdown timeout set to zero for queue {} - not waiting for tasks to finish.", this.pollingEndpointName);
 			return;
 		}
-		boolean tasksFinished = this.backPressureHandler.drain(shutDownTimeout);
+		boolean tasksFinished = this.backPressureHandler.drain(this.shutdownTimeout);
 		if (!tasksFinished) {
 			logger.warn("Tasks did not finish in {} seconds for queue {}, proceeding with shutdown.",
-				shutDownTimeout.getSeconds(), this.pollingEndpointName);
+				this.shutdownTimeout.getSeconds(), this.pollingEndpointName);
 		}
 	}
 

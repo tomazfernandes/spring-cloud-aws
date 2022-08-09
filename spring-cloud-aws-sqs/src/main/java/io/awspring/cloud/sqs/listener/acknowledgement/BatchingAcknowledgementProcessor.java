@@ -16,9 +16,9 @@
 package io.awspring.cloud.sqs.listener.acknowledgement;
 
 import io.awspring.cloud.sqs.MessageHeaderUtils;
+import io.awspring.cloud.sqs.listener.ExecutorAware;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -38,7 +39,7 @@ import java.util.stream.IntStream;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgementProcessor<T> {
+public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgementProcessor<T> implements ExecutorAware {
 
 	private static final Logger logger = LoggerFactory.getLogger(BatchingAcknowledgementProcessor.class);
 
@@ -52,6 +53,8 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 
 	private Duration ackInterval;
 
+	private Executor executor;
+
 	public void setAcknowledgementInterval(Duration ackInterval) {
 		Assert.notNull(ackInterval, "ackInterval cannot be null");
 		this.ackInterval = ackInterval;
@@ -60,6 +63,12 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 	public void setAcknowledgementThreshold(Integer ackThreshold) {
 		Assert.notNull(ackThreshold, "ackThreshold cannot be null");
 		this.ackThreshold = ackThreshold;
+	}
+
+	@Override
+	public void setExecutor(Executor executor) {
+		Assert.notNull(executor, "taskExecutor cannot be null");
+		this.executor = executor;
 	}
 
 	@Override
@@ -84,11 +93,10 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 	public void doStart() {
 		Assert.notNull(this.ackInterval, "ackInterval not set");
 		Assert.notNull(this.ackThreshold, "ackThreshold not set");
+		Assert.notNull(this.executor, "executor not set");
 		this.acks = new LinkedBlockingQueue<>();
 		this.acknowledgementProcessor = new ThreadWaitingAcknowledgementProcessor<>(this);
-		SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor();
-		executor.setThreadNamePrefix("acknowledgement-processor-");
-		executor.execute(this.acknowledgementProcessor);
+		this.executor.execute(this.acknowledgementProcessor);
 	}
 
 	@Override
@@ -124,7 +132,7 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 
 		@Override
 		public void run() {
-			logger.debug("Starting ack processor");
+			logger.debug("Starting acknowledgement processor thread");
 			while (this.parent.isRunning()) {
 				try {
 					Instant now = Instant.now();
@@ -159,7 +167,7 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 					logger.error("Error while handling acknowledgements, resuming.", e);
 				}
 			}
-			logger.debug("Ack thread stopped");
+			logger.debug("Acknowledgement processor thread stopped");
 		}
 
 		private void manageFuture(CompletableFuture<Void> future) {

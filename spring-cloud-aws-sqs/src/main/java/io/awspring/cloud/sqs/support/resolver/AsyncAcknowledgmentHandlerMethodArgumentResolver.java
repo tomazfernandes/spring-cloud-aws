@@ -36,7 +36,7 @@ public class AsyncAcknowledgmentHandlerMethodArgumentResolver implements Handler
 
 	@Override
 	public Object resolveArgument(MethodParameter parameter, Message<?> message) {
-		return MessageHeaderUtils.getAcknowledgement(message);
+		return MessageHeaderUtils.getAsyncAcknowledgement(message);
 	}
 
 }

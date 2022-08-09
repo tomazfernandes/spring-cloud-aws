@@ -41,9 +41,9 @@ import org.springframework.util.Assert;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractMessageListeningSink<T> implements MessageProcessingPipelineSink<T>, ExecutorAware {
+public abstract class AbstractMessageProcessingPipelineSink<T> implements MessageProcessingPipelineSink<T>, ExecutorAware {
 
-	private static final Logger logger = LoggerFactory.getLogger(AbstractMessageListeningSink.class);
+	private static final Logger logger = LoggerFactory.getLogger(AbstractMessageProcessingPipelineSink.class);
 
 	private final Object lifecycleMonitor = new Object();
 
@@ -71,11 +71,11 @@ public abstract class AbstractMessageListeningSink<T> implements MessageProcessi
 	public CompletableFuture<Void> emit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
 		Assert.notNull(messages, "messages cannot be null");
 		if (!isRunning()) {
-			logger.debug("Sink {} not running, returning", this.id);
+			logger.debug("{} {} not running, returning", getClass().getSimpleName(), this.id);
 			return CompletableFuture.completedFuture(null);
 		}
 		if (messages.size() == 0) {
-			logger.debug("No messages provided for sink {}, returning.", this.id);
+			logger.debug("No messages provided for {} {}, returning.", getClass().getSimpleName(), this.id);
 			return CompletableFuture.completedFuture(null);
 		}
 		return doEmit(messages, context);
@@ -113,14 +113,14 @@ public abstract class AbstractMessageListeningSink<T> implements MessageProcessi
 	@Override
 	public void start() {
 		if (isRunning()) {
-			logger.debug("Sink {} already running", this.id);
+			logger.debug("{} {} already running", getClass().getSimpleName(), this.id);
 			return;
 		}
 		synchronized (this.lifecycleMonitor) {
 			Assert.notNull(this.messageProcessingPipeline, "messageListener not set");
 			Assert.notNull(this.executor, "taskExecutor not set");
 			this.id = getOrCreateId();
-			logger.debug("Starting sink {}", this.id);
+			logger.debug("Starting {} {}", getClass().getSimpleName(), this.id);
 			this.running = true;
 		}
 	}
@@ -134,11 +134,11 @@ public abstract class AbstractMessageListeningSink<T> implements MessageProcessi
 	@Override
 	public void stop() {
 		if (!isRunning()) {
-			logger.debug("Sink {} already stopped", this.id);
+			logger.debug("{} {} already stopped", getClass().getSimpleName(), this.id);
 			return;
 		}
 		synchronized (this.lifecycleMonitor) {
-			logger.debug("Stopping sink {}", this.id);
+			logger.debug("Stopping {} {}", this.getClass().getSimpleName(), this.id);
 			this.running = false;
 		}
 	}

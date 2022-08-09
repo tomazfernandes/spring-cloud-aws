@@ -34,6 +34,7 @@ public class SqsHeaderMapper implements ContextAwareHeaderMapper<Message> {
 
 	@Override
 	public MessageHeaders toHeaders(Message source) {
+		logger.trace("Mapping headers for message {}", source.messageId());
 		MessageHeaderAccessor accessor = new MessageHeaderAccessor();
 		accessor.copyHeadersIfAbsent(getMessageSystemAttributesAsHeaders(source));
 		accessor.copyHeadersIfAbsent(getMessageAttributesAsHeaders(source));
@@ -41,7 +42,9 @@ public class SqsHeaderMapper implements ContextAwareHeaderMapper<Message> {
 		accessor.setHeader(SqsHeaders.SQS_RECEIPT_HANDLE_HEADER, source.receiptHandle());
 		accessor.setHeader(SqsHeaders.SQS_SOURCE_DATA_HEADER, source);
 		accessor.setHeader(SqsHeaders.SQS_RECEIVED_AT_HEADER, Instant.now());
-		return accessor.getMessageHeaders();
+		MessageHeaders messageHeaders = accessor.getMessageHeaders();
+		logger.trace("Mapped headers {} for message {}", messageHeaders, source.messageId());
+		return messageHeaders;
 	}
 
 	private Map<String, String> getMessageAttributesAsHeaders(Message source) {
@@ -61,11 +64,14 @@ public class SqsHeaderMapper implements ContextAwareHeaderMapper<Message> {
 	}
 
 	@Override
-	public MessageHeaders getContextHeaders(Message source, MessageConversionContext context) {
+	public MessageHeaders createContextHeaders(Message source, MessageConversionContext context) {
+		logger.trace("Creating context headers for message {}", source.messageId());
 		MessageHeaderAccessor accessor = new MessageHeaderAccessor();
 		ConfigUtils.INSTANCE
 			.acceptIfInstance(context, SqsMessageConversionContext.class, sqsContext -> addSqsContextHeaders(source, sqsContext, accessor));
-		return accessor.toMessageHeaders();
+		MessageHeaders messageHeaders = accessor.toMessageHeaders();
+		logger.trace("Context headers {} created for message {}", messageHeaders, source.messageId());
+		return messageHeaders;
 	}
 
 	private void addSqsContextHeaders(Message source, SqsMessageConversionContext sqsContext, MessageHeaderAccessor accessor) {

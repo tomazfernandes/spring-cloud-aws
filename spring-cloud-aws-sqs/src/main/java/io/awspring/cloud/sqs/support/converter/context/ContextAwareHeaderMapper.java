@@ -9,6 +9,6 @@ import org.springframework.messaging.support.HeaderMapper;
  */
 public interface ContextAwareHeaderMapper<S> extends HeaderMapper<S> {
 
-	MessageHeaders getContextHeaders(S source, MessageConversionContext context);
+	MessageHeaders createContextHeaders(S source, MessageConversionContext context);
 
 }

@@ -33,9 +33,9 @@ import org.springframework.messaging.Message;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class OrderedMessageListeningSink<T> extends AbstractMessageListeningSink<T> {
+public class OrderedMessageSink<T> extends AbstractMessageProcessingPipelineSink<T> {
 
-	Logger logger = LoggerFactory.getLogger(OrderedMessageListeningSink.class);
+	private static final Logger logger = LoggerFactory.getLogger(OrderedMessageSink.class);
 
 	@Override
 	protected CompletableFuture<Void> doEmit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {

@@ -28,10 +28,9 @@ import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.StandardSqsComponentFactory;
 import io.awspring.cloud.sqs.listener.Visibility;
 import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAcknowledgement;
-import io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementHandler;
 import io.awspring.cloud.sqs.listener.acknowledgement.Acknowledgement;
-import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
-import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
+import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
+import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
 import org.junit.jupiter.api.BeforeAll;
@@ -56,7 +55,6 @@ import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.Collections;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -360,23 +358,27 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			return BaseSqsIntegrationTest.createHighThroughputAsyncClient();
 		}
 
-		private MessageInterceptor<String> testInterceptor() {
-			return msg -> {
-				latchContainer.interceptorLatch.countDown();
-				return msg;
+		private AsyncMessageInterceptor<String> testInterceptor() {
+			return new AsyncMessageInterceptor<String>() {
+				@Override
+				public CompletableFuture<Message<String>> intercept(Message<String> message) {
+					latchContainer.interceptorLatch.countDown();
+					return CompletableFuture.completedFuture(message);
+				}
 			};
 		}
 
-		private ErrorHandler<String> testErrorHandler() {
-			return (msg, t) -> {
-				latchContainer.errorHandlerLatch.countDown();
-				// Eventually ack to not interfere with other tests.
-				if (latchContainer.errorHandlerLatch.getCount() == 0) {
-					Objects.requireNonNull(
-							(Acknowledgement) msg.getHeaders().get(SqsHeaders.SQS_ACKNOWLEDGMENT_HEADER),
-							"No acknowledgement present").acknowledge();
+		private AsyncErrorHandler<String> testErrorHandler() {
+			return new AsyncErrorHandler<String>() {
+				@Override
+				public CompletableFuture<Void> handle(Message<String> message, Throwable t) {
+					latchContainer.errorHandlerLatch.countDown();
+					// Eventually ack to not interfere with other tests.
+					if (latchContainer.errorHandlerLatch.getCount() == 0) {
+						return MessageHeaderUtils.getAsyncAcknowledgement(message).acknowledgeAsync();
+					}
+					return CompletableFutures.failedFuture(t);
 				}
-				throw (RuntimeException) t;
 			};
 		}
 	}

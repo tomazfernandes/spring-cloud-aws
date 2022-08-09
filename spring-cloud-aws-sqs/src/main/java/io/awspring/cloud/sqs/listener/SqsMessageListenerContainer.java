@@ -35,14 +35,17 @@ import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipelineBuilder;
 import io.awspring.cloud.sqs.listener.sink.MessageProcessingPipelineSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
-import io.awspring.cloud.sqs.listener.source.AcknowledgingMessageSource;
+import io.awspring.cloud.sqs.listener.source.AcknowledgementProcessingMessageSource;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
 import io.awspring.cloud.sqs.listener.source.PollingMessageSource;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -106,21 +109,22 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	}
 
 	private Collection<MessageSource<T>> createMessageSources(ContainerComponentFactory<T> componentFactory) {
-		return getQueueNames()
-			.stream()
-			.map(queueName -> createMessageSource(queueName, componentFactory))
+		List<String> queueNames = new ArrayList<>(getQueueNames());
+		return IntStream.range(0, queueNames.size())
+			.mapToObj(index -> createMessageSource(queueNames.get(index), index, componentFactory))
 			.collect(Collectors.toList());
 	}
 
-	private MessageSource<T> createMessageSource(String queueName, ContainerComponentFactory<T> componentFactory) {
+	private MessageSource<T> createMessageSource(String queueName, int index, ContainerComponentFactory<T> componentFactory) {
 		MessageSource<T> messageSource = componentFactory.createMessageSource(getContainerOptions());
 		ConfigUtils.INSTANCE
-			.acceptIfInstance(messageSource, PollingMessageSource.class, pms -> pms.setPollingEndpointName(queueName));
+			.acceptIfInstance(messageSource, PollingMessageSource.class, pms -> pms.setPollingEndpointName(queueName))
+			.acceptIfInstance(messageSource, IdentifiableContainerComponent.class, icc -> icc.setId(getId() + "-" + index));
 		return messageSource;
 	}
 
 	private void configureComponents(ContainerComponentFactory<T> componentFactory) {
-		this.componentsTaskExecutor = resolveTaskExecutor();
+		this.componentsTaskExecutor = resolveComponentsTaskExecutor();
 		getContainerOptions()
 			.configure(this.messageSources)
 			.configure(this.messageSink);
@@ -131,17 +135,19 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	@SuppressWarnings("unchecked")
 	private void configureMessageSources(ContainerComponentFactory<T> componentFactory) {
+		Executor executor = createSourceTaskExecutor();
 		ConfigUtils.INSTANCE
 			.acceptMany(this.messageSources, source -> source.setMessageSink(this.messageSink))
 			.acceptManyIfInstance(this.messageSources, SqsAsyncClientAware.class, asca -> asca.setSqsAsyncClient(this.sqsAsyncClient))
 			.acceptManyIfInstance(this.messageSources, PollingMessageSource.class, pms -> pms.setBackPressureHandler(createBackPressureHandler()))
-			.acceptManyIfInstance(this.messageSources, AcknowledgingMessageSource.class, ams -> ams.setAcknowledgementProcessor(componentFactory.createAcknowledgementProcessor(getContainerOptions())))
-			.acceptManyIfInstance(this.messageSources, ExecutorAware.class, teac -> teac.setExecutor(createSourceTaskExecutor()));
+			.acceptManyIfInstance(this.messageSources, AcknowledgementProcessingMessageSource.class, ams -> ams.setAcknowledgementProcessor(componentFactory.createAcknowledgementProcessor(getContainerOptions())))
+			.acceptManyIfInstance(this.messageSources, ExecutorAware.class, teac -> teac.setExecutor(executor));
 	}
 
 	@SuppressWarnings("unchecked")
 	private void configureMessageSink() {
 		ConfigUtils.INSTANCE
+			.acceptIfInstance(this.messageSink, IdentifiableContainerComponent.class, icc -> icc.setId(getId()))
 			.acceptIfInstance(this.messageSink, SqsAsyncClientAware.class, asca -> asca.setSqsAsyncClient(this.sqsAsyncClient))
 			.acceptIfInstance(this.messageSink, ExecutorAware.class, teac -> teac.setExecutor(this.componentsTaskExecutor))
 			.acceptIfInstance(this.messageSink, MessageProcessingPipelineSink.class, mls -> mls.setMessagePipeline(createMessageProcessingPipeline()));
@@ -171,7 +177,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 				.build());
 	}
 
-	private Executor resolveTaskExecutor() {
+	private Executor resolveComponentsTaskExecutor() {
 		return getContainerOptions().getContainerComponentsTaskExecutor() != null
 			? getContainerOptions().getContainerComponentsTaskExecutor()
 			: createComponentsTaskExecutor();
@@ -189,7 +195,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	private Executor createSourceTaskExecutor() {
 		SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor();
-		executor.setThreadNamePrefix(getId() + "#message_source");
+		executor.setThreadNamePrefix(getId() + "#message_source-");
 		return executor;
 	}
 
@@ -216,8 +222,8 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		return AcknowledgementMode.ON_SUCCESS.equals(mode)
 			? new OnSuccessAcknowledgementHandler<>()
 			: AcknowledgementMode.ALWAYS.equals(mode)
-			? new AlwaysAcknowledgementHandler<>()
-			: new NeverAcknowledgementHandler<>();
+				? new AlwaysAcknowledgementHandler<>()
+				: new NeverAcknowledgementHandler<>();
 	}
 
 	@Override

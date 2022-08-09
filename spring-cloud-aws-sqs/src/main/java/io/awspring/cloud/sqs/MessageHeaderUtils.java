@@ -23,6 +23,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAcknowledgement;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 
@@ -56,10 +57,12 @@ public class MessageHeaderUtils {
 	 * @param message the message.
 	 * @return the acknowledgement.
 	 */
+	public static AsyncAcknowledgement getAsyncAcknowledgement(Message<?> message) {
+		return getHeader(message, SqsHeaders.SQS_ACKNOWLEDGMENT_HEADER, AsyncAcknowledgement.class);
+	}
+
 	public static Acknowledgement getAcknowledgement(Message<?> message) {
-		return Objects.requireNonNull(
-				message.getHeaders().get(SqsHeaders.SQS_ACKNOWLEDGMENT_HEADER, Acknowledgement.class),
-				() -> "No Acknowledgment found for message " + message);
+		return getHeader(message, SqsHeaders.SQS_ACKNOWLEDGMENT_HEADER, Acknowledgement.class);
 	}
 
 	public static <T, U> Collection<T> getHeader(Collection<Message<U>> messages, String headerName, Class<T> classToCast) {

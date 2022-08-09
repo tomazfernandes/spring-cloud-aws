@@ -7,7 +7,7 @@ import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementProcessor;
 import io.awspring.cloud.sqs.listener.acknowledgement.ImmediateAcknowledgementProcessor;
 import io.awspring.cloud.sqs.listener.sink.BatchMessageSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
-import io.awspring.cloud.sqs.listener.sink.OrderedMessageListeningSink;
+import io.awspring.cloud.sqs.listener.sink.OrderedMessageSink;
 import io.awspring.cloud.sqs.listener.sink.adapter.MessageGroupingSinkAdapter;
 import io.awspring.cloud.sqs.listener.sink.adapter.MessageVisibilityExtendingSinkAdapter;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
@@ -43,7 +43,7 @@ public class FifoSqsComponentFactory<T> implements ContainerComponentFactory<T> 
 
 	private MessageSink<T> createDeliverySink(MessageDeliveryStrategy messageDeliveryStrategy) {
 		return MessageDeliveryStrategy.SINGLE_MESSAGE.equals(messageDeliveryStrategy)
-			? new OrderedMessageListeningSink<>()
+			? new OrderedMessageSink<>()
 			: new BatchMessageSink<>();
 	}
 

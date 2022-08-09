@@ -77,7 +77,7 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Messa
 	 * Set the {@link AsyncErrorHandler} instance to be used by containers created with this factory.
 	 * @param errorHandler the error handler instance.
 	 */
-	public void setAsyncErrorHandler(AsyncErrorHandler<T> errorHandler) {
+	public void setErrorHandler(AsyncErrorHandler<T> errorHandler) {
 		Assert.notNull(errorHandler, "errorHandler cannot be null");
 		this.errorHandler = errorHandler;
 	}
@@ -97,7 +97,7 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Messa
 	 * applied just before method invocation.
 	 * @param messageInterceptor the message interceptor instance.
 	 */
-	public void addAsyncMessageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
+	public void addMessageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
 		Assert.notNull(messageInterceptor, "messageInterceptor cannot be null");
 		this.messageInterceptors.add(messageInterceptor);
 	}
@@ -167,13 +167,14 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Messa
 	}
 
 	private void configureContainer(AbstractMessageListenerContainer<T> container, Endpoint endpoint) {
-		container.setId(endpoint.getId());
 		container.setQueueNames(endpoint.getLogicalNames());
-		ConfigUtils.INSTANCE.acceptIfNotNull(this.containerComponentFactory, container::setContainerComponentFactory)
-				.acceptIfNotNull(this.messageListener, container::setAsyncMessageListener)
-				.acceptIfNotNull(this.errorHandler, container::setAsyncErrorHandler)
-				.acceptIfNotNull(this.messageInterceptors,
-						interceptors -> interceptors.forEach(container::addAsyncMessageInterceptor));
+		ConfigUtils.INSTANCE
+			.acceptIfNotNull(endpoint.getId(), container::setId)
+			.acceptIfNotNull(this.containerComponentFactory, container::setContainerComponentFactory)
+			.acceptIfNotNull(this.messageListener, container::setAsyncMessageListener)
+			.acceptIfNotNull(this.errorHandler, container::setAsyncErrorHandler)
+			.acceptIfNotNull(this.messageInterceptors,
+				interceptors -> interceptors.forEach(container::addAsyncMessageInterceptor));
 	}
 
 	protected abstract C createContainerInstance(Endpoint endpoint, ContainerOptions containerOptions);

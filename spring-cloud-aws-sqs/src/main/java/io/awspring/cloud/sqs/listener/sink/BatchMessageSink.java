@@ -31,13 +31,10 @@ import org.springframework.messaging.Message;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class BatchMessageSink<T> extends AbstractMessageListeningSink<T> {
-
-	Logger logger = LoggerFactory.getLogger(BatchMessageSink.class);
+public class BatchMessageSink<T> extends AbstractMessageProcessingPipelineSink<T> {
 
 	@Override
 	protected CompletableFuture<Void> doEmit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
-		logger.trace("Emitting messages {}", MessageHeaderUtils.getId(messages));
 		return execute(messages, context);
 	}
 
