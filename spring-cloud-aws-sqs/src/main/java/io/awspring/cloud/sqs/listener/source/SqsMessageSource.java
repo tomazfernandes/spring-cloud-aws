@@ -28,6 +28,9 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementExecutor;
+import io.awspring.cloud.sqs.listener.acknowledgement.ExecutingAcknowledgementProcessor;
+import io.awspring.cloud.sqs.listener.acknowledgement.SqsAcknowledgementExecutor;
 import io.awspring.cloud.sqs.support.converter.SqsMessagingMessageConverter;
 import io.awspring.cloud.sqs.support.converter.context.ContextAwareMessagingMessageConverter;
 import io.awspring.cloud.sqs.support.converter.context.MessageConversionContext;
@@ -102,6 +105,7 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	protected void doStart() {
 		Assert.notNull(this.sqsAsyncClient, "sqsAsyncClient not set.");
 		Assert.notNull(this.queueAttributeNames, "queueAttributeNames not set.");
@@ -112,8 +116,15 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 		ConfigUtils.INSTANCE
 			.acceptIfInstance(this.messageConversionContext, SqsAsyncClientAware.class, saca -> saca.setSqsAsyncClient(this.sqsAsyncClient))
 			.acceptIfInstance(this.messageConversionContext, QueueAttributesAware.class, qaa -> qaa.setQueueAttributes(queueAttributes))
-			.acceptIfInstance(getAcknowledgmentProcessor(), SqsAsyncClientAware.class, saca -> saca.setSqsAsyncClient(this.sqsAsyncClient))
-			.acceptIfInstance(getAcknowledgmentProcessor(), QueueAttributesAware.class, qaa -> qaa.setQueueAttributes(queueAttributes));
+			.acceptIfInstance(getAcknowledgmentProcessor(), ExecutingAcknowledgementProcessor.class,
+				eap -> eap.setAcknowledgementExecutor(createAcknowledgementExecutor(queueAttributes)));
+	}
+
+	private AcknowledgementExecutor<T> createAcknowledgementExecutor(QueueAttributes queueAttributes) {
+		SqsAcknowledgementExecutor<T> executor = new SqsAcknowledgementExecutor<>();
+		executor.setQueueAttributes(queueAttributes);
+		executor.setSqsAsyncClient(this.sqsAsyncClient);
+		return executor;
 	}
 
 	@Nullable

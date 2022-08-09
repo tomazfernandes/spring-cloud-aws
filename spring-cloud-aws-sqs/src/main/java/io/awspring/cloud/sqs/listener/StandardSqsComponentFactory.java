@@ -2,13 +2,9 @@ package io.awspring.cloud.sqs.listener;
 
 import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementOrdering;
-import io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementHandler;
 import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementProcessor;
-import io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementMode;
-import io.awspring.cloud.sqs.listener.acknowledgement.handler.AlwaysAcknowledgementHandler;
-import io.awspring.cloud.sqs.listener.acknowledgement.handler.NeverAcknowledgementHandler;
-import io.awspring.cloud.sqs.listener.acknowledgement.handler.OnSuccessAcknowledgementHandler;
-import io.awspring.cloud.sqs.listener.acknowledgement.SqsAcknowledgementProcessor;
+import io.awspring.cloud.sqs.listener.acknowledgement.BatchingAcknowledgementProcessor;
+import io.awspring.cloud.sqs.listener.acknowledgement.ImmediateAcknowledgementProcessor;
 import io.awspring.cloud.sqs.listener.sink.BatchMessageSink;
 import io.awspring.cloud.sqs.listener.sink.FanOutMessageSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
@@ -42,18 +38,21 @@ public class StandardSqsComponentFactory<T> implements ContainerComponentFactory
 	}
 
 	@Override
-	public AcknowledgementHandler<T> createAcknowledgementHandler(ContainerOptions options) {
-		AcknowledgementMode mode = options.getAcknowledgementMode();
-		return AcknowledgementMode.ON_SUCCESS.equals(mode)
-			? new OnSuccessAcknowledgementHandler<>()
-			: AcknowledgementMode.ALWAYS.equals(mode)
-				? new AlwaysAcknowledgementHandler<>()
-				: new NeverAcknowledgementHandler<>();
+	public AcknowledgementProcessor<T> createAcknowledgementProcessor(ContainerOptions options) {
+		return options.getAcknowledgementInterval() == Duration.ZERO && options.getAcknowledgementThreshold() == 0
+			? createAndConfigureImmediateProcessor(options)
+			: createAndConfigureBatchingProcessor(options);
 	}
 
-	@Override
-	public AcknowledgementProcessor<T> createAcknowledgementProcessor(ContainerOptions options) {
-		SqsAcknowledgementProcessor<T> processor = new SqsAcknowledgementProcessor<>();
+	private ImmediateAcknowledgementProcessor<T> createAndConfigureImmediateProcessor(ContainerOptions options) {
+		ImmediateAcknowledgementProcessor<T> processor = new ImmediateAcknowledgementProcessor<>();
+		ConfigUtils.INSTANCE
+			.acceptIfNotNullOrElse(processor::setAcknowledgementOrdering, options.getAcknowledgementOrdering(), DEFAULT_STANDARD_SQS_ACK_ORDERING);
+		return processor;
+	}
+
+	private AcknowledgementProcessor<T> createAndConfigureBatchingProcessor(ContainerOptions options) {
+		BatchingAcknowledgementProcessor<T> processor = new BatchingAcknowledgementProcessor<>();
 		ConfigUtils.INSTANCE
 			.acceptIfNotNullOrElse(processor::setAcknowledgementInterval, options.getAcknowledgementInterval(), DEFAULT_STANDARD_SQS_ACK_INTERVAL)
 			.acceptIfNotNullOrElse(processor::setAcknowledgementThreshold, options.getAcknowledgementThreshold(), DEFAULT_STANDARD_SQS_ACK_THRESHOLD)

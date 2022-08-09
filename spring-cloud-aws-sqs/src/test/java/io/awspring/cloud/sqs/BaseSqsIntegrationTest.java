@@ -52,22 +52,18 @@ abstract class BaseSqsIntegrationTest {
 
 	private static final String LOCAL_STACK_VERSION = "localstack/localstack:1.0.3";
 
-	private static final Object beforeAllMonitor = new Object();
-
 	static LocalStackContainer localstack = new LocalStackContainer(
 			DockerImageName.parse(LOCAL_STACK_VERSION)).withServices(SQS).withReuse(true);
 
 	static StaticCredentialsProvider credentialsProvider;
 
 	@BeforeAll
-	static void beforeAll() {
-		synchronized (beforeAllMonitor) {
-			if (!localstack.isRunning()) {
-				localstack.start();
-				AWSCredentials localstackCredentials = localstack.getDefaultCredentialsProvider().getCredentials();
-				credentialsProvider = StaticCredentialsProvider.create(AwsBasicCredentials
-					.create(localstackCredentials.getAWSAccessKeyId(), localstackCredentials.getAWSSecretKey()));
-			}
+	static synchronized void beforeAll() {
+		if (!localstack.isRunning()) {
+			localstack.start();
+			AWSCredentials localstackCredentials = localstack.getDefaultCredentialsProvider().getCredentials();
+			credentialsProvider = StaticCredentialsProvider.create(AwsBasicCredentials
+				.create(localstackCredentials.getAWSAccessKeyId(), localstackCredentials.getAWSSecretKey()));
 		}
 	}
 
@@ -103,7 +99,8 @@ abstract class BaseSqsIntegrationTest {
 					String queueUrl = v.queueUrl();
 					logger.debug("Purging queue {}", queueName);
 					return client.purgeQueue(req -> req.queueUrl(queueUrl).build());
-				} else {
+				}
+				else {
 					logger.debug("Skipping purge for queue {}", queueName);
 					return CompletableFuture.completedFuture(null);
 				}
@@ -142,7 +139,7 @@ abstract class BaseSqsIntegrationTest {
 		return useLocalStackClient
 			? createLocalStackClient()
 			: SqsAsyncClient.builder().httpClientBuilder(NettyNioAsyncHttpClient.builder()
-				.maxConcurrency(1000)
+				.maxConcurrency(6000)
 			)
 			.build();
 	}
@@ -192,6 +189,22 @@ abstract class BaseSqsIntegrationTest {
 		public LoadSimulator setRandom(boolean random) {
 			this.random = random;
 			return this;
+		}
+
+		@Override
+		public String toString() {
+			if (!this.loadEnabled) {
+				return "no load";
+			}
+			StringBuilder sb = new StringBuilder();
+			if (this.random) {
+				sb.append("random load of up to ");
+			}
+			else {
+				sb.append("load of ");
+			}
+			sb.append(this.bound).append("ms");
+			return sb.toString();
 		}
 	}
 

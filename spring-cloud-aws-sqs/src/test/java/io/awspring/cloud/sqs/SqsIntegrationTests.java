@@ -161,7 +161,6 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		assertThat(latchContainer.manuallyCreatedFactoryLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(latchContainer.manuallyCreatedFactorySourceFactoryLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(latchContainer.manuallyCreatedFactorySinkLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(latchContainer.manuallyCreatedFactoryAckHandlerLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	private void sendMessageTo(String receivesMessageQueueName) throws InterruptedException, ExecutionException {
@@ -244,7 +243,6 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		final CountDownLatch manuallyStartedContainerLatch2 = new CountDownLatch(1);
 		final CountDownLatch manuallyCreatedFactorySourceFactoryLatch = new CountDownLatch(1);
 		final CountDownLatch manuallyCreatedFactorySinkLatch = new CountDownLatch(1);
-		final CountDownLatch manuallyCreatedFactoryAckHandlerLatch = new CountDownLatch(1);
 		final CountDownLatch manuallyCreatedFactoryLatch = new CountDownLatch(1);
 		final CountDownLatch invocableHandlerMethodLatch = new CountDownLatch(1);
 
@@ -312,12 +310,6 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 				public MessageSink<String> createMessageSink(ContainerOptions options) {
 					latchContainer.manuallyCreatedFactorySinkLatch.countDown();
 					return super.createMessageSink(options);
-				}
-
-				@Override
-				public AcknowledgementHandler<String> createAcknowledgementHandler(ContainerOptions options) {
-					latchContainer.manuallyCreatedFactoryAckHandlerLatch.countDown();
-					return super.createAcknowledgementHandler(options);
 				}
 			});
 			factory.setSqsAsyncClient(BaseSqsIntegrationTest.createAsyncClient());

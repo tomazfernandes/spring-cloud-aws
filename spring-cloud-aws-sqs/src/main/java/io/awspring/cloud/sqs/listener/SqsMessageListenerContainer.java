@@ -18,6 +18,11 @@ package io.awspring.cloud.sqs.listener;
 import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.LifecycleUtils;
 import io.awspring.cloud.sqs.SqsThreadFactory;
+import io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementHandler;
+import io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementMode;
+import io.awspring.cloud.sqs.listener.acknowledgement.handler.AlwaysAcknowledgementHandler;
+import io.awspring.cloud.sqs.listener.acknowledgement.handler.NeverAcknowledgementHandler;
+import io.awspring.cloud.sqs.listener.acknowledgement.handler.OnSuccessAcknowledgementHandler;
 import io.awspring.cloud.sqs.listener.pipeline.AcknowledgementHandlerExecutionStage;
 import io.awspring.cloud.sqs.listener.pipeline.AfterProcessingContextInterceptorExecutionStage;
 import io.awspring.cloud.sqs.listener.pipeline.BeforeProcessingContextInterceptorExecutionStage;
@@ -114,27 +119,42 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		return messageSource;
 	}
 
-	@SuppressWarnings("unchecked")
 	private void configureComponents(ContainerComponentFactory<T> componentFactory) {
 		this.componentsTaskExecutor = resolveTaskExecutor();
 		getContainerOptions()
 			.configure(this.messageSources)
 			.configure(this.messageSink);
+		configureMessageSources(componentFactory);
+		configureMessageSink();
+		configurePipelineComponents();
+	}
+
+	@SuppressWarnings("unchecked")
+	private void configureMessageSources(ContainerComponentFactory<T> componentFactory) {
 		ConfigUtils.INSTANCE
 			.acceptMany(this.messageSources, source -> source.setMessageSink(this.messageSink))
 			.acceptManyIfInstance(this.messageSources, SqsAsyncClientAware.class, asca -> asca.setSqsAsyncClient(this.sqsAsyncClient))
 			.acceptManyIfInstance(this.messageSources, PollingMessageSource.class, pms -> pms.setBackPressureHandler(createBackPressureHandler()))
 			.acceptManyIfInstance(this.messageSources, AcknowledgingMessageSource.class, ams -> ams.setAcknowledgementProcessor(componentFactory.createAcknowledgementProcessor(getContainerOptions())))
-			.acceptManyIfInstance(this.messageSources, ExecutorAware.class, teac -> teac.setExecutor(createSourceTaskExecutor()))
+			.acceptManyIfInstance(this.messageSources, ExecutorAware.class, teac -> teac.setExecutor(createSourceTaskExecutor()));
+	}
+
+	@SuppressWarnings("unchecked")
+	private void configureMessageSink() {
+		ConfigUtils.INSTANCE
 			.acceptIfInstance(this.messageSink, SqsAsyncClientAware.class, asca -> asca.setSqsAsyncClient(this.sqsAsyncClient))
 			.acceptIfInstance(this.messageSink, ExecutorAware.class, teac -> teac.setExecutor(this.componentsTaskExecutor))
-			.acceptIfInstance(this.messageSink, MessageProcessingPipelineSink.class, mls -> mls.setMessagePipeline(createMessageProcessingPipeline(componentFactory)))
+			.acceptIfInstance(this.messageSink, MessageProcessingPipelineSink.class, mls -> mls.setMessagePipeline(createMessageProcessingPipeline()));
+	}
+
+	private void configurePipelineComponents() {
+		ConfigUtils.INSTANCE
 			.acceptManyIfInstance(getMessageInterceptors(), ExecutorAware.class, teac -> teac.setExecutor(this.componentsTaskExecutor))
 			.acceptIfInstance(getMessageListener(), ExecutorAware.class, teac -> teac.setExecutor(this.componentsTaskExecutor))
 			.acceptIfInstance(getErrorHandler(), ExecutorAware.class, teac -> teac.setExecutor(this.componentsTaskExecutor));
 	}
 
-	private MessageProcessingPipeline<T> createMessageProcessingPipeline(ContainerComponentFactory<T> componentFactory) {
+	private MessageProcessingPipeline<T> createMessageProcessingPipeline() {
 		return MessageProcessingPipelineBuilder
 			.<T>first(BeforeProcessingContextInterceptorExecutionStage::new)
 			.then(BeforeProcessingInterceptorExecutionStage::new)
@@ -147,7 +167,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 				.interceptors(getMessageInterceptors())
 				.messageListener(getMessageListener())
 				.errorHandler(getErrorHandler())
-				.ackHandler(componentFactory.createAcknowledgementHandler(getContainerOptions()))
+				.ackHandler(createAcknowledgementHandler(getContainerOptions()))
 				.build());
 	}
 
@@ -189,6 +209,15 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		SqsThreadFactory threadFactory = new SqsThreadFactory();
 		threadFactory.setThreadNamePrefix(getId() + "-");
 		return threadFactory;
+	}
+
+	private AcknowledgementHandler<T> createAcknowledgementHandler(ContainerOptions options) {
+		AcknowledgementMode mode = options.getAcknowledgementMode();
+		return AcknowledgementMode.ON_SUCCESS.equals(mode)
+			? new OnSuccessAcknowledgementHandler<>()
+			: AcknowledgementMode.ALWAYS.equals(mode)
+			? new AlwaysAcknowledgementHandler<>()
+			: new NeverAcknowledgementHandler<>();
 	}
 
 	@Override

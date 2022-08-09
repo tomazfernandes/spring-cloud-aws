@@ -14,14 +14,13 @@ import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-public class SqsAcknowledgementProcessor<T> extends ThreadWaitingAcknowledgementProcessor<T> implements SqsAsyncClientAware, QueueAttributesAware {
+public class SqsAcknowledgementExecutor<T> implements AcknowledgementExecutor<T>, SqsAsyncClientAware, QueueAttributesAware {
 
-	private static final Logger logger = LoggerFactory.getLogger(SqsAcknowledgementProcessor.class);
+	private static final Logger logger = LoggerFactory.getLogger(SqsAcknowledgementExecutor.class);
 
     private SqsAsyncClient sqsAsyncClient;
     
@@ -38,50 +37,47 @@ public class SqsAcknowledgementProcessor<T> extends ThreadWaitingAcknowledgement
 	}
 
 	@Override
-	protected CompletableFuture<Void> doProcessAcknowledgements(Collection<Message<T>> messagesToAck) {
+	public CompletableFuture<Void> execute(Collection<Message<T>> messagesToAck) {
 		try {
 			return deleteMessages(messagesToAck);
 		}
 		catch (Exception e) {
-			logger.error("Error acknowleding messages {}", MessageHeaderUtils.getId(messagesToAck), e);
+			logger.error("Error acknowledging messages {}", MessageHeaderUtils.getId(messagesToAck), e);
 			return CompletableFutures.failedFuture(e);
 		}
 	}
 
 	private CompletableFuture<Void> deleteMessages(Collection<Message<T>> messagesToAck) {
-		if (messagesToAck.size() > 10) {
-            // Partition list
-        }
-		List<String> handlesToAck = messagesToAck
-			.stream()
-			.map(message -> MessageHeaderUtils.getHeaderAsString(message, SqsHeaders.SQS_RECEIPT_HANDLE_HEADER))
-			.collect(Collectors.toList());
 		logger.trace("Acknowledging messages: {}", MessageHeaderUtils.getId(messagesToAck));
-		return this.sqsAsyncClient.deleteMessageBatch(createDeleteMessageBatchRequest(handlesToAck)).thenRun(() -> {
-			})
-			.whenComplete((v, t) -> {
-				if (t != null) {
-					logger.error("Error acknowledging messages {}", MessageHeaderUtils.getId(messagesToAck), t);
-				} else {
-					logger.trace("Done acknowledging messages: {}", MessageHeaderUtils.getId(messagesToAck));
-				}
-			});
+		return this.sqsAsyncClient
+			.deleteMessageBatch(createDeleteMessageBatchRequest(messagesToAck))
+			.thenRun(() -> {})
+			.whenComplete((v, t) -> logAckResult(messagesToAck, t));
 	}
 
-	private DeleteMessageBatchRequest createDeleteMessageBatchRequest(List<String> handlesToAck) {
+	private DeleteMessageBatchRequest createDeleteMessageBatchRequest(Collection<Message<T>> messagesToAck) {
 		return DeleteMessageBatchRequest
 			.builder()
 			.queueUrl(this.queueUrl)
-			.entries(handlesToAck.stream().map(this::toDeleteMessageEntry).collect(Collectors.toList()))
+			.entries(messagesToAck.stream().map(this::toDeleteMessageEntry).collect(Collectors.toList()))
 			.build();
 	}
 
-	private DeleteMessageBatchRequestEntry toDeleteMessageEntry(String handle) {
+	private DeleteMessageBatchRequestEntry toDeleteMessageEntry(Message<T> message) {
 		return DeleteMessageBatchRequestEntry
 			.builder()
-			.receiptHandle(handle)
+			.receiptHandle(MessageHeaderUtils.getHeaderAsString(message, SqsHeaders.SQS_RECEIPT_HANDLE_HEADER))
 			.id(UUID.randomUUID().toString())
 			.build();
+	}
+
+	private void logAckResult(Collection<Message<T>> messagesToAck, Throwable t) {
+		if (t != null) {
+			logger.error("Error acknowledging messages {}", MessageHeaderUtils.getId(messagesToAck), t);
+		}
+		else {
+			logger.trace("Done acknowledging messages: {}", MessageHeaderUtils.getId(messagesToAck));
+		}
 	}
 
 }
