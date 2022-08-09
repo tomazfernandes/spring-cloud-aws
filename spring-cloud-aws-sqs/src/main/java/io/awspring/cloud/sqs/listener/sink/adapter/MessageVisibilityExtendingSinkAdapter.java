@@ -132,15 +132,15 @@ public class MessageVisibilityExtendingSinkAdapter<T> extends AbstractDelegating
 		}
 
 		@Override
-		public CompletableFuture<Collection<Message<T>>> afterProcessing(Collection<Message<T>> messages) {
+		public CompletableFuture<Void> afterProcessing(Collection<Message<T>> messages) {
 			this.originalMessageBatchCopy.removeAll(messages);
-			return CompletableFuture.completedFuture(messages);
+			return CompletableFuture.completedFuture(null);
 		}
 
 		@Override
-		public CompletableFuture<Message<T>> afterProcessing(Message<T> message) {
+		public CompletableFuture<Void> afterProcessing(Message<T> message) {
 			this.originalMessageBatchCopy.remove(message);
-			return CompletableFuture.completedFuture(message);
+			return CompletableFuture.completedFuture(null);
 		}
 
 	}

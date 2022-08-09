@@ -58,8 +58,8 @@ public interface AsyncMessageInterceptor<T> {
 	 * @param message the messages to be intercepted.
 	 * @return a completable future containing the resulting message.
 	 */
-	default CompletableFuture<Message<T>> afterProcessing(Message<T> message) {
-		return CompletableFuture.completedFuture(message);
+	default CompletableFuture<Void> afterProcessing(Message<T> message) {
+		return CompletableFuture.completedFuture(null);
 	}
 
 	/**
@@ -67,8 +67,8 @@ public interface AsyncMessageInterceptor<T> {
 	 * @param messages the messages to be intercepted.
 	 * @return a completable future containing the resulting message.
 	 */
-	default CompletableFuture<Collection<Message<T>>> afterProcessing(Collection<Message<T>> messages) {
-		return CompletableFuture.completedFuture(messages);
+	default CompletableFuture<Void> afterProcessing(Collection<Message<T>> messages) {
+		return CompletableFuture.completedFuture(null);
 	}
 
 }

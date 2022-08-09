@@ -50,8 +50,8 @@ public class AcknowledgementHandlerExecutionStage<T> implements MessageProcessin
 		logger.trace("Processing message {}", MessageHeaderUtils.getId(message));
 		return CompletableFutures.handleCompose(this.wrapped.process(message, context),
 			(v, t) -> t == null
-				? acknowledgementHandler.onSuccess(v, context.getAcknowledgmentCallback())
-				: acknowledgementHandler.onError(message, t, context.getAcknowledgmentCallback())
+				? this.acknowledgementHandler.onSuccess(v, context.getAcknowledgmentCallback())
+				: this.acknowledgementHandler.onError(message, t, context.getAcknowledgmentCallback())
 					.thenCompose(theVoid -> CompletableFutures.failedFuture(t)))
 			.thenApply(theVoid -> message);
 	}
@@ -61,8 +61,8 @@ public class AcknowledgementHandlerExecutionStage<T> implements MessageProcessin
 		logger.trace("Processing messages {}", MessageHeaderUtils.getId(messages));
 		return CompletableFutures.handleCompose(this.wrapped.process(messages, context),
 			(v, t) -> t == null
-				? acknowledgementHandler.onSuccess(v, context.getAcknowledgmentCallback())
-				: acknowledgementHandler.onError(messages, t, context.getAcknowledgmentCallback())
+				? this.acknowledgementHandler.onSuccess(v, context.getAcknowledgmentCallback())
+				: this.acknowledgementHandler.onError(messages, t, context.getAcknowledgmentCallback())
 					.thenCompose(theVoid -> CompletableFutures.failedFuture(t)))
 			.thenApply(theVoid -> messages);
 	}

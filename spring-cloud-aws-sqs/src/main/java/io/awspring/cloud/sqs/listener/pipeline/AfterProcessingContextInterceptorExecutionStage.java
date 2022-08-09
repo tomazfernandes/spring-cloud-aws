@@ -15,7 +15,6 @@
  */
 package io.awspring.cloud.sqs.listener.pipeline;
 
-import io.awspring.cloud.sqs.CompletableFutures;
 import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
@@ -23,9 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
@@ -49,22 +46,23 @@ public class AfterProcessingContextInterceptorExecutionStage<T> implements Messa
 
 	@Override
 	public CompletableFuture<Message<T>> process(Message<T> message, MessageProcessingContext<T> context) {
+		logger.trace("Processing message {}", MessageHeaderUtils.getId(message));
 		return this.pipeline.process(message, context).thenApply(msg -> context
 				.getInterceptors()
 				.stream()
-				.reduce(CompletableFuture.completedFuture(msg),
-					(messageFuture, interceptor) -> messageFuture.thenCompose(interceptor::afterProcessing), (a, b) -> a))
-			.thenCompose(Function.identity());
+				.reduce(CompletableFuture.<Void>completedFuture(null),
+					(voidFuture, interceptor) -> voidFuture.thenCompose(theVoid -> interceptor.afterProcessing(message)), (a, b) -> a))
+			.thenCompose(Function.identity()).thenApply(theVoid -> message);
 	}
 
 	@Override
 	public CompletableFuture<Collection<Message<T>>> process(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
+		logger.trace("Processing messages {}", MessageHeaderUtils.getId(messages));
 		return this.pipeline.process(messages, context).thenApply(msg -> context
 				.getInterceptors()
 				.stream()
-				.reduce(CompletableFuture.completedFuture(msg),
-					(messageFuture, interceptor) -> messageFuture.thenCompose(interceptor::afterProcessing), (a, b) -> a))
-			.thenCompose(Function.identity());
+				.reduce(CompletableFuture.<Void>completedFuture(null),
+					(voidFuture, interceptor) -> voidFuture.thenCompose(theVoid -> interceptor.afterProcessing(messages)), (a, b) -> a))
+			.thenCompose(Function.identity()).thenApply(theVoid -> messages);
 	}
-
 }

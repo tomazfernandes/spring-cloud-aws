@@ -44,15 +44,19 @@ public class AfterProcessingInterceptorExecutionStage<T> implements MessageProce
 	@Override
 	public CompletableFuture<Message<T>> process(Message<T> message, MessageProcessingContext<T> context) {
 		logger.debug("Processing message {}", MessageHeaderUtils.getId(message));
-		return this.messageInterceptors.stream().reduce(CompletableFuture.completedFuture(message),
-			(messageFuture, interceptor) -> messageFuture.thenCompose(interceptor::afterProcessing), (a, b) -> a);
+		return this.messageInterceptors.stream()
+			.reduce(CompletableFuture.<Void>completedFuture(null),
+			(voidFuture, interceptor) -> voidFuture.thenCompose(theVoid -> interceptor.afterProcessing(message)), (a, b) -> a)
+			.thenApply(theVoid -> message);
 	}
 
 	@Override
 	public CompletableFuture<Collection<Message<T>>> process(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
 		logger.debug("Processing {} messages", messages.size());
-		return this.messageInterceptors.stream().reduce(CompletableFuture.completedFuture(messages),
-			(messageFuture, interceptor) -> messageFuture.thenCompose(interceptor::afterProcessing), (a, b) -> a);
+		return this.messageInterceptors.stream()
+			.reduce(CompletableFuture.<Void>completedFuture(null),
+				(voidFuture, interceptor) -> voidFuture.thenCompose(theVoid -> interceptor.afterProcessing(messages)), (a, b) -> a)
+			.thenApply(theVoid -> messages);
 	}
 
 }

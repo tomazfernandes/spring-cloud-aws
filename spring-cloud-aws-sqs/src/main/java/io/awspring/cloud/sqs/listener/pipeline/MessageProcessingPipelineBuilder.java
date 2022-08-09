@@ -42,20 +42,21 @@ public class MessageProcessingPipelineBuilder<T> {
 	}
 
 	public MessageProcessingPipelineBuilder<T> then(Function<MessageProcessingConfiguration<T>, MessageProcessingPipeline<T>> pipelineFactory) {
-		return new MessageProcessingPipelineBuilder<>(context -> new ComposingMessagePipelineStage<>(this.pipelineFactory.apply(context), pipelineFactory.apply(context)));
-	}
-
-	public MessageProcessingPipeline<T> build(MessageProcessingConfiguration<T> context) {
-		return this.pipelineFactory.apply(context);
+		return new MessageProcessingPipelineBuilder<>(configuration -> new ComposingMessagePipelineStage<>(this.pipelineFactory.apply(configuration), pipelineFactory.apply(configuration)));
 	}
 
 	public MessageProcessingPipelineBuilder<T> thenWrapWith(BiFunction<MessageProcessingConfiguration<T>, MessageProcessingPipeline<T>, MessageProcessingPipeline<T>> pipelineFactory) {
-		return new MessageProcessingPipelineBuilder<>(context -> pipelineFactory.apply(context, this.pipelineFactory.apply(context)));
+		return new MessageProcessingPipelineBuilder<>(configuration -> pipelineFactory.apply(configuration, this.pipelineFactory.apply(configuration)));
+	}
+
+	public MessageProcessingPipeline<T> build(MessageProcessingConfiguration<T> configuration) {
+		return this.pipelineFactory.apply(configuration);
 	}
 
 	private static class ComposingMessagePipelineStage<T> implements MessageProcessingPipeline<T> {
 
 		private final MessageProcessingPipeline<T> first;
+
 		private final MessageProcessingPipeline<T> second;
 
 		private ComposingMessagePipelineStage(MessageProcessingPipeline<T> first, MessageProcessingPipeline<T> second) {
