@@ -14,12 +14,12 @@ public class ImmediateAcknowledgementProcessor<T> extends AbstractAcknowledgemen
 
 	@Override
 	protected CompletableFuture<Void> doOnAcknowledge(Message<T> message) {
-		return execute(Collections.singletonList(message));
+		return sendToExecutor(Collections.singletonList(message));
 	}
 
 	@Override
 	protected CompletableFuture<Void> doOnAcknowledge(Collection<Message<T>> messages) {
-		return execute(messages);
+		return sendToExecutor(messages);
 	}
 
 }

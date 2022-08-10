@@ -94,6 +94,9 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 		Assert.notNull(this.ackInterval, "ackInterval not set");
 		Assert.notNull(this.ackThreshold, "ackThreshold not set");
 		Assert.notNull(this.executor, "executor not set");
+		Assert.state(this.ackInterval != Duration.ZERO || this.ackThreshold > 0,
+			() -> getClass().getSimpleName() + " cannot be used with Duration.ZERO and acknowledgement threshold 0." +
+				"Consider using a " + ImmediateAcknowledgementProcessor.class + "instead");
 		this.acks = new LinkedBlockingQueue<>();
 		this.acknowledgementProcessor = new ThreadWaitingAcknowledgementProcessor<>(this);
 		this.executor.execute(this.acknowledgementProcessor);
@@ -136,14 +139,15 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 			while (this.parent.isRunning()) {
 				try {
 					Instant now = Instant.now();
-					boolean isTimeElapsed = now.isAfter(this.lastAcknowledgement.plus(this.ackInterval));
+					boolean isTimeElapsed = this.ackInterval != Duration.ZERO && now.isAfter(this.lastAcknowledgement.plus(this.ackInterval));
 					int currentQueueSize = this.acks.size();
-					logger.trace("Queue size: {} now: {} lastAcknowledgement: {} isTimeElapsed: {}", currentQueueSize, now, this.lastAcknowledgement, isTimeElapsed);
-					if (currentQueueSize > 0 && (isTimeElapsed || currentQueueSize >= this.ackThreshold)) {
+					boolean reachedBatchSize = this.ackThreshold != 0 && currentQueueSize >= this.ackThreshold;
+					logger.trace("Queue size: {} isQueueThresholdBreached: {} now: {} lastAcknowledgement: {} isTimeElapsed: {}", currentQueueSize, reachedBatchSize, now, this.lastAcknowledgement, isTimeElapsed);
+					if (currentQueueSize > 0 && (isTimeElapsed || reachedBatchSize)) {
 						int numberOfMessagesToPoll = isTimeElapsed ? currentQueueSize : this.ackThreshold;
-						logger.trace("Polling {} messages from queue. Queue size: {}", numberOfMessagesToPoll, currentQueueSize);
+						logger.trace("Polling {} messages from ack queue. Ack queue size: {}", numberOfMessagesToPoll, currentQueueSize);
 						List<Message<T>> messagesToAck = pollMessagesToAck(numberOfMessagesToPoll);
-						manageFuture(this.parent.execute(messagesToAck));
+						manageFuture(this.parent.sendToExecutor(messagesToAck));
 						this.lastAcknowledgement = Instant.now();
 					}
 					else {
@@ -151,10 +155,11 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 							// Queue is empty, refresh timer
 							this.lastAcknowledgement = Instant.now();
 						}
-						long waitTimeoutMillis = this.lastAcknowledgement.plus(this.ackInterval).toEpochMilli() - System.currentTimeMillis();
+						long timeUntilNextAck = this.lastAcknowledgement.plus(this.ackInterval).toEpochMilli() - System.currentTimeMillis();
+						long waitTimeoutMillis = this.ackInterval != Duration.ZERO && timeUntilNextAck > 0 ? timeUntilNextAck : 1000;
 						logger.trace("Waiting on monitor for {}ms. Queue size: {}", waitTimeoutMillis, this.acks.size());
 						synchronized (this.waitingMonitor) {
-							this.waitingMonitor.wait(waitTimeoutMillis > 0 ? waitTimeoutMillis : 0);
+							this.waitingMonitor.wait(waitTimeoutMillis);
 						}
 						logger.trace("Ack processor thread awakened. Queue size: {}", this.acks.size());
 					}

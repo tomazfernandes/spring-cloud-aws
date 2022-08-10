@@ -111,23 +111,23 @@ public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAc
 		return this.running;
 	}
 
-	protected CompletableFuture<Void> execute(Collection<Message<T>> messagesToAck) {
+	protected CompletableFuture<Void> sendToExecutor(Collection<Message<T>> messagesToAck) {
 		return AcknowledgementOrdering.PARALLEL.equals(this.acknowledgementOrdering)
-			? executeParallel(messagesToAck)
-			: executeOrdered(messagesToAck);
+			? sendToExecutorParallel(messagesToAck)
+			: sendToExecutorOrdered(messagesToAck);
 	}
 
-	private CompletableFuture<Void> executeParallel(Collection<Message<T>> messagesToAck) {
+	private CompletableFuture<Void> sendToExecutorParallel(Collection<Message<T>> messagesToAck) {
 		return CompletableFuture.allOf(partitionMessages(messagesToAck)
 			.stream()
 			.map(this.acknowledgementExecutor::execute)
 			.toArray(CompletableFuture[]::new));
 	}
 
-	private CompletableFuture<Void> executeOrdered(Collection<Message<T>> messagesToAck) {
+	private CompletableFuture<Void> sendToExecutorOrdered(Collection<Message<T>> messagesToAck) {
 		this.orderedExecutionLock.lock();
 		try {
-			partitionMessages(messagesToAck).forEach(batch -> doExecuteOrdered(messagesToAck));
+			partitionMessages(messagesToAck).forEach(batch -> doSendToExecutorOrdered(messagesToAck));
 		}
 		finally {
 			this.orderedExecutionLock.unlock();
@@ -135,7 +135,7 @@ public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAc
 		return this.lastAcknowledgementFuture;
 	}
 
-	private void doExecuteOrdered(Collection<Message<T>> messagesToAck) {
+	private void doSendToExecutorOrdered(Collection<Message<T>> messagesToAck) {
 		this.lastAcknowledgementFuture = this.lastAcknowledgementFuture
 			.thenCompose(theVoid -> this.acknowledgementExecutor.execute(messagesToAck));
 	}

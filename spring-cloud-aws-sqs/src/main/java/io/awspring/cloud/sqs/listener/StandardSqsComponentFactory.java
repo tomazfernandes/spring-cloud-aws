@@ -44,19 +44,19 @@ public class StandardSqsComponentFactory<T> implements ContainerComponentFactory
 			: createAndConfigureBatchingProcessor(options);
 	}
 
-	private ImmediateAcknowledgementProcessor<T> createAndConfigureImmediateProcessor(ContainerOptions options) {
-		ImmediateAcknowledgementProcessor<T> processor = createImmediateProcessor();
+	protected ImmediateAcknowledgementProcessor<T> createAndConfigureImmediateProcessor(ContainerOptions options) {
+		ImmediateAcknowledgementProcessor<T> processor = createImmediateProcessorInstance();
 		ConfigUtils.INSTANCE
 			.acceptIfNotNullOrElse(processor::setAcknowledgementOrdering, options.getAcknowledgementOrdering(), DEFAULT_STANDARD_SQS_ACK_ORDERING);
 		return processor;
 	}
 
-	protected ImmediateAcknowledgementProcessor<T> createImmediateProcessor() {
+	protected ImmediateAcknowledgementProcessor<T> createImmediateProcessorInstance() {
 		return new ImmediateAcknowledgementProcessor<>();
 	}
 
-	private AcknowledgementProcessor<T> createAndConfigureBatchingProcessor(ContainerOptions options) {
-		BatchingAcknowledgementProcessor<T> processor = createBatchingProcessor();
+	protected AcknowledgementProcessor<T> createAndConfigureBatchingProcessor(ContainerOptions options) {
+		BatchingAcknowledgementProcessor<T> processor = createBatchingProcessorInstance();
 		ConfigUtils.INSTANCE
 			.acceptIfNotNullOrElse(processor::setAcknowledgementInterval, options.getAcknowledgementInterval(), DEFAULT_STANDARD_SQS_ACK_INTERVAL)
 			.acceptIfNotNullOrElse(processor::setAcknowledgementThreshold, options.getAcknowledgementThreshold(), DEFAULT_STANDARD_SQS_ACK_THRESHOLD)
@@ -64,7 +64,7 @@ public class StandardSqsComponentFactory<T> implements ContainerComponentFactory
 		return processor;
 	}
 
-	protected BatchingAcknowledgementProcessor<T> createBatchingProcessor() {
+	protected BatchingAcknowledgementProcessor<T> createBatchingProcessorInstance() {
 		return new BatchingAcknowledgementProcessor<>();
 	}
 

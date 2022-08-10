@@ -9,6 +9,7 @@ import io.awspring.cloud.sqs.listener.SqsHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
+import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
@@ -26,9 +27,12 @@ public class SqsAcknowledgementExecutor<T> implements AcknowledgementExecutor<T>
     
     private String queueUrl;
 
+	private String queueName;
+
 	@Override
 	public void setQueueAttributes(QueueAttributes queueAttributes) {
 		this.queueUrl = queueAttributes.getQueueUrl();
+		this.queueName = queueAttributes.getQueueName();
 	}
 
 	@Override
@@ -39,6 +43,7 @@ public class SqsAcknowledgementExecutor<T> implements AcknowledgementExecutor<T>
 	@Override
 	public CompletableFuture<Void> execute(Collection<Message<T>> messagesToAck) {
 		try {
+			Assert.notEmpty(messagesToAck, () -> "empty collection sent to acknowledge in queue " + this.queueName);
 			return deleteMessages(messagesToAck);
 		}
 		catch (Exception e) {
@@ -52,12 +57,12 @@ public class SqsAcknowledgementExecutor<T> implements AcknowledgementExecutor<T>
 	}
 
 	private CompletableFuture<Void> deleteMessages(Collection<Message<T>> messagesToAck) {
-		logger.trace("Acknowledging messages: {}", MessageHeaderUtils.getId(messagesToAck));
+		logger.trace("Acknowledging messages for queue {}: {}", this.queueName, MessageHeaderUtils.getId(messagesToAck));
 		return CompletableFutures.exceptionallyCompose(this.sqsAsyncClient
 			.deleteMessageBatch(createDeleteMessageBatchRequest(messagesToAck))
-			.thenRun(() -> {})
-			.whenComplete((v, t) -> logAckResult(messagesToAck, t)),
-				t -> CompletableFutures.failedFuture(createAcknowledgementException(messagesToAck, t)));
+			.thenRun(() -> {}),
+				t -> CompletableFutures.failedFuture(createAcknowledgementException(messagesToAck, t)))
+			.whenComplete((v, t) -> logAckResult(messagesToAck, t));
 	}
 
 	private DeleteMessageBatchRequest createDeleteMessageBatchRequest(Collection<Message<T>> messagesToAck) {
@@ -78,10 +83,10 @@ public class SqsAcknowledgementExecutor<T> implements AcknowledgementExecutor<T>
 
 	private void logAckResult(Collection<Message<T>> messagesToAck, Throwable t) {
 		if (t != null) {
-			logger.error("Error acknowledging messages {}", MessageHeaderUtils.getId(messagesToAck), t);
+			logger.error("Error acknowledging in queue {} messages {}", this.queueName, MessageHeaderUtils.getId(messagesToAck), t);
 		}
 		else {
-			logger.trace("Done acknowledging messages: {}", MessageHeaderUtils.getId(messagesToAck));
+			logger.trace("Done acknowledging in queue {} messages: {}", this.queueName, MessageHeaderUtils.getId(messagesToAck));
 		}
 	}
 

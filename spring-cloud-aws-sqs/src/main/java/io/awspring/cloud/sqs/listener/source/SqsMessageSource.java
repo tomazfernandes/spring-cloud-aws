@@ -117,14 +117,18 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 			.acceptIfInstance(this.messageConversionContext, SqsAsyncClientAware.class, saca -> saca.setSqsAsyncClient(this.sqsAsyncClient))
 			.acceptIfInstance(this.messageConversionContext, QueueAttributesAware.class, qaa -> qaa.setQueueAttributes(queueAttributes))
 			.acceptIfInstance(getAcknowledgmentProcessor(), ExecutingAcknowledgementProcessor.class,
-				eap -> eap.setAcknowledgementExecutor(createAcknowledgementExecutor(queueAttributes)));
+				eap -> eap.setAcknowledgementExecutor(createAndConfigureAcknowledgementExecutor(queueAttributes)));
 	}
 
-	private AcknowledgementExecutor<T> createAcknowledgementExecutor(QueueAttributes queueAttributes) {
-		SqsAcknowledgementExecutor<T> executor = new SqsAcknowledgementExecutor<>();
+	protected AcknowledgementExecutor<T> createAndConfigureAcknowledgementExecutor(QueueAttributes queueAttributes) {
+		SqsAcknowledgementExecutor<T> executor = createAcknowledgementExecutorInstance();
 		executor.setQueueAttributes(queueAttributes);
 		executor.setSqsAsyncClient(this.sqsAsyncClient);
 		return executor;
+	}
+
+	protected SqsAcknowledgementExecutor<T> createAcknowledgementExecutorInstance() {
+		return new SqsAcknowledgementExecutor<>();
 	}
 
 	@Nullable
@@ -186,7 +190,12 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 
 	private void logMessagesReceived(Collection<Message> v, Throwable t) {
 		if (v != null) {
-			logger.debug("Received {} messages from queue {}", v.size(), this.queueUrl);
+			if (logger.isTraceEnabled()) {
+				logger.trace("Received messages {} from queue {}", v.stream().map(Message::messageId).collect(Collectors.toList()), this.queueUrl);
+			}
+			else {
+				logger.debug("Received {} messages from queue {}", v.size(), this.queueUrl);
+			}
 		}
 	}
 
