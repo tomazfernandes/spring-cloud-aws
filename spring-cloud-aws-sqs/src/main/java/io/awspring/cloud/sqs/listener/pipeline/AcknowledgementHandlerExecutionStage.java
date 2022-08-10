@@ -16,7 +16,7 @@
 package io.awspring.cloud.sqs.listener.pipeline;
 
 import io.awspring.cloud.sqs.CompletableFutures;
-import io.awspring.cloud.sqs.MessageHeaderUtils;
+import io.awspring.cloud.sqs.listener.ListenerExecutionFailedException;
 import io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementHandler;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import org.slf4j.Logger;
@@ -36,35 +36,31 @@ public class AcknowledgementHandlerExecutionStage<T> implements MessageProcessin
 
 	private static final Logger logger = LoggerFactory.getLogger(AcknowledgementHandlerExecutionStage.class);
 
-	private final MessageProcessingPipeline<T> wrapped;
-
 	private final AcknowledgementHandler<T> acknowledgementHandler;
 
-	public AcknowledgementHandlerExecutionStage(MessageProcessingConfiguration<T> configuration, MessageProcessingPipeline<T> wrapped) {
-		this.wrapped = wrapped;
+	public AcknowledgementHandlerExecutionStage(MessageProcessingConfiguration<T> configuration) {
 		this.acknowledgementHandler = configuration.getAckHandler();
 	}
 
 	@Override
-	public CompletableFuture<Message<T>> process(Message<T> message, MessageProcessingContext<T> context) {
-		logger.trace("Processing message {}", MessageHeaderUtils.getId(message));
-		return CompletableFutures.handleCompose(this.wrapped.process(message, context),
+	public CompletableFuture<Message<T>> process(CompletableFuture<Message<T>> messageFuture, MessageProcessingContext<T> context) {
+		return CompletableFutures.handleCompose(messageFuture,
 			(v, t) -> t == null
-				? this.acknowledgementHandler.onSuccess(v, context.getAcknowledgmentCallback())
-				: this.acknowledgementHandler.onError(message, t, context.getAcknowledgmentCallback())
-					.thenCompose(theVoid -> CompletableFutures.failedFuture(t)))
-			.thenApply(theVoid -> message);
+				? this.acknowledgementHandler.onSuccess(v, context.getAcknowledgmentCallback()).thenApply(theVoid -> v)
+				: this.acknowledgementHandler.onError(ListenerExecutionFailedException.unwrapMessage(t), t, context.getAcknowledgmentCallback())
+				.thenCompose(theVoid -> CompletableFutures.failedFuture(t)));
 	}
 
 	@Override
-	public CompletableFuture<Collection<Message<T>>> process(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
-		logger.trace("Processing messages {}", MessageHeaderUtils.getId(messages));
-		return CompletableFutures.handleCompose(this.wrapped.process(messages, context),
-			(v, t) -> t == null
-				? this.acknowledgementHandler.onSuccess(v, context.getAcknowledgmentCallback())
-				: this.acknowledgementHandler.onError(messages, t, context.getAcknowledgmentCallback())
-					.thenCompose(theVoid -> CompletableFutures.failedFuture(t)))
-			.thenApply(theVoid -> messages);
+	public CompletableFuture<Collection<Message<T>>> processMany(CompletableFuture<Collection<Message<T>>> messagesFuture, MessageProcessingContext<T> context) {
+		return CompletableFutures.handleCompose(messagesFuture,
+			(v, t) -> {
+				Collection<Message<T>> originalMessages = ListenerExecutionFailedException.unwrapMessages(t);
+				return t == null
+						? this.acknowledgementHandler.onSuccess(v, context.getAcknowledgmentCallback()).thenApply(theVoid -> v)
+						: this.acknowledgementHandler.onError(originalMessages, t, context.getAcknowledgmentCallback())
+							.thenApply(theVoid -> originalMessages);
+			});
 	}
 
 }

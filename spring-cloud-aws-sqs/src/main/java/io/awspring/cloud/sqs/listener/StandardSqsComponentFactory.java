@@ -45,19 +45,27 @@ public class StandardSqsComponentFactory<T> implements ContainerComponentFactory
 	}
 
 	private ImmediateAcknowledgementProcessor<T> createAndConfigureImmediateProcessor(ContainerOptions options) {
-		ImmediateAcknowledgementProcessor<T> processor = new ImmediateAcknowledgementProcessor<>();
+		ImmediateAcknowledgementProcessor<T> processor = createImmediateProcessor();
 		ConfigUtils.INSTANCE
 			.acceptIfNotNullOrElse(processor::setAcknowledgementOrdering, options.getAcknowledgementOrdering(), DEFAULT_STANDARD_SQS_ACK_ORDERING);
 		return processor;
 	}
 
+	protected ImmediateAcknowledgementProcessor<T> createImmediateProcessor() {
+		return new ImmediateAcknowledgementProcessor<>();
+	}
+
 	private AcknowledgementProcessor<T> createAndConfigureBatchingProcessor(ContainerOptions options) {
-		BatchingAcknowledgementProcessor<T> processor = new BatchingAcknowledgementProcessor<>();
+		BatchingAcknowledgementProcessor<T> processor = createBatchingProcessor();
 		ConfigUtils.INSTANCE
 			.acceptIfNotNullOrElse(processor::setAcknowledgementInterval, options.getAcknowledgementInterval(), DEFAULT_STANDARD_SQS_ACK_INTERVAL)
 			.acceptIfNotNullOrElse(processor::setAcknowledgementThreshold, options.getAcknowledgementThreshold(), DEFAULT_STANDARD_SQS_ACK_THRESHOLD)
 			.acceptIfNotNullOrElse(processor::setAcknowledgementOrdering, options.getAcknowledgementOrdering(), DEFAULT_STANDARD_SQS_ACK_ORDERING);
 		return processor;
+	}
+
+	protected BatchingAcknowledgementProcessor<T> createBatchingProcessor() {
+		return new BatchingAcknowledgementProcessor<>();
 	}
 
 }

@@ -120,13 +120,13 @@ public class AsyncComponentAdapters {
 		}
 
 		@Override
-		public CompletableFuture<Void> afterProcessing(Message<T> message) {
-			return execute(() -> this.blockingMessageInterceptor.afterProcessing(message));
+		public CompletableFuture<Void> afterProcessing(Message<T> message, Throwable t) {
+			return execute(() -> this.blockingMessageInterceptor.afterProcessing(message, t));
 		}
 
 		@Override
-		public CompletableFuture<Void> afterProcessing(Collection<Message<T>> messages) {
-			return execute(() -> this.blockingMessageInterceptor.afterProcessing(messages));
+		public CompletableFuture<Void> afterProcessing(Collection<Message<T>> messages, Throwable t) {
+			return execute(() -> this.blockingMessageInterceptor.afterProcessing(messages, t));
 		}
 	}
 

@@ -17,6 +17,7 @@ import software.amazon.awssdk.services.sqs.model.Message;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -38,11 +39,11 @@ public class SqsHeaderMapper implements ContextAwareHeaderMapper<Message> {
 		MessageHeaderAccessor accessor = new MessageHeaderAccessor();
 		accessor.copyHeadersIfAbsent(getMessageSystemAttributesAsHeaders(source));
 		accessor.copyHeadersIfAbsent(getMessageAttributesAsHeaders(source));
-		accessor.setHeader(SqsHeaders.SQS_MESSAGE_ID_HEADER, source.messageId());
+		accessor.setHeader(SqsHeaders.SQS_MESSAGE_ID_HEADER, UUID.fromString(source.messageId()));
 		accessor.setHeader(SqsHeaders.SQS_RECEIPT_HANDLE_HEADER, source.receiptHandle());
 		accessor.setHeader(SqsHeaders.SQS_SOURCE_DATA_HEADER, source);
 		accessor.setHeader(SqsHeaders.SQS_RECEIVED_AT_HEADER, Instant.now());
-		MessageHeaders messageHeaders = accessor.getMessageHeaders();
+		MessageHeaders messageHeaders = accessor.toMessageHeaders();
 		logger.trace("Mapped headers {} for message {}", messageHeaders, source.messageId());
 		return messageHeaders;
 	}

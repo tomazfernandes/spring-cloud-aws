@@ -44,8 +44,7 @@ public class MessageHeaderUtils {
 	 * @return the ID.
 	 */
 	public static String getId(Message<?> message) {
-		return Objects.requireNonNull(message.getHeaders().get(MessageHeaders.ID, UUID.class),
-				() -> "No ID found for message " + message).toString();
+		return getHeader(message, SqsHeaders.SQS_MESSAGE_ID_HEADER, UUID.class).toString();
 	}
 
 	public static <T> String getId(Collection<Message<T>> messages) {
@@ -70,7 +69,7 @@ public class MessageHeaderUtils {
 	}
 
 	public static <T> T getHeader(Message<?> message, String headerName, Class<T> classToCast) {
-		return Objects.requireNonNull(message.getHeaders().get(headerName, classToCast), () -> String.format("Header %s not found in message %s", headerName, getId(message)));
+		return Objects.requireNonNull(message.getHeaders().get(headerName, classToCast), () -> String.format("Header %s not found in message %s", headerName, message));
 	}
 
 	public static String getHeaderAsString(Message<?> message, String headerName) {

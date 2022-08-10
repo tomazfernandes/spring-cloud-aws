@@ -25,7 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
-import org.springframework.util.StopWatch;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityBatchRequestEntry;
 
@@ -132,13 +131,13 @@ public class MessageVisibilityExtendingSinkAdapter<T> extends AbstractDelegating
 		}
 
 		@Override
-		public CompletableFuture<Void> afterProcessing(Collection<Message<T>> messages) {
+		public CompletableFuture<Void> afterProcessing(Collection<Message<T>> messages, Throwable t) {
 			this.originalMessageBatchCopy.removeAll(messages);
 			return CompletableFuture.completedFuture(null);
 		}
 
 		@Override
-		public CompletableFuture<Void> afterProcessing(Message<T> message) {
+		public CompletableFuture<Void> afterProcessing(Message<T> message, Throwable t) {
 			this.originalMessageBatchCopy.remove(message);
 			return CompletableFuture.completedFuture(null);
 		}

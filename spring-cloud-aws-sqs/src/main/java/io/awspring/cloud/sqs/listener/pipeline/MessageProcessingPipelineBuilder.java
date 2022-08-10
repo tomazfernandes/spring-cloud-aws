@@ -49,6 +49,10 @@ public class MessageProcessingPipelineBuilder<T> {
 		return new MessageProcessingPipelineBuilder<>(configuration -> pipelineFactory.apply(configuration, this.pipelineFactory.apply(configuration)));
 	}
 
+	public MessageProcessingPipelineBuilder<T> thenInTheFuture(Function<MessageProcessingConfiguration<T>, MessageProcessingPipeline<T>> pipelineFactory) {
+		return new MessageProcessingPipelineBuilder<>(configuration -> new FutureComposingMessagePipelineStage<>(this.pipelineFactory.apply(configuration), pipelineFactory.apply(configuration)));
+	}
+
 	public MessageProcessingPipeline<T> build(MessageProcessingConfiguration<T> configuration) {
 		return this.pipelineFactory.apply(configuration);
 	}
@@ -72,6 +76,28 @@ public class MessageProcessingPipelineBuilder<T> {
 		@Override
 		public CompletableFuture<Collection<Message<T>>> process(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
 			return first.process(messages, context).thenCompose(msgs -> second.process(msgs, context));
+		}
+	}
+
+	private static class FutureComposingMessagePipelineStage<T> implements MessageProcessingPipeline<T> {
+
+		private final MessageProcessingPipeline<T> first;
+
+		private final MessageProcessingPipeline<T> second;
+
+		private FutureComposingMessagePipelineStage(MessageProcessingPipeline<T> first, MessageProcessingPipeline<T> second) {
+			this.first = first;
+			this.second = second;
+		}
+
+		@Override
+		public CompletableFuture<Message<T>> process(Message<T> message, MessageProcessingContext<T> context) {
+			return second.process(first.process(message, context), context);
+		}
+
+		@Override
+		public CompletableFuture<Collection<Message<T>>> process(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
+			return second.processMany(first.process(messages, context), context);
 		}
 	}
 

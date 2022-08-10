@@ -15,6 +15,14 @@
  */
 package io.awspring.cloud.sqs.listener;
 
+import org.springframework.lang.Nullable;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.stream.Collectors;
+
 /**
  * Exception thrown when the {@link AsyncMessageListener} completes with an exception.
  *
@@ -23,8 +31,59 @@ package io.awspring.cloud.sqs.listener;
  */
 public class ListenerExecutionFailedException extends RuntimeException {
 
-	public ListenerExecutionFailedException(String message, Exception ex) {
-		super(message, ex);
+	private final Collection<Message<?>> failedMessages;
+
+	public ListenerExecutionFailedException(String message, Throwable cause, Message<?> failedMessage) {
+		super(message, cause);
+		this.failedMessages = Collections.singletonList(failedMessage);
+	}
+
+	public <T> ListenerExecutionFailedException(String message, Throwable cause, Collection<Message<T>> failedMessages) {
+		super(message, cause);
+		this.failedMessages = failedMessages.stream().map(msg -> (Message<?>) msg).collect(Collectors.toList());;
+	}
+
+	public Message<?> getFailedMessage() {
+		return this.failedMessages.iterator().next();
+	}
+
+	public Collection<Message<?>> getFailedMessages() {
+		return this.failedMessages;
+	}
+
+	@SuppressWarnings("unchecked")
+	@Nullable
+	public static <T> Message<T> unwrapMessage(Throwable t) {
+		Throwable exception = findListenerException(t);
+		return t == null
+				? null
+				: exception != null
+					? (Message<T>) ((ListenerExecutionFailedException) exception).getFailedMessage()
+					: (Message<T>) createDefaultErrorMessage(t);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Nullable
+	public static <T> Collection<Message<T>> unwrapMessages(Throwable t) {
+		Throwable exception = findListenerException(t);
+		return t == null
+			? null
+			: exception != null
+				? ((ListenerExecutionFailedException) exception).getFailedMessages().stream().map(msg -> (Message<T>) msg).collect(Collectors.toList())
+				: Collections.singletonList((Message<T>) createDefaultErrorMessage(t));
+	}
+
+	@Nullable
+	private static Throwable findListenerException(Throwable t) {
+		return t == null
+			? null
+			: t instanceof ListenerExecutionFailedException
+				? t
+				: t.getCause();
+	}
+
+	private static Message<Throwable> createDefaultErrorMessage(Throwable t) {
+		return MessageBuilder.withPayload(t).build();
 	}
 
 }

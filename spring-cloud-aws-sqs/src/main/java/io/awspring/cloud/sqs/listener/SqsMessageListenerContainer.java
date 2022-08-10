@@ -18,11 +18,6 @@ package io.awspring.cloud.sqs.listener;
 import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.LifecycleUtils;
 import io.awspring.cloud.sqs.SqsThreadFactory;
-import io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementHandler;
-import io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementMode;
-import io.awspring.cloud.sqs.listener.acknowledgement.handler.AlwaysAcknowledgementHandler;
-import io.awspring.cloud.sqs.listener.acknowledgement.handler.NeverAcknowledgementHandler;
-import io.awspring.cloud.sqs.listener.acknowledgement.handler.OnSuccessAcknowledgementHandler;
 import io.awspring.cloud.sqs.listener.pipeline.AcknowledgementHandlerExecutionStage;
 import io.awspring.cloud.sqs.listener.pipeline.AfterProcessingContextInterceptorExecutionStage;
 import io.awspring.cloud.sqs.listener.pipeline.BeforeProcessingContextInterceptorExecutionStage;
@@ -129,7 +124,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 			.configure(this.messageSources)
 			.configure(this.messageSink);
 		configureMessageSources(componentFactory);
-		configureMessageSink();
+		configureMessageSink(componentFactory, createMessageProcessingPipeline(componentFactory));
 		configurePipelineComponents();
 	}
 
@@ -145,12 +140,12 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 	}
 
 	@SuppressWarnings("unchecked")
-	private void configureMessageSink() {
+	private void configureMessageSink(ContainerComponentFactory<T> componentFactory, MessageProcessingPipeline<T> messageProcessingPipeline) {
 		ConfigUtils.INSTANCE
 			.acceptIfInstance(this.messageSink, IdentifiableContainerComponent.class, icc -> icc.setId(getId()))
 			.acceptIfInstance(this.messageSink, SqsAsyncClientAware.class, asca -> asca.setSqsAsyncClient(this.sqsAsyncClient))
 			.acceptIfInstance(this.messageSink, ExecutorAware.class, teac -> teac.setExecutor(this.componentsTaskExecutor))
-			.acceptIfInstance(this.messageSink, MessageProcessingPipelineSink.class, mls -> mls.setMessagePipeline(createMessageProcessingPipeline()));
+			.acceptIfInstance(this.messageSink, MessageProcessingPipelineSink.class, mls -> mls.setMessagePipeline(messageProcessingPipeline));
 	}
 
 	private void configurePipelineComponents() {
@@ -160,20 +155,20 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 			.acceptIfInstance(getErrorHandler(), ExecutorAware.class, teac -> teac.setExecutor(this.componentsTaskExecutor));
 	}
 
-	private MessageProcessingPipeline<T> createMessageProcessingPipeline() {
+	private MessageProcessingPipeline<T> createMessageProcessingPipeline(ContainerComponentFactory<T> componentFactory) {
 		return MessageProcessingPipelineBuilder
 			.<T>first(BeforeProcessingContextInterceptorExecutionStage::new)
 			.then(BeforeProcessingInterceptorExecutionStage::new)
 			.then(MessageListenerExecutionStage::new)
-			.thenWrapWith(ErrorHandlerExecutionStage::new)
-			.thenWrapWith(AcknowledgementHandlerExecutionStage::new)
-			.then(AfterProcessingInterceptorExecutionStage::new)
-			.thenWrapWith(AfterProcessingContextInterceptorExecutionStage::new)
+			.thenInTheFuture(ErrorHandlerExecutionStage::new)
+			.thenInTheFuture(AfterProcessingInterceptorExecutionStage::new)
+			.thenInTheFuture(AfterProcessingContextInterceptorExecutionStage::new)
+			.thenInTheFuture(AcknowledgementHandlerExecutionStage::new)
 			.build(MessageProcessingConfiguration.<T>builder()
 				.interceptors(getMessageInterceptors())
 				.messageListener(getMessageListener())
 				.errorHandler(getErrorHandler())
-				.ackHandler(createAcknowledgementHandler(getContainerOptions()))
+				.ackHandler(componentFactory.createAcknowledgementHandler(getContainerOptions()))
 				.build());
 	}
 
@@ -215,15 +210,6 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		SqsThreadFactory threadFactory = new SqsThreadFactory();
 		threadFactory.setThreadNamePrefix(getId() + "-");
 		return threadFactory;
-	}
-
-	private AcknowledgementHandler<T> createAcknowledgementHandler(ContainerOptions options) {
-		AcknowledgementMode mode = options.getAcknowledgementMode();
-		return AcknowledgementMode.ON_SUCCESS.equals(mode)
-			? new OnSuccessAcknowledgementHandler<>()
-			: AcknowledgementMode.ALWAYS.equals(mode)
-				? new AlwaysAcknowledgementHandler<>()
-				: new NeverAcknowledgementHandler<>();
 	}
 
 	@Override

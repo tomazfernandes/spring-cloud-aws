@@ -43,10 +43,10 @@ public interface MessageInterceptor<T> {
 		return messages;
 	}
 
-	default void afterProcessing(Message<T> message) {
+	default void afterProcessing(Message<T> message, Throwable t) {
 	}
 
-	default void afterProcessing(Collection<Message<T>> messages) {
+	default void afterProcessing(Collection<Message<T>> messages, Throwable t) {
 	}
 
 }

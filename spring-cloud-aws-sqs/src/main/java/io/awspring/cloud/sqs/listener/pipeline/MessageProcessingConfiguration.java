@@ -95,9 +95,9 @@ public class MessageProcessingConfiguration<T> {
 		}
 
 		public MessageProcessingConfiguration<T> build() {
-			Assert.notNull(this.messageListener, "messageListener cannot be null provided");
-			Assert.notNull(this.errorHandler, "No error handler provided");
-			Assert.notNull(this.acknowledgementHandler, "No ackHandler provided");
+			Assert.notNull(this.messageListener, "messageListener cannot be null");
+			Assert.notNull(this.errorHandler, "errorHandler cannot be null");
+			Assert.notNull(this.acknowledgementHandler, "ackHandler cannot be null");
 			Assert.notNull(this.messageInterceptors, "messageInterceptors cannot be null");
 			return new MessageProcessingConfiguration<>(this);
 		}

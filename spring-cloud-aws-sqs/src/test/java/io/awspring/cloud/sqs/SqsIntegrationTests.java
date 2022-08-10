@@ -77,10 +77,15 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 	private static final String LOW_RESOURCE_FACTORY_NAME = "lowResourceFactory";
 
 	static final String RECEIVES_MESSAGE_QUEUE_NAME = "receives_message_test_queue";
+
 	static final String DOES_NOT_ACK_ON_ERROR_QUEUE_NAME = "does_not_ack_test_queue";
+
 	static final String RESOLVES_PARAMETER_TYPES_QUEUE_NAME = "resolves_parameter_type_test_queue";
+
 	static final String MANUALLY_START_CONTAINER = "manually_start_container_test_queue";
+
 	static final String MANUALLY_CREATE_CONTAINER_QUEUE_NAME = "manually_create_container_test_queue";
+
 	static final String MANUALLY_CREATE_FACTORY_QUEUE_NAME = "manually_create_factory_test_queue";
 
 	@BeforeAll

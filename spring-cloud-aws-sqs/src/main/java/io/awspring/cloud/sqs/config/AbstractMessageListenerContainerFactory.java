@@ -123,9 +123,9 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Messa
 		this.messageListener = messageListener;
 	}
 
-	public void setContainerComponentFactory(ContainerComponentFactory<T> containerComponentFactorySupplier) {
-		Assert.notNull(containerComponentFactorySupplier, "containerComponentFactory cannot be null");
-		this.containerComponentFactory = containerComponentFactorySupplier;
+	public void setContainerComponentFactory(ContainerComponentFactory<T> containerComponentFactory) {
+		Assert.notNull(containerComponentFactory, "containerComponentFactory cannot be null");
+		this.containerComponentFactory = containerComponentFactory;
 	}
 
 	/**

@@ -18,7 +18,6 @@ package io.awspring.cloud.sqs.listener.interceptor;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 
-import io.awspring.cloud.sqs.CompletableFutures;
 import org.springframework.messaging.Message;
 
 /**
@@ -58,7 +57,7 @@ public interface AsyncMessageInterceptor<T> {
 	 * @param message the messages to be intercepted.
 	 * @return a completable future containing the resulting message.
 	 */
-	default CompletableFuture<Void> afterProcessing(Message<T> message) {
+	default CompletableFuture<Void> afterProcessing(Message<T> message, Throwable t) {
 		return CompletableFuture.completedFuture(null);
 	}
 
@@ -67,7 +66,7 @@ public interface AsyncMessageInterceptor<T> {
 	 * @param messages the messages to be intercepted.
 	 * @return a completable future containing the resulting message.
 	 */
-	default CompletableFuture<Void> afterProcessing(Collection<Message<T>> messages) {
+	default CompletableFuture<Void> afterProcessing(Collection<Message<T>> messages, Throwable t) {
 		return CompletableFuture.completedFuture(null);
 	}
 

@@ -22,9 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -42,14 +40,14 @@ public class BeforeProcessingContextInterceptorExecutionStage<T> implements Mess
 
 	@Override
 	public CompletableFuture<Message<T>> process(Message<T> message, MessageProcessingContext<T> context) {
-		logger.trace("Processing context interceptors for messages {}", MessageHeaderUtils.getId(message));
+		logger.trace("Processing messages {}", MessageHeaderUtils.getId(message));
 		return context.getInterceptors().stream().reduce(CompletableFuture.completedFuture(message),
 			(messageFuture, interceptor) -> messageFuture.thenCompose(interceptor::intercept), (a, b) -> a);
 	}
 
 	@Override
 	public CompletableFuture<Collection<Message<T>>> process(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
-		logger.trace("Processing context interceptors for messages {}", MessageHeaderUtils.getId(messages));
+		logger.trace("Processing messages {}", MessageHeaderUtils.getId(messages));
 		return context.getInterceptors().stream().reduce(CompletableFuture.completedFuture(messages),
 			(messagesFuture, interceptor) -> messagesFuture.thenCompose(interceptor::intercept), (a, b) -> a);
 	}

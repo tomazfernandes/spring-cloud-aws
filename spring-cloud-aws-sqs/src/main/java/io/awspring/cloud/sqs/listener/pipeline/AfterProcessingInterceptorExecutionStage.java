@@ -15,7 +15,8 @@
  */
 package io.awspring.cloud.sqs.listener.pipeline;
 
-import io.awspring.cloud.sqs.MessageHeaderUtils;
+import io.awspring.cloud.sqs.CompletableFutures;
+import io.awspring.cloud.sqs.listener.ListenerExecutionFailedException;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import org.slf4j.Logger;
@@ -42,21 +43,34 @@ public class AfterProcessingInterceptorExecutionStage<T> implements MessageProce
 	}
 
 	@Override
-	public CompletableFuture<Message<T>> process(Message<T> message, MessageProcessingContext<T> context) {
-		logger.debug("Processing message {}", MessageHeaderUtils.getId(message));
-		return this.messageInterceptors.stream()
+	public CompletableFuture<Message<T>> process(CompletableFuture<Message<T>> messageFuture, MessageProcessingContext<T> context) {
+		return CompletableFutures.handleCompose(messageFuture,
+			(v, t) -> t == null
+				? applyInterceptors(v, null, this.messageInterceptors)
+				: applyInterceptors(ListenerExecutionFailedException.unwrapMessage(t), t, this.messageInterceptors)
+				.thenCompose(msg -> CompletableFutures.failedFuture(t)));
+	}
+
+	private CompletableFuture<Message<T>> applyInterceptors(Message<T> message, Throwable t, Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
+		return messageInterceptors.stream()
 			.reduce(CompletableFuture.<Void>completedFuture(null),
-			(voidFuture, interceptor) -> voidFuture.thenCompose(theVoid -> interceptor.afterProcessing(message)), (a, b) -> a)
+				(voidFuture, interceptor) -> voidFuture.thenCompose(theVoid -> interceptor.afterProcessing(message, t)), (a, b) -> a)
 			.thenApply(theVoid -> message);
 	}
 
 	@Override
-	public CompletableFuture<Collection<Message<T>>> process(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
-		logger.debug("Processing {} messages", messages.size());
-		return this.messageInterceptors.stream()
-			.reduce(CompletableFuture.<Void>completedFuture(null),
-				(voidFuture, interceptor) -> voidFuture.thenCompose(theVoid -> interceptor.afterProcessing(messages)), (a, b) -> a)
-			.thenApply(theVoid -> messages);
+	public CompletableFuture<Collection<Message<T>>> processMany(CompletableFuture<Collection<Message<T>>> messagesFuture, MessageProcessingContext<T> context) {
+		return CompletableFutures.handleCompose(messagesFuture,
+			(v, t) -> t == null
+				? applyInterceptors(v, null, this.messageInterceptors)
+				: applyInterceptors(ListenerExecutionFailedException.unwrapMessages(t), t, this.messageInterceptors)
+				.thenCompose(msg -> CompletableFutures.failedFuture(t)));
 	}
 
+	private CompletableFuture<Collection<Message<T>>> applyInterceptors(Collection<Message<T>> messages, Throwable t, Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
+		return messageInterceptors.stream()
+			.reduce(CompletableFuture.<Void>completedFuture(null),
+				(voidFuture, interceptor) -> voidFuture.thenCompose(theVoid -> interceptor.afterProcessing(messages, t)), (a, b) -> a)
+			.thenApply(theVoid -> messages);
+	}
 }

@@ -88,8 +88,6 @@ class SqsFifoIntegrationTests extends BaseSqsIntegrationTest {
 
 	static final String FIFO_MANUALLY_CREATE_BATCH_FACTORY_QUEUE_NAME = "fifo_manually_create_batch_factory_test_queue.fifo";
 
-	private static final String FLAKY_ON_LOCALSTACK = "Test disabled because it's flaky under LocalStack, but passes every time on AWS";
-
 	@Autowired
 	LatchContainer latchContainer;
 
@@ -166,7 +164,6 @@ class SqsFifoIntegrationTests extends BaseSqsIntegrationTest {
 		assertThat(receivesMessageInOrderListener.receivedMessages).containsExactlyElementsOf(values);
 	}
 
-	////@Disabled(FLAKY_ON_LOCALSTACK)
 	@Test
 	void receivesMessagesInOrderFromManyMessageGroups() throws Exception {
 		latchContainer.receivesMessageManyGroupsLatch = new CountDownLatch(this.settings.messagesPerTest * 3);
@@ -184,7 +181,6 @@ class SqsFifoIntegrationTests extends BaseSqsIntegrationTest {
 		assertThat(receivesMessageInOrderManyGroupsListener.receivedMessages.get(messageGroupId3)).containsExactlyElementsOf(values);
 	}
 
-	//@Disabled(FLAKY_ON_LOCALSTACK)
 	@Test
 	void stopsProcessingAfterException() throws Exception {
 		latchContainer.stopsProcessingOnErrorLatch1 = new CountDownLatch(4);
@@ -200,7 +196,6 @@ class SqsFifoIntegrationTests extends BaseSqsIntegrationTest {
 		assertThat(stopsOnErrorListener.receivedMessagesAfterException).containsExactlyElementsOf(values.subList(3, this.settings.messagesPerTest));
 	}
 
-	//@Disabled(FLAKY_ON_LOCALSTACK)
 	@Test
 	void receivesBatchesManyGroups() throws Exception {
 		latchContainer.receivesBatchManyGroupsLatch = new CountDownLatch(this.settings.messagesPerTest * 3);
