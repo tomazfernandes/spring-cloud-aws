@@ -16,14 +16,13 @@
 package io.awspring.cloud.sqs.listener.sink.adapter;
 
 import io.awspring.cloud.sqs.ConfigUtils;
-import io.awspring.cloud.sqs.LifecycleUtils;
+import io.awspring.cloud.sqs.LifecycleHandler;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.SqsAsyncClientAware;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import io.awspring.cloud.sqs.listener.sink.MessageProcessingPipelineSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import io.awspring.cloud.sqs.listener.ExecutorAware;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
@@ -64,17 +63,17 @@ public abstract class AbstractDelegatingMessageListeningSinkAdapter<T> implement
 
 	@Override
 	public void start() {
-		LifecycleUtils.startParallel(this.delegate);
+		LifecycleHandler.get().start(this.delegate);
 	}
 
 	@Override
 	public void stop() {
-		LifecycleUtils.stopParallel(this.delegate);
+		LifecycleHandler.get().stop(this.delegate);
 	}
 
 	@Override
 	public boolean isRunning() {
-		return LifecycleUtils.isRunning(this.delegate);
+		return LifecycleHandler.get().isRunning(this.delegate);
 	}
 
 	@Override

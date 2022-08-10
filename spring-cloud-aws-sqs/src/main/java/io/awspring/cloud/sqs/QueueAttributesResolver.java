@@ -17,24 +17,25 @@ import java.util.concurrent.ExecutionException;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class QueueAttributesProvider {
+public class QueueAttributesResolver {
 
 	private static final Logger logger = LoggerFactory.getLogger(QueueAttributes.class);
 
-	private QueueAttributesProvider() {
+	private QueueAttributesResolver() {
 	}
 
-	public static QueueAttributes fetch(String queueName, SqsAsyncClient sqsAsyncClient, Collection<QueueAttributeName> queueAttributeNames) {
+	public static QueueAttributes resolve(String queueName, SqsAsyncClient sqsAsyncClient, Collection<QueueAttributeName> queueAttributeNames) {
 		try {
+			logger.debug("Resolving attributes for queue {}", queueName);
 			String queueUrl = resolveQueueUrl(queueName, sqsAsyncClient);
 			return new QueueAttributes(queueName, queueUrl, getQueueAttributes(sqsAsyncClient, queueAttributeNames, queueUrl, queueName));
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
-			throw new IllegalStateException("Interrupted while fetching attributes for queue " + queueName, e);
+			throw new SqsException("Interrupted while resolving attributes for queue " + queueName, e);
 		}
-		catch (ExecutionException e) {
-			throw new IllegalStateException("ExecutionException while fetching attributes for queue " + queueName, e);
+		catch (Exception e) {
+			throw new SqsException("Error resolving attributes for queue " + queueName, e);
 		}
 	}
 
@@ -51,9 +52,9 @@ public class QueueAttributesProvider {
 	}
 
 	private static Map<QueueAttributeName, String> doGetAttributes(SqsAsyncClient sqsAsyncClient, Collection<QueueAttributeName> queueAttributeNames, String queueUrl, String queueName) throws InterruptedException, ExecutionException {
-		logger.debug("Fetching attributes {} for queue {}", queueAttributeNames, queueName);
+		logger.debug("Resolving attributes {} for queue {}", queueAttributeNames, queueName);
 		Map<QueueAttributeName, String> attributes = sqsAsyncClient.getQueueAttributes(req -> req.queueUrl(queueUrl).attributeNames(queueAttributeNames)).get().attributes();
-		logger.debug("Attributes for queue {} received", queueName);
+		logger.debug("Attributes for queue {} resolved", queueName);
 		return attributes;
 	}
 
@@ -66,6 +67,5 @@ public class QueueAttributesProvider {
 			return false;
 		}
 	}
-
 
 }

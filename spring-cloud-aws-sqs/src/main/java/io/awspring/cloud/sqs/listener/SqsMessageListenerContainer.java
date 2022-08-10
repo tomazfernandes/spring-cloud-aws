@@ -16,7 +16,7 @@
 package io.awspring.cloud.sqs.listener;
 
 import io.awspring.cloud.sqs.ConfigUtils;
-import io.awspring.cloud.sqs.LifecycleUtils;
+import io.awspring.cloud.sqs.LifecycleHandler;
 import io.awspring.cloud.sqs.SqsThreadFactory;
 import io.awspring.cloud.sqs.listener.pipeline.AcknowledgementHandlerExecutionStage;
 import io.awspring.cloud.sqs.listener.pipeline.AfterProcessingContextInterceptorExecutionStage;
@@ -82,7 +82,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 		this.messageSources = createMessageSources(componentFactory);
 		this.messageSink = componentFactory.createMessageSink(getContainerOptions());
 		configureComponents(componentFactory);
-		LifecycleUtils.startParallel(this.messageSink, this.messageSources);
+		LifecycleHandler.get().start(this.messageSink, this.messageSources);
 	}
 
 	private ContainerComponentFactory<T> determineComponentFactory() {
@@ -214,7 +214,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 
 	@Override
 	protected void doStop() {
-		LifecycleUtils.stopParallel(this.messageSources, this.messageSink);
+		LifecycleHandler.get().stop(this.messageSources, this.messageSink);
 		shutdownComponentsTaskExecutor();
 		logger.debug("Container {} stopped", getId());
 	}

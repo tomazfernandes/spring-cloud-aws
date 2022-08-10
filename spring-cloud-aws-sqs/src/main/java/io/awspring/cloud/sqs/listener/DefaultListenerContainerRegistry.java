@@ -20,7 +20,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import io.awspring.cloud.sqs.LifecycleUtils;
+import io.awspring.cloud.sqs.LifecycleHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.lang.Nullable;
@@ -47,8 +47,6 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 
 	private final Map<String, MessageListenerContainer<?>> listenerContainers = new ConcurrentHashMap<>();
 
-	private boolean isParallelLifecycleManagement = true;
-
 	private final Object lifecycleMonitor = new Object();
 
 	private volatile boolean running = false;
@@ -73,26 +71,12 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 		return this.listenerContainers.get(id);
 	}
 
-	/**
-	 * Set to false if {@link org.springframework.context.SmartLifecycle} management should be made sequentially rather
-	 * than in parallel.
-	 * @param parallelLifecycleManagement the value.
-	 */
-	public void setParallelLifecycleManagement(boolean parallelLifecycleManagement) {
-		this.isParallelLifecycleManagement = parallelLifecycleManagement;
-	}
-
 	@Override
 	public void start() {
 		synchronized (this.lifecycleMonitor) {
 			logger.debug("Starting {}", getClass().getSimpleName());
+			LifecycleHandler.get().start(this.listenerContainers.values());
 			this.running = true;
-			if (this.isParallelLifecycleManagement) {
-				LifecycleUtils.startParallel(this.listenerContainers.values());
-			}
-			else {
-				this.listenerContainers.values().forEach(MessageListenerContainer::start);
-			}
 			logger.debug("{} started", getClass().getSimpleName());
 		}
 	}
@@ -102,12 +86,7 @@ public class DefaultListenerContainerRegistry implements MessageListenerContaine
 		synchronized (this.lifecycleMonitor) {
 			logger.debug("Stopping {}", getClass().getSimpleName());
 			this.running = false;
-			if (this.isParallelLifecycleManagement) {
-				LifecycleUtils.stopParallel(this.listenerContainers.values());
-			}
-			else {
-				this.listenerContainers.values().forEach(MessageListenerContainer::stop);
-			}
+			LifecycleHandler.get().stop(this.listenerContainers.values());
 		}
 	}
 

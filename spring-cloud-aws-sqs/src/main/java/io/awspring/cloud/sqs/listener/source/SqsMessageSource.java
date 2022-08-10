@@ -16,7 +16,7 @@
 package io.awspring.cloud.sqs.listener.source;
 
 import io.awspring.cloud.sqs.ConfigUtils;
-import io.awspring.cloud.sqs.QueueAttributesProvider;
+import io.awspring.cloud.sqs.QueueAttributesResolver;
 import io.awspring.cloud.sqs.listener.QueueAttributesAware;
 import io.awspring.cloud.sqs.listener.SqsAsyncClientAware;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
@@ -110,7 +110,7 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 		Assert.notNull(this.sqsAsyncClient, "sqsAsyncClient not set.");
 		Assert.notNull(this.queueAttributeNames, "queueAttributeNames not set.");
 		Assert.notNull(this.messagingMessageConverter, "messagingMessageConverter not set.");
-		QueueAttributes queueAttributes = QueueAttributesProvider.fetch(getPollingEndpointName(), this.sqsAsyncClient, this.queueAttributeNames);
+		QueueAttributes queueAttributes = QueueAttributesResolver.resolve(getPollingEndpointName(), this.sqsAsyncClient, this.queueAttributeNames);
 		this.queueUrl = queueAttributes.getQueueUrl();
 		this.messageConversionContext = maybeCreateConversionContext();
 		ConfigUtils.INSTANCE

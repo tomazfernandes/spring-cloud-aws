@@ -16,8 +16,6 @@
 package io.awspring.cloud.sqs.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.awspring.cloud.sqs.ConfigUtils;
-import io.awspring.cloud.sqs.listener.DefaultListenerContainerRegistry;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.MessageListenerContainerRegistry;
 import java.util.ArrayList;
@@ -71,8 +69,6 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 
 	private ObjectMapper objectMapper;
 
-	private boolean isParallelLifecycleManagement = true;
-
 	/**
 	 * Set a custom {@link MessageHandlerMethodFactory} implementation.
 	 * @param messageHandlerMethodFactory the instance.
@@ -114,16 +110,6 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 		this.messageListenerContainerRegistryBeanName = messageListenerContainerRegistryBeanName;
 	}
 
-	/**
-	 * Set to false if {@link org.springframework.context.SmartLifecycle} management by the
-	 * {@link io.awspring.cloud.sqs.listener.DefaultListenerContainerRegistry} should be made sequentially rather than
-	 * in parallel.
-	 * @param parallelLifecycleManagement the value.
-	 */
-	public void setParallelLifecycleManagement(boolean parallelLifecycleManagement) {
-		this.isParallelLifecycleManagement = parallelLifecycleManagement;
-	}
-
 	public void setObjectMapper(ObjectMapper objectMapper) {
 		this.objectMapper = objectMapper;
 	}
@@ -163,8 +149,6 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 			this.listenerContainerRegistry = beanFactory.getBean(this.messageListenerContainerRegistryBeanName,
 					MessageListenerContainerRegistry.class);
 		}
-		ConfigUtils.INSTANCE.acceptIfInstance(this.listenerContainerRegistry, DefaultListenerContainerRegistry.class,
-			dlcr -> dlcr.setParallelLifecycleManagement(this.isParallelLifecycleManagement));
 		this.endpoints.forEach(this::process);
 	}
 
