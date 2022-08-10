@@ -78,6 +78,8 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 
 	static final String RECEIVES_MESSAGE_QUEUE_NAME = "receives_message_test_queue";
 
+	static final String RECEIVES_MESSAGE_ASYNC_QUEUE_NAME = "receives_message_async_test_queue";
+
 	static final String DOES_NOT_ACK_ON_ERROR_QUEUE_NAME = "does_not_ack_test_queue";
 
 	static final String RESOLVES_PARAMETER_TYPES_QUEUE_NAME = "resolves_parameter_type_test_queue";
@@ -94,6 +96,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		CompletableFuture.allOf(
 			createQueue(client, RECEIVES_MESSAGE_QUEUE_NAME),
 			createQueue(client, DOES_NOT_ACK_ON_ERROR_QUEUE_NAME, singletonMap(QueueAttributeName.VISIBILITY_TIMEOUT, "1")),
+			createQueue(client, RECEIVES_MESSAGE_ASYNC_QUEUE_NAME),
 			createQueue(client, RESOLVES_PARAMETER_TYPES_QUEUE_NAME, singletonMap(QueueAttributeName.VISIBILITY_TIMEOUT, "20")),
 			createQueue(client, MANUALLY_CREATE_CONTAINER_QUEUE_NAME),
 			createQueue(client, MANUALLY_START_CONTAINER),
@@ -118,6 +121,12 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		sendMessageTo(RECEIVES_MESSAGE_QUEUE_NAME);
 		assertThat(latchContainer.receivesMessageLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(latchContainer.invocableHandlerMethodLatch.await(10, TimeUnit.SECONDS)).isTrue();
+	}
+
+	@Test
+	void receivesMessageAsync() throws Exception {
+		sendMessageTo(RECEIVES_MESSAGE_ASYNC_QUEUE_NAME);
+		assertThat(latchContainer.receivesMessageAsyncLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Test
@@ -195,6 +204,19 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		}
 	}
 
+	static class ReceivesMessageAsyncListener {
+
+		@Autowired
+		LatchContainer latchContainer;
+
+		@SqsListener(queueNames = RECEIVES_MESSAGE_ASYNC_QUEUE_NAME, id = "receivesMessageAsyncContainer")
+		CompletableFuture<Void> listen(String message) {
+			logger.debug("Received message in Listener Method: " + message);
+			latchContainer.receivesMessageAsyncLatch.countDown();
+			return CompletableFuture.completedFuture(null);
+		}
+	}
+
 	static class DoesNotAckOnErrorListener {
 
 		@Autowired
@@ -237,6 +259,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 	static class LatchContainer {
 
 		final CountDownLatch receivesMessageLatch = new CountDownLatch(1);
+		final CountDownLatch receivesMessageAsyncLatch = new CountDownLatch(1);
 		final CountDownLatch doesNotAckLatch = new CountDownLatch(2);
 		final CountDownLatch errorHandlerLatch = new CountDownLatch(2);
 		final CountDownLatch interceptorLatch = new CountDownLatch(2);
@@ -326,6 +349,11 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Bean
 		ReceivesMessageListener receivesMessageListener() {
 			return new ReceivesMessageListener();
+		}
+
+		@Bean
+		ReceivesMessageAsyncListener receivesMessageAsyncListener() {
+			return new ReceivesMessageAsyncListener();
 		}
 
 		@Bean
