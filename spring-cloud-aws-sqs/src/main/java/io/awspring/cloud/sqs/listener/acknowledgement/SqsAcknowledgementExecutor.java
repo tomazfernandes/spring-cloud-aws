@@ -42,17 +42,22 @@ public class SqsAcknowledgementExecutor<T> implements AcknowledgementExecutor<T>
 			return deleteMessages(messagesToAck);
 		}
 		catch (Exception e) {
-			logger.error("Error acknowledging messages {}", MessageHeaderUtils.getId(messagesToAck), e);
-			return CompletableFutures.failedFuture(e);
+			return CompletableFutures.failedFuture(createAcknowledgementException(messagesToAck, e));
 		}
+	}
+
+	private SqsAcknowledgementException createAcknowledgementException(Collection<Message<T>> messagesToAck, Throwable e) {
+		return new SqsAcknowledgementException("Error acknowledging messages " + MessageHeaderUtils.getId(messagesToAck),
+			messagesToAck, this.queueUrl, e);
 	}
 
 	private CompletableFuture<Void> deleteMessages(Collection<Message<T>> messagesToAck) {
 		logger.trace("Acknowledging messages: {}", MessageHeaderUtils.getId(messagesToAck));
-		return this.sqsAsyncClient
+		return CompletableFutures.exceptionallyCompose(this.sqsAsyncClient
 			.deleteMessageBatch(createDeleteMessageBatchRequest(messagesToAck))
 			.thenRun(() -> {})
-			.whenComplete((v, t) -> logAckResult(messagesToAck, t));
+			.whenComplete((v, t) -> logAckResult(messagesToAck, t)),
+				t -> CompletableFutures.failedFuture(createAcknowledgementException(messagesToAck, t)));
 	}
 
 	private DeleteMessageBatchRequest createDeleteMessageBatchRequest(Collection<Message<T>> messagesToAck) {

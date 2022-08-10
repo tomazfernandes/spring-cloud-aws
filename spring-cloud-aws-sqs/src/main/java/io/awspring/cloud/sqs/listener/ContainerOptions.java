@@ -66,6 +66,8 @@ public class ContainerOptions {
 
 	private static final AcknowledgementMode DEFAULT_ACKNOWLEDGEMENT_MODE = AcknowledgementMode.ON_SUCCESS;
 
+	private static final PermitAcquiringStrategy DEFAULT_PERMIT_ACQUIRING_STRATEGY = PermitAcquiringStrategy.PARTIAL_BATCHES_ENABLED;
+
 	private int maxInflightMessagesPerQueue = DEFAULT_MAX_INFLIGHT_MSG_PER_QUEUE;
 
 	private int messagesPerPoll = DEFAULT_MESSAGES_PER_POLL;
@@ -73,6 +75,8 @@ public class ContainerOptions {
 	private Duration pollTimeout = DEFAULT_POLL_TIMEOUT;
 
 	private Duration permitAcquireTimeout = DEFAULT_SEMAPHORE_TIMEOUT;
+
+	private PermitAcquiringStrategy permitAcquiringStrategy = DEFAULT_PERMIT_ACQUIRING_STRATEGY;
 
 	private Duration sourceShutdownTimeout = DEFAULT_SHUTDOWN_TIMEOUT;
 
@@ -108,7 +112,7 @@ public class ContainerOptions {
 	 * Set the maximum allowed number of inflight messages for each queue.
 	 * @return this instance.
 	 */
-	public ContainerOptions maxInflightMessagesPerQueue(int maxInflightMessagesPerQueue) {
+	public ContainerOptions setMaxInflightMessagesPerQueue(int maxInflightMessagesPerQueue) {
 		this.maxInflightMessagesPerQueue = maxInflightMessagesPerQueue;
 		return this;
 	}
@@ -118,9 +122,15 @@ public class ContainerOptions {
 	 * @param permitAcquireTimeout the timeout.
 	 * @return this instance.
 	 */
-	public ContainerOptions permitAcquireTimeout(Duration permitAcquireTimeout) {
+	public ContainerOptions setPermitAcquireTimeout(Duration permitAcquireTimeout) {
 		Assert.notNull(permitAcquireTimeout, "semaphoreAcquireTimeout cannot be null");
 		this.permitAcquireTimeout = permitAcquireTimeout;
+		return this;
+	}
+
+	public ContainerOptions setPermitAcquiringStrategy(PermitAcquiringStrategy permitAcquiringStrategy) {
+		Assert.notNull(permitAcquiringStrategy, "permitAcquiringStrategy cannot be null");
+		this.permitAcquiringStrategy = permitAcquiringStrategy;
 		return this;
 	}
 
@@ -129,7 +139,7 @@ public class ContainerOptions {
 	 * @param messagesPerPoll the number of messages.
 	 * @return this instance.
 	 */
-	public ContainerOptions messagesPerPoll(int messagesPerPoll) {
+	public ContainerOptions setMessagesPerPoll(int messagesPerPoll) {
 		this.messagesPerPoll = messagesPerPoll;
 		return this;
 	}
@@ -139,75 +149,75 @@ public class ContainerOptions {
 	 * @param pollTimeout the poll timeout.
 	 * @return this instance.
 	 */
-	public ContainerOptions pollTimeout(Duration pollTimeout) {
+	public ContainerOptions setPollTimeout(Duration pollTimeout) {
 		Assert.notNull(pollTimeout, "pollTimeout cannot be null");
 		this.pollTimeout = pollTimeout;
 		return this;
 	}
 
-	public ContainerOptions messageDeliveryStrategy(MessageDeliveryStrategy messageDeliveryStrategy) {
+	public ContainerOptions setMessageDeliveryStrategy(MessageDeliveryStrategy messageDeliveryStrategy) {
 		Assert.notNull(messageDeliveryStrategy, "messageDeliveryStrategy cannot be null");
 		this.messageDeliveryStrategy = messageDeliveryStrategy;
 		return this;
 	}
 
-	public ContainerOptions containerComponentsTaskExecutor(Executor executor) {
+	public ContainerOptions setContainerComponentsTaskExecutor(Executor executor) {
 		Assert.notNull(executor, "executor cannot be null");
 		this.containerComponentsTaskExecutor = executor;
 		return this;
 	}
 
-	public ContainerOptions sourceShutdownTimeout(Duration sourceShutdownTimeout) {
+	public ContainerOptions setSourceShutdownTimeout(Duration sourceShutdownTimeout) {
 		this.sourceShutdownTimeout = sourceShutdownTimeout;
 		return this;
 	}
 
-	public ContainerOptions backPressureMode(BackPressureMode backPressureMode) {
+	public ContainerOptions setBackPressureMode(BackPressureMode backPressureMode) {
 		this.backPressureMode = backPressureMode;
 		return this;
 	}
 
-	public ContainerOptions queueAttributes(Collection<QueueAttributeName> queueAttributeNames) {
+	public ContainerOptions setQueueAttributeNames(Collection<QueueAttributeName> queueAttributeNames) {
 		this.queueAttributeNames = queueAttributeNames;
 		return this;
 	}
 
-	public ContainerOptions messageAttributes(Collection<String> messageAttributeNames) {
+	public ContainerOptions setMessageAttributeNames(Collection<String> messageAttributeNames) {
 		this.messageAttributeNames = messageAttributeNames;
 		return this;
 	}
 
-	public ContainerOptions messageSystemAttributes(Collection<MessageSystemAttributeName> messageSystemAttributeNames) {
+	public ContainerOptions setMessageSystemAttributeNames(Collection<MessageSystemAttributeName> messageSystemAttributeNames) {
 		this.messageSystemAttributeNames = messageSystemAttributeNames.stream().map(MessageSystemAttributeName::toString).collect(Collectors.toList());
 		return this;
 	}
 
-	public ContainerOptions messageVisibility(Duration messageVisibility) {
+	public ContainerOptions setMessageVisibility(Duration messageVisibility) {
 		this.messageVisibility = messageVisibility;
 		return this;
 	}
 
-	public ContainerOptions acknowledgementInterval(Duration acknowledgementInterval) {
+	public ContainerOptions setAcknowledgementInterval(Duration acknowledgementInterval) {
 		this.acknowledgementInterval = acknowledgementInterval;
 		return this;
 	}
 
-	public ContainerOptions acknowledgementThreshold(Integer acknowledgementThreshold) {
+	public ContainerOptions setAcknowledgementThreshold(Integer acknowledgementThreshold) {
 		this.acknowledgementThreshold = acknowledgementThreshold;
 		return this;
 	}
 
-	public ContainerOptions acknowledgementMode(AcknowledgementMode acknowledgementMode) {
+	public ContainerOptions setAcknowledgementMode(AcknowledgementMode acknowledgementMode) {
 		this.acknowledgementMode = acknowledgementMode;
 		return this;
 	}
 
-	public ContainerOptions acknowledgementOrdering(AcknowledgementOrdering acknowledgementOrdering) {
+	public ContainerOptions setAcknowledgementOrdering(AcknowledgementOrdering acknowledgementOrdering) {
 		this.acknowledgementOrdering = acknowledgementOrdering;
 		return this;
 	}
 
-	public ContainerOptions messageConverter(MessagingMessageConverter<?> messageConverter) {
+	public ContainerOptions setMessageConverter(MessagingMessageConverter<?> messageConverter) {
 		this.messageConverter = messageConverter;
 		return this;
 	}
@@ -242,6 +252,10 @@ public class ContainerOptions {
 	 */
 	public Duration getPermitAcquireTimeout() {
 		return this.permitAcquireTimeout;
+	}
+
+	public PermitAcquiringStrategy getPermitAcquiringStrategy() {
+		return this.permitAcquiringStrategy;
 	}
 
 	public Executor getContainerComponentsTaskExecutor() {
@@ -325,4 +339,5 @@ public class ContainerOptions {
 				this.messagesPerPoll, this.maxInflightMessagesPerQueue));
 		Assert.isTrue(this.messagesPerPoll <= 10, "messagesPerPoll must be less than or equal to 10.");
 	}
+
 }

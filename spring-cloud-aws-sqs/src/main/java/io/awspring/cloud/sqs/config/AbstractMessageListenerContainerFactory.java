@@ -154,7 +154,7 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Messa
 	private void configureContainerOptions(Endpoint endpoint, ContainerOptions options) {
 		ConfigUtils.INSTANCE
 			.acceptIfInstance(endpoint, AbstractEndpoint.class, abstractEndpoint ->
-				abstractEndpoint.configureMessageDeliveryStrategy(options::messageDeliveryStrategy));
+				abstractEndpoint.configureMessageDeliveryStrategy(options::setMessageDeliveryStrategy));
 		doConfigureContainerOptions(endpoint, options);
 	}
 

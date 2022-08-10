@@ -143,8 +143,9 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 	@Test
 	void manuallyStartsContainerAndChangesComponent() throws Exception {
 		SqsMessageListenerContainer<String> container = new SqsMessageListenerContainer<>(createAsyncClient(),
-				ContainerOptions.create().permitAcquireTimeout(Duration.ofSeconds(1))
-						.pollTimeout(Duration.ofSeconds(3)));
+				ContainerOptions.create()
+					.setPermitAcquireTimeout(Duration.ofSeconds(1))
+					.setPollTimeout(Duration.ofSeconds(3)));
 		container.setQueueNames(MANUALLY_START_CONTAINER);
 		container.setMessageListener(msg -> latchContainer.manuallyStartedContainerLatch.countDown());
 		container.start();
@@ -259,9 +260,9 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		public SqsMessageListenerContainerFactory<String> defaultSqsListenerContainerFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions()
-				.permitAcquireTimeout(Duration.ofSeconds(1))
-				.queueAttributes(Collections.singletonList(QueueAttributeName.QUEUE_ARN))
-				.pollTimeout(Duration.ofSeconds(3));
+				.setPermitAcquireTimeout(Duration.ofSeconds(1))
+				.setQueueAttributeNames(Collections.singletonList(QueueAttributeName.QUEUE_ARN))
+				.setPollTimeout(Duration.ofSeconds(3));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			return factory;
 		}
@@ -270,10 +271,10 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		public SqsMessageListenerContainerFactory<String> lowResourceFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions()
-				.maxInflightMessagesPerQueue(1)
-				.pollTimeout(Duration.ofSeconds(3))
-				.messagesPerPoll(1)
-				.permitAcquireTimeout(Duration.ofSeconds(1));
+				.setMaxInflightMessagesPerQueue(1)
+				.setPollTimeout(Duration.ofSeconds(3))
+				.setMessagesPerPoll(1)
+				.setPermitAcquireTimeout(Duration.ofSeconds(1));
 			factory.setErrorHandler(testErrorHandler());
 			factory.addMessageInterceptor(testInterceptor());
 			factory.addMessageInterceptor(testInterceptor());
@@ -285,8 +286,8 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		public MessageListenerContainer<String> manuallyCreatedContainer(SqsAsyncClient client) throws Exception {
 			String queueUrl = client.getQueueUrl(req -> req.queueName(MANUALLY_CREATE_CONTAINER_QUEUE_NAME)).get().queueUrl();
 			ContainerOptions options = ContainerOptions.create()
-				.permitAcquireTimeout(Duration.ofSeconds(1))
-				.pollTimeout(Duration.ofSeconds(3));
+				.setPermitAcquireTimeout(Duration.ofSeconds(1))
+				.setPollTimeout(Duration.ofSeconds(3));
 			SqsMessageListenerContainer<String> container = new SqsMessageListenerContainer<>(createAsyncClient(),
 				options);
 			container.setQueueNames(queueUrl);
@@ -298,10 +299,10 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		public SqsMessageListenerContainer<String> manuallyCreatedFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions()
-				.maxInflightMessagesPerQueue(1)
-				.pollTimeout(Duration.ofSeconds(3))
-				.messagesPerPoll(1)
-				.permitAcquireTimeout(Duration.ofSeconds(1));
+				.setMaxInflightMessagesPerQueue(1)
+				.setPollTimeout(Duration.ofSeconds(3))
+				.setMessagesPerPoll(1)
+				.setPermitAcquireTimeout(Duration.ofSeconds(1));
 			factory.setContainerComponentFactory(new StandardSqsComponentFactory<String>() {
 				@Override
 				public MessageSource<String> createMessageSource(ContainerOptions options) {

@@ -54,9 +54,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @since 3.0
  */
 @SpringBootTest
-class SqsPojoConversionIntegrationTests extends BaseSqsIntegrationTest {
+class SqsMessageConversionIntegrationTests extends BaseSqsIntegrationTest {
 
-	private static final Logger logger = LoggerFactory.getLogger(SqsPojoConversionIntegrationTests.class);
+	private static final Logger logger = LoggerFactory.getLogger(SqsMessageConversionIntegrationTests.class);
 
 	static final String RESOLVES_POJO_TYPES_QUEUE_NAME = "resolves_pojo_test_queue";
 	static final String RESOLVES_POJO_MESSAGE_QUEUE_NAME = "resolves_pojo_message_test_queue";
@@ -226,8 +226,8 @@ class SqsPojoConversionIntegrationTests extends BaseSqsIntegrationTest {
 		public SqsMessageListenerContainerFactory<String> defaultSqsListenerContainerFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions()
-				.permitAcquireTimeout(Duration.ofSeconds(1))
-				.pollTimeout(Duration.ofSeconds(3));
+				.setPermitAcquireTimeout(Duration.ofSeconds(1))
+				.setPollTimeout(Duration.ofSeconds(3));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			return factory;
 		}
@@ -235,9 +235,10 @@ class SqsPojoConversionIntegrationTests extends BaseSqsIntegrationTest {
 		@Bean
 		public SqsMessageListenerContainerFactory<MyInterface> myPojoListenerContainerFactory() {
 			SqsMessageListenerContainerFactory<MyInterface> factory = new SqsMessageListenerContainerFactory<>();
-			factory.getContainerOptions().queueAttributes(Collections.singletonList(QueueAttributeName.VISIBILITY_TIMEOUT))
-				.permitAcquireTimeout(Duration.ofSeconds(1))
-				.pollTimeout(Duration.ofSeconds(1));
+			factory.getContainerOptions()
+				.setQueueAttributeNames(Collections.singletonList(QueueAttributeName.VISIBILITY_TIMEOUT))
+				.setPermitAcquireTimeout(Duration.ofSeconds(1))
+				.setPollTimeout(Duration.ofSeconds(1));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			factory.addMessageInterceptor(new AsyncMessageInterceptor<MyInterface>() {
 				@Override

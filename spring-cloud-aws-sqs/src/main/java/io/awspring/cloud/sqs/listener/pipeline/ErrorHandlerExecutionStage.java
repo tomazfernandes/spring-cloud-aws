@@ -52,8 +52,13 @@ public class ErrorHandlerExecutionStage<T> implements MessageProcessingPipeline<
 		logger.debug("Handling error {} for message {}", t, MessageHeaderUtils.getId(failedMessage));
 		return CompletableFutures
 			.exceptionallyCompose(this.errorHandler.handle(failedMessage, t).thenApply(theVoid -> failedMessage),
-				eht -> CompletableFutures.failedFuture(
-					new ListenerExecutionFailedException("Error handler returned an exception", eht, failedMessage)));
+				eht -> CompletableFutures.failedFuture(maybeWrap(failedMessage, eht)));
+	}
+
+	private Throwable maybeWrap(Message<T> failedMessage, Throwable eht) {
+		return ListenerExecutionFailedException.hasListenerException(eht)
+			? eht
+			: new ListenerExecutionFailedException("Error handler returned an exception", eht, failedMessage);
 	}
 
 	@Override

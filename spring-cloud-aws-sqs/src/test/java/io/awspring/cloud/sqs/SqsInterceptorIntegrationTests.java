@@ -167,10 +167,10 @@ class SqsInterceptorIntegrationTests extends BaseSqsIntegrationTest {
 		public SqsMessageListenerContainerFactory<String> defaultSqsListenerContainerFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions()
-				.permitAcquireTimeout(Duration.ofSeconds(1))
-				.queueAttributes(Collections.singletonList(QueueAttributeName.QUEUE_ARN))
-				.acknowledgementMode(AcknowledgementMode.ALWAYS)
-				.pollTimeout(Duration.ofSeconds(3));
+				.setPermitAcquireTimeout(Duration.ofSeconds(1))
+				.setQueueAttributeNames(Collections.singletonList(QueueAttributeName.QUEUE_ARN))
+				.setAcknowledgementMode(AcknowledgementMode.ALWAYS)
+				.setPollTimeout(Duration.ofSeconds(3));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			factory.addMessageInterceptor(getMessageInterceptor());
 			factory.setErrorHandler(getErrorHandler());

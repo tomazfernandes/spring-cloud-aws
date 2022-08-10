@@ -20,7 +20,7 @@ import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import io.awspring.cloud.sqs.listener.MessageDeliveryStrategy;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.adapter.AsyncMessagingMessageListenerAdapter;
-import io.awspring.cloud.sqs.listener.adapter.BlockingMessagingMessageListenerAdapter;
+import io.awspring.cloud.sqs.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.core.BridgeMethodResolver;
 import org.springframework.core.MethodParameter;
 import org.springframework.lang.Nullable;
@@ -143,7 +143,7 @@ public abstract class AbstractEndpoint implements HandlerMethodEndpoint {
 		InvocableHandlerMethod handlerMethod = this.handlerMethodFactory.createInvocableHandlerMethod(this.bean, this.method);
 		return CompletionStage.class.isAssignableFrom(handlerMethod.getReturnType().getParameterType())
 			? new AsyncMessagingMessageListenerAdapter<>(handlerMethod)
-			: AsyncComponentAdapters.adapt(new BlockingMessagingMessageListenerAdapter<>(handlerMethod));
+			: AsyncComponentAdapters.adapt(new MessagingMessageListenerAdapter<>(handlerMethod));
 	}
 
 }

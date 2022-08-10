@@ -86,4 +86,8 @@ public class ListenerExecutionFailedException extends RuntimeException {
 		return MessageBuilder.withPayload(t).build();
 	}
 
+	public static boolean hasListenerException(Throwable t) {
+		return findListenerException(t) != null;
+	}
+
 }

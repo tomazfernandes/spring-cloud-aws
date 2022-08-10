@@ -419,8 +419,8 @@ class SqsFifoIntegrationTests extends BaseSqsIntegrationTest {
 		public SqsMessageListenerContainerFactory<String> defaultSqsListenerContainerFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions()
-				.permitAcquireTimeout(Duration.ofSeconds(1))
-				.pollTimeout(Duration.ofSeconds(3));
+				.setPermitAcquireTimeout(Duration.ofSeconds(1))
+				.setPollTimeout(Duration.ofSeconds(3));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			return factory;
 		}
@@ -429,8 +429,8 @@ class SqsFifoIntegrationTests extends BaseSqsIntegrationTest {
 		public MessageListenerContainer<String> manuallyCreatedContainer() {
 			SqsMessageListenerContainer<String> container = new SqsMessageListenerContainer<>(createAsyncClient(),
 					ContainerOptions.create()
-						.permitAcquireTimeout(Duration.ofSeconds(1))
-						.pollTimeout(Duration.ofSeconds(1)));
+						.setPermitAcquireTimeout(Duration.ofSeconds(1))
+						.setPollTimeout(Duration.ofSeconds(1)));
 			container.setQueueNames(FIFO_MANUALLY_CREATE_CONTAINER_QUEUE_NAME);
 			container.setMessageListener(msg -> {
 				messagesContainer.manuallyCreatedContainerMessages.add(msg.getPayload());
@@ -443,9 +443,9 @@ class SqsFifoIntegrationTests extends BaseSqsIntegrationTest {
 		public MessageListenerContainer<String> manuallyCreatedBatchContainer() {
 			SqsMessageListenerContainer<String> container = new SqsMessageListenerContainer<>(createAsyncClient(),
 					ContainerOptions.create()
-						.permitAcquireTimeout(Duration.ofSeconds(1))
-						.pollTimeout(Duration.ofSeconds(1))
-						.messageDeliveryStrategy(MessageDeliveryStrategy.BATCH));
+						.setPermitAcquireTimeout(Duration.ofSeconds(1))
+						.setPollTimeout(Duration.ofSeconds(1))
+						.setMessageDeliveryStrategy(MessageDeliveryStrategy.BATCH));
 			container.setQueueNames(FIFO_MANUALLY_CREATE_BATCH_CONTAINER_QUEUE_NAME);
 			container.setMessageListener(new MessageListener<String>() {
 				@Override
@@ -466,10 +466,10 @@ class SqsFifoIntegrationTests extends BaseSqsIntegrationTest {
 		public SqsMessageListenerContainer<String> manuallyCreatedFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions()
-				.maxInflightMessagesPerQueue(10)
-				.pollTimeout(Duration.ofSeconds(1))
-				.messagesPerPoll(10)
-				.permitAcquireTimeout(Duration.ofSeconds(1));
+				.setMaxInflightMessagesPerQueue(10)
+				.setPollTimeout(Duration.ofSeconds(1))
+				.setMessagesPerPoll(10)
+				.setPermitAcquireTimeout(Duration.ofSeconds(1));
 			factory.setSqsAsyncClient(BaseSqsIntegrationTest.createAsyncClient());
 			factory.setMessageListener(msg -> {
 				logger.debug("Processed message {}", msg.getPayload());
@@ -483,11 +483,11 @@ class SqsFifoIntegrationTests extends BaseSqsIntegrationTest {
 		public MessageListenerContainer<String> manuallyCreatedBatchFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions()
-				.maxInflightMessagesPerQueue(10)
-				.pollTimeout(Duration.ofSeconds(1))
-				.messagesPerPoll(10)
-				.permitAcquireTimeout(Duration.ofSeconds(1))
-				.messageDeliveryStrategy(MessageDeliveryStrategy.BATCH);
+				.setMaxInflightMessagesPerQueue(10)
+				.setPollTimeout(Duration.ofSeconds(1))
+				.setMessagesPerPoll(10)
+				.setPermitAcquireTimeout(Duration.ofSeconds(1))
+				.setMessageDeliveryStrategy(MessageDeliveryStrategy.BATCH);
 			factory.setSqsAsyncClient(BaseSqsIntegrationTest.createAsyncClient());
 			factory.setMessageListener(new MessageListener<String>() {
 				@Override

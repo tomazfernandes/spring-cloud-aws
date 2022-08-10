@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 the original author or authors.
+ * Copyright 2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,44 +15,43 @@
  */
 package io.awspring.cloud.sqs.listener.adapter;
 
+import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.ListenerExecutionFailedException;
-import java.util.Collection;
-
+import io.awspring.cloud.sqs.listener.MessageListener;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
-import org.springframework.messaging.support.MessageBuilder;
+
+import java.util.Collection;
 
 /**
- *
- * Base class for invoking an {@link InvocableHandlerMethod}.
- *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class MessagingMessageListenerAdapter<T> {
+public class MessagingMessageListenerAdapter<T> extends AbstractMethodInvokingListenerAdapter<T> implements MessageListener<T> {
 
-	private final InvocableHandlerMethod handlerMethod;
-
-	protected MessagingMessageListenerAdapter(InvocableHandlerMethod handlerMethod) {
-		this.handlerMethod = handlerMethod;
+	public MessagingMessageListenerAdapter(InvocableHandlerMethod handlerMethod) {
+		super(handlerMethod);
 	}
 
-	protected final Object invokeHandler(Message<T> message) {
+	@Override
+	public void onMessage(Message<T> message) {
 		try {
-			return handlerMethod.invoke(message);
+			super.invokeHandler(message);
 		}
 		catch (Exception ex) {
-			throw new ListenerExecutionFailedException("Listener failed to process message", ex, message);
+			throw new ListenerExecutionFailedException("Listener failed to process message "
+				+ MessageHeaderUtils.getId(message), ex, message);
 		}
 	}
 
-	protected final Object invokeHandler(Collection<Message<T>> messages) {
+	@Override
+	public void onMessage(Collection<Message<T>> messages) {
 		try {
-			return handlerMethod.invoke(MessageBuilder.withPayload(messages).build());
+			super.invokeHandler(messages);
 		}
 		catch (Exception ex) {
-			throw new ListenerExecutionFailedException("Listener failed to process message", ex, messages);
+			throw new ListenerExecutionFailedException("Listener failed to process messages "
+				+ MessageHeaderUtils.getId(messages) , ex, messages);
 		}
 	}
-
 }

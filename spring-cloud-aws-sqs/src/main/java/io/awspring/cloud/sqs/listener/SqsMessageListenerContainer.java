@@ -184,6 +184,7 @@ public class SqsMessageListenerContainer<T> extends AbstractMessageListenerConta
 			.batchSize(getContainerOptions().getMessagesPerPoll())
 			.totalPermits(getContainerOptions().getMaxInFlightMessagesPerQueue())
 			.acquireTimeout(getContainerOptions().getPermitAcquireTimeout())
+			.permitAcquiringStrategy(getContainerOptions().getPermitAcquiringStrategy())
 			.throughputConfiguration(getContainerOptions().getBackPressureMode())
 			.build();
 	}

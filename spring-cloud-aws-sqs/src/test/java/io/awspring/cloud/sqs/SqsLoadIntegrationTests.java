@@ -331,12 +331,12 @@ class SqsLoadIntegrationTests extends BaseSqsIntegrationTest {
 			// For load tests, set maxInflightMessagesPerQueue to a higher value - e.g. 600
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions()
-				.maxInflightMessagesPerQueue(settings.maxInflight)
-				.pollTimeout(Duration.ofSeconds(3))
-				.messagesPerPoll(10)
-				.permitAcquireTimeout(Duration.ofSeconds(1))
-				.backPressureMode(BackPressureMode.HIGH_THROUGHPUT)
-				.sourceShutdownTimeout(Duration.ofSeconds(40));
+				.setMaxInflightMessagesPerQueue(settings.maxInflight)
+				.setPollTimeout(Duration.ofSeconds(3))
+				.setMessagesPerPoll(10)
+				.setPermitAcquireTimeout(Duration.ofSeconds(1))
+				.setBackPressureMode(BackPressureMode.HIGH_THROUGHPUT)
+				.setSourceShutdownTimeout(Duration.ofSeconds(40));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createHighThroughputAsyncClient);
 			factory.setContainerComponentFactory(getTestAckHandlerComponentFactory());
 			return factory;
