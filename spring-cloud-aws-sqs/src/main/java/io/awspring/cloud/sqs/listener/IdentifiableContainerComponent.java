@@ -7,4 +7,7 @@ package io.awspring.cloud.sqs.listener;
 public interface IdentifiableContainerComponent {
 
 	void setId(String id);
+
+	String getId();
+
 }

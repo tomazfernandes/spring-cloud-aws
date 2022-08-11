@@ -24,6 +24,7 @@ import org.springframework.util.Assert;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -31,7 +32,12 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -43,9 +49,7 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 
 	private static final Logger logger = LoggerFactory.getLogger(BatchingAcknowledgementProcessor.class);
 
-	private final Object waitingMonitor = new Object();
-
-	private ThreadWaitingAcknowledgementProcessor<T> acknowledgementProcessor;
+	private BufferingAcknowledgementProcessor<T> acknowledgementProcessor;
 
 	private BlockingQueue<Message<T>> acks;
 
@@ -54,6 +58,8 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 	private Duration ackInterval;
 
 	private Executor executor;
+
+	private ScheduledExecutorService taskScheduler;
 
 	public void setAcknowledgementInterval(Duration ackInterval) {
 		Assert.notNull(ackInterval, "ackInterval cannot be null");
@@ -76,10 +82,7 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 		if (!this.acks.offer(message)) {
 			logger.warn("Acknowledgement queue full, dropping acknowledgement for message {}", MessageHeaderUtils.getId(message));
 		}
-		logger.trace("Received message {} to ack. Queue size: {}", MessageHeaderUtils.getId(message), this.acks.size());
-		synchronized (this.waitingMonitor) {
-			this.waitingMonitor.notifyAll();
-		}
+		logger.trace("Received message {} to ack in {}. Queue size: {}", MessageHeaderUtils.getId(message), getId(), this.acks.size());
 		return CompletableFuture.completedFuture(null);
 	}
 
@@ -98,81 +101,109 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 			() -> getClass().getSimpleName() + " cannot be used with Duration.ZERO and acknowledgement threshold 0." +
 				"Consider using a " + ImmediateAcknowledgementProcessor.class + "instead");
 		this.acks = new LinkedBlockingQueue<>();
-		this.acknowledgementProcessor = new ThreadWaitingAcknowledgementProcessor<>(this);
+		this.taskScheduler = Executors.newSingleThreadScheduledExecutor();
+		this.acknowledgementProcessor = new BufferingAcknowledgementProcessor<>(this);
 		this.executor.execute(this.acknowledgementProcessor);
 	}
 
 	@Override
 	public void doStop() {
-		this.acknowledgementProcessor.waitAcksToFinish();
+		this.acknowledgementProcessor.waitAcknowledgementsToFinish();
+		this.taskScheduler.shutdownNow();
 	}
 
-	private static class ThreadWaitingAcknowledgementProcessor<T> implements Runnable {
+	private static class BufferingAcknowledgementProcessor<T> implements Runnable {
 
 		private final BlockingQueue<Message<T>> acks;
-
-		private final Object waitingMonitor;
 
 		private final Duration ackInterval;
 
 		private final Integer ackThreshold;
 
+		private final Lock ackLock = new ReentrantLock();
+
 		private final Collection<CompletableFuture<Void>> runningAcks;
 
 		private final BatchingAcknowledgementProcessor<T> parent;
 
-		private Instant lastAcknowledgement;
+		private final ScheduledExecutorService taskScheduler;
 
-		private ThreadWaitingAcknowledgementProcessor(BatchingAcknowledgementProcessor<T> parent) {
+		private final BlockingQueue<Message<T>> acksBuffer;
+
+		private volatile Instant lastAcknowledgement;
+
+		private BufferingAcknowledgementProcessor(BatchingAcknowledgementProcessor<T> parent) {
 			this.acks = parent.acks;
-			this.waitingMonitor = parent.waitingMonitor;
 			this.ackInterval = parent.ackInterval;
 			this.ackThreshold = parent.ackThreshold;
+			this.taskScheduler = parent.taskScheduler;
 			this.parent = parent;
-			this.lastAcknowledgement = Instant.now();
 			this.runningAcks = Collections.synchronizedSet(new HashSet<>());
+			this.acksBuffer = new LinkedBlockingQueue<>();
+			this.lastAcknowledgement = Instant.now();
 		}
 
 		@Override
 		public void run() {
-			logger.debug("Starting acknowledgement processor thread");
+			maybeStartScheduledThread();
+			logger.debug("Starting acknowledgement processor thread with batchSize: {}", this.ackThreshold);
 			while (this.parent.isRunning()) {
 				try {
-					Instant now = Instant.now();
-					boolean isTimeElapsed = this.ackInterval != Duration.ZERO && now.isAfter(this.lastAcknowledgement.plus(this.ackInterval));
-					int currentQueueSize = this.acks.size();
-					boolean reachedBatchSize = this.ackThreshold != 0 && currentQueueSize >= this.ackThreshold;
-					logger.trace("Queue size: {} isQueueThresholdBreached: {} now: {} lastAcknowledgement: {} isTimeElapsed: {}", currentQueueSize, reachedBatchSize, now, this.lastAcknowledgement, isTimeElapsed);
-					if (currentQueueSize > 0 && (isTimeElapsed || reachedBatchSize)) {
-						int numberOfMessagesToPoll = isTimeElapsed ? currentQueueSize : this.ackThreshold;
-						logger.trace("Polling {} messages from ack queue. Ack queue size: {}", numberOfMessagesToPoll, currentQueueSize);
-						List<Message<T>> messagesToAck = pollMessagesToAck(numberOfMessagesToPoll);
-						manageFuture(this.parent.sendToExecutor(messagesToAck));
-						this.lastAcknowledgement = Instant.now();
+					Message<T> poll = this.acks.poll(1, TimeUnit.SECONDS);
+					if (poll != null) {
+						this.acksBuffer.put(poll);
 					}
-					else {
-						if (isTimeElapsed) {
-							// Queue is empty, refresh timer
+					while (this.ackThreshold != 0 && acksBuffer.size() >= this.ackThreshold) {
+						this.ackLock.lock();
+						int bufferSize = acksBuffer.size();
+						if (bufferSize >= this.ackThreshold) {
+							logger.trace("Acknowledgement buffer threshold of {} reached for {}. Buffer size: {}", this.ackThreshold, this.parent.getId(), bufferSize);
+							pollAndExecuteAcks(this.ackThreshold);
 							this.lastAcknowledgement = Instant.now();
 						}
-						long timeUntilNextAck = this.lastAcknowledgement.plus(this.ackInterval).toEpochMilli() - System.currentTimeMillis();
-						long waitTimeoutMillis = this.ackInterval != Duration.ZERO && timeUntilNextAck > 0 ? timeUntilNextAck : 1000;
-						logger.trace("Waiting on monitor for {}ms. Queue size: {}", waitTimeoutMillis, this.acks.size());
-						synchronized (this.waitingMonitor) {
-							this.waitingMonitor.wait(waitTimeoutMillis);
-						}
-						logger.trace("Ack processor thread awakened. Queue size: {}", this.acks.size());
+						this.ackLock.unlock();
 					}
 				}
-				catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					throw new IllegalStateException("Interrupted while waiting for acks", e);
-				}
 				catch (Exception e) {
-					logger.error("Error while handling acknowledgements, resuming.", e);
+					logger.error("Error while handling acknowledgements for {}, resuming.", this.parent.getId(), e);
 				}
 			}
 			logger.debug("Acknowledgement processor thread stopped");
+		}
+
+		private void maybeStartScheduledThread() {
+			if (this.ackInterval != Duration.ZERO) {
+				logger.debug("Starting scheduled thread with interval of {}ms", this.ackInterval.toMillis());
+				scheduleNextExecution(this.ackInterval.toMillis());
+			}
+		}
+
+		private void scheduleNextExecution(long nextExecutionDelay) {
+			if (!this.parent.isRunning()) {
+				return;
+			}
+			this.taskScheduler.schedule(() -> {
+				this.ackLock.lock();
+				pollAndExecuteScheduled();
+				scheduleNextExecution(Instant.now().until(this.lastAcknowledgement.plus(this.ackInterval), ChronoUnit.MILLIS));
+				this.ackLock.unlock();
+			}, nextExecutionDelay, TimeUnit.MILLISECONDS);
+		}
+
+		private void pollAndExecuteScheduled() {
+			boolean isTimeElapsed = Instant.now().isAfter(this.lastAcknowledgement.plus(this.ackInterval));
+			int bufferSize = acksBuffer.size();
+			if (isTimeElapsed && bufferSize > 0) {
+				logger.trace("Scheduled polling and executing {} acknowledgements for {}", bufferSize, parent.getId());
+				pollAndExecuteAcks(bufferSize);
+			}
+			this.lastAcknowledgement = Instant.now();
+		}
+
+		private void pollAndExecuteAcks(int amount) {
+			logger.trace("Polling {} messages from ack queue.", amount);
+			List<Message<T>> messagesToAck = pollMessagesToAck(amount);
+			manageFuture(this.parent.sendToExecutor(messagesToAck));
 		}
 
 		private void manageFuture(CompletableFuture<Void> future) {
@@ -183,22 +214,18 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 		private List<Message<T>> pollMessagesToAck(int numberOfMessagesToPoll) {
 			return IntStream
 				.range(0, numberOfMessagesToPoll)
-				.mapToObj(index -> getPoll())
+				.mapToObj(index -> pollMessage())
 				.collect(Collectors.toList());
 		}
 
-		private Message<T> getPoll() {
-			Message<T> polledMessage = this.acks.poll();
-			if (polledMessage == null) {
-				logger.warn("Poll returned null. Queue size: {}", this.acks.size());
-			}
-			else {
-				logger.trace("Retrieved message {} from the queue. Queue size: {}", MessageHeaderUtils.getId(polledMessage), this.acks.size());
-			}
+		private Message<T> pollMessage() {
+			Message<T> polledMessage = this.acksBuffer.poll();
+			Assert.notNull(polledMessage, "poll should never return null");
+			logger.trace("Retrieved message {} from the queue. Queue size: {}", MessageHeaderUtils.getId(polledMessage), this.acks.size());
 			return polledMessage;
 		}
 
-		public void waitAcksToFinish() {
+		public void waitAcknowledgementsToFinish() {
 			Duration ackShutdownTimeout = Duration.ofSeconds(20);
 			Instant start = Instant.now();
 			while (!this.runningAcks.isEmpty() || Instant.now().isAfter(start.plus(ackShutdownTimeout))) {
@@ -207,14 +234,14 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 					Thread.sleep(200);
 				} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
+					throw new IllegalStateException("Interrupted while waiting for tasks to finish");
 				}
 			}
 			if (!this.runningAcks.isEmpty()) {
 				logger.warn("{} acks not finished in {} seconds, proceeding with shutdown.", this.runningAcks.size(), ackShutdownTimeout.getSeconds());
+				this.runningAcks.forEach(future -> future.cancel(true));
 			}
-			this.runningAcks.forEach(future -> future.cancel(true));
 		}
 	}
-
 
 }

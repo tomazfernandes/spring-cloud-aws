@@ -62,12 +62,17 @@ public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAc
 	}
 
 	@Override
+	public String getId() {
+		return this.id;
+	}
+
+	@Override
 	public void start() {
 		synchronized (this.lifecycleMonitor) {
 			Assert.notNull(this.acknowledgementExecutor, "acknowledgementExecutor not set");
 			Assert.notNull(this.acknowledgementOrdering, "acknowledgementOrdering not set");
 			Assert.notNull(this.id, "id not set");
-			logger.debug("Starting {}", this.id);
+			logger.debug("Starting {} with ordering {}", this.id, this.acknowledgementOrdering);
 			this.running = true;
 			doStart();
 		}

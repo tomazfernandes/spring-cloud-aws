@@ -102,6 +102,11 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 	}
 
 	@Override
+	public String getId() {
+		return this.id;
+	}
+
+	@Override
 	public boolean isRunning() {
 		return this.running;
 	}
@@ -237,6 +242,7 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 			waitExistingTasksToFinish();
 			doStop();
 			this.pollingFutures.forEach(pollingFuture -> pollingFuture.cancel(true));
+			this.acknowledgmentProcessor.stop();
 			logger.debug("{} for queue {} stopped", getClass().getSimpleName(), this.pollingEndpointName);
 		}
 	}

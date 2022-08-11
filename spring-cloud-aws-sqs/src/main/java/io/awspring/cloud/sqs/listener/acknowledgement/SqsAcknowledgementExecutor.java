@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
+import org.springframework.util.StopWatch;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
@@ -43,6 +44,7 @@ public class SqsAcknowledgementExecutor<T> implements AcknowledgementExecutor<T>
 	@Override
 	public CompletableFuture<Void> execute(Collection<Message<T>> messagesToAck) {
 		try {
+			logger.debug("Executing acknowledgement for {} messages", messagesToAck.size());
 			Assert.notEmpty(messagesToAck, () -> "empty collection sent to acknowledge in queue " + this.queueName);
 			return deleteMessages(messagesToAck);
 		}
@@ -58,11 +60,13 @@ public class SqsAcknowledgementExecutor<T> implements AcknowledgementExecutor<T>
 
 	private CompletableFuture<Void> deleteMessages(Collection<Message<T>> messagesToAck) {
 		logger.trace("Acknowledging messages for queue {}: {}", this.queueName, MessageHeaderUtils.getId(messagesToAck));
+		StopWatch watch = new StopWatch();
+		watch.start();
 		return CompletableFutures.exceptionallyCompose(this.sqsAsyncClient
 			.deleteMessageBatch(createDeleteMessageBatchRequest(messagesToAck))
 			.thenRun(() -> {}),
 				t -> CompletableFutures.failedFuture(createAcknowledgementException(messagesToAck, t)))
-			.whenComplete((v, t) -> logAckResult(messagesToAck, t));
+			.whenComplete((v, t) -> logAckResult(messagesToAck, t, watch));
 	}
 
 	private DeleteMessageBatchRequest createDeleteMessageBatchRequest(Collection<Message<T>> messagesToAck) {
@@ -81,12 +85,17 @@ public class SqsAcknowledgementExecutor<T> implements AcknowledgementExecutor<T>
 			.build();
 	}
 
-	private void logAckResult(Collection<Message<T>> messagesToAck, Throwable t) {
+	private void logAckResult(Collection<Message<T>> messagesToAck, Throwable t, StopWatch watch) {
+		watch.stop();
+		long totalTimeMillis = watch.getTotalTimeMillis();
+		if (totalTimeMillis > 1000) {
+			logger.warn("Acknowledgement operation took {} seconds to finish in queue {} for messages {}", totalTimeMillis, this.queueName, MessageHeaderUtils.getId(messagesToAck));
+		}
 		if (t != null) {
-			logger.error("Error acknowledging in queue {} messages {}", this.queueName, MessageHeaderUtils.getId(messagesToAck), t);
+			logger.error("Error acknowledging in queue {} messages {} in {}ms", this.queueName, MessageHeaderUtils.getId(messagesToAck), totalTimeMillis, t);
 		}
 		else {
-			logger.trace("Done acknowledging in queue {} messages: {}", this.queueName, MessageHeaderUtils.getId(messagesToAck));
+			logger.trace("Done acknowledging in queue {} messages: {} in {}ms", this.queueName, MessageHeaderUtils.getId(messagesToAck), totalTimeMillis);
 		}
 	}
 

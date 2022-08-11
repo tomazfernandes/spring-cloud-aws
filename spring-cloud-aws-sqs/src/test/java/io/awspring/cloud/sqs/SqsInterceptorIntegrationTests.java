@@ -243,15 +243,15 @@ class SqsInterceptorIntegrationTests extends BaseSqsIntegrationTest {
 		private StandardSqsComponentFactory<String> getContainerComponentFactory() {
 			return new StandardSqsComponentFactory<String>() {
 				@Override
-				protected BatchingAcknowledgementProcessor<String> createBatchingProcessor() {
+				protected BatchingAcknowledgementProcessor<String> createBatchingProcessorInstance() {
 					return new BatchingAcknowledgementProcessor<String>() {
 						@Override
-						protected CompletableFuture<Void> execute(Collection<Message<String>> messagesToAck) {
+						protected CompletableFuture<Void> sendToExecutor(Collection<Message<String>> messagesToAck) {
 							if (messagesToAck.stream().allMatch(SqsInterceptorIntegrationTests::isChangedPayload)) {
 								latchContainer.receivesChangedMessageLatch.countDown();
 								latchContainer.receivesChangedMessageOnErrorLatch.countDown();
 							}
-							return super.execute(messagesToAck);
+							return super.sendToExecutor(messagesToAck);
 						}
 					};
 				}

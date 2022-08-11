@@ -16,11 +16,13 @@
 package io.awspring.cloud.sqs.listener.sink;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.Supplier;
 
+import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.ExecutorAware;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
@@ -31,6 +33,7 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.messaging.Message;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.Assert;
+import org.springframework.util.StopWatch;
 
 /**
  * Base implementation for {@link MessageProcessingPipelineSink} containing {@link SmartLifecycle} features
@@ -90,8 +93,10 @@ public abstract class AbstractMessageProcessingPipelineSink<T> implements Messag
 	 * @return the processing result.
 	 */
 	protected CompletableFuture<Void> execute(Message<T> message, MessageProcessingContext<T> context) {
+		StopWatch watch = getStartedWatch();
 		return doExecute(() -> this.messageProcessingPipeline.process(message, context))
-			.whenComplete((v, t) -> context.runBackPressureReleaseCallback());
+			.whenComplete((v, t) -> context.runBackPressureReleaseCallback())
+			.whenComplete((v, t) -> measureExecution(watch, Collections.singletonList(message)));
 	}
 
 	/**
@@ -102,8 +107,23 @@ public abstract class AbstractMessageProcessingPipelineSink<T> implements Messag
 	 * @return the processing result.
 	 */
 	protected CompletableFuture<Void> execute(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
+		StopWatch watch = getStartedWatch();
 		return doExecute(() -> this.messageProcessingPipeline.process(messages, context))
-			.whenComplete((v, t) -> messages.forEach(msg -> context.runBackPressureReleaseCallback()));
+			.whenComplete((v, t) -> messages.forEach(msg -> context.runBackPressureReleaseCallback()))
+			.whenComplete((v, t) -> measureExecution(watch, messages));
+	}
+
+	private StopWatch getStartedWatch() {
+		StopWatch watch = new StopWatch();
+		watch.start();
+		return watch;
+	}
+
+	private void measureExecution(StopWatch watch, Collection<Message<T>> messages) {
+		watch.stop();
+		if (logger.isTraceEnabled()) {
+			logger.trace("Messages {} processed in {}ms", MessageHeaderUtils.getId(messages), watch.getTotalTimeMillis());
+		}
 	}
 
 	private CompletableFuture<Void> doExecute(Supplier<CompletableFuture<?>> supplier) {

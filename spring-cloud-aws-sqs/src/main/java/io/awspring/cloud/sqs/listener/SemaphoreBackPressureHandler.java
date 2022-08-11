@@ -61,6 +61,11 @@ public class SemaphoreBackPressureHandler implements BatchAwareBackPressureHandl
 	}
 
 	@Override
+	public String getId() {
+		return this.id;
+	}
+
+	@Override
 	public int request(int amount) throws InterruptedException {
 		return tryAcquire(amount) ? amount : 0;
 	}
@@ -170,7 +175,8 @@ public class SemaphoreBackPressureHandler implements BatchAwareBackPressureHandl
 		try {
 			return this.semaphore.tryAcquire(this.totalPermits, (int) timeout.getSeconds(),
 				TimeUnit.SECONDS);
-		} catch (InterruptedException e) {
+		}
+		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 			throw new IllegalStateException("Interrupted while waiting to acquire permits", e);
 		}
