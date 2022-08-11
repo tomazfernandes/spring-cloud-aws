@@ -15,9 +15,9 @@
  */
 package io.awspring.cloud.sqs.config;
 
-import io.awspring.cloud.sqs.listener.AsyncComponentAdapters;
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import io.awspring.cloud.sqs.listener.MessageDeliveryStrategy;
+import io.awspring.cloud.sqs.listener.MessageListener;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.adapter.AsyncMessagingMessageListenerAdapter;
 import io.awspring.cloud.sqs.listener.adapter.MessagingMessageListenerAdapter;
@@ -113,7 +113,22 @@ public abstract class AbstractEndpoint implements HandlerMethodEndpoint {
 	 */
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public void setupContainer(MessageListenerContainer container) {
-		container.setAsyncMessageListener(createMessageListener());
+		Assert.notNull(this.handlerMethodFactory, "No handlerMethodFactory has been set");
+		InvocableHandlerMethod handlerMethod = this.handlerMethodFactory.createInvocableHandlerMethod(this.bean, this.method);
+		if (CompletionStage.class.isAssignableFrom(handlerMethod.getReturnType().getParameterType())) {
+			container.setAsyncMessageListener(createAsyncMessageListenerInstance(handlerMethod));
+		}
+		else {
+			container.setMessageListener(createMessageListenerInstance(handlerMethod));
+		}
+	}
+
+	protected MessageListener<?> createMessageListenerInstance(InvocableHandlerMethod handlerMethod) {
+		return new MessagingMessageListenerAdapter<>(handlerMethod);
+	}
+
+	protected AsyncMessageListener<?> createAsyncMessageListenerInstance(InvocableHandlerMethod handlerMethod) {
+		return new AsyncMessagingMessageListenerAdapter<>(handlerMethod);
 	}
 
 	public void configureMessageDeliveryStrategy(Consumer<MessageDeliveryStrategy> consumer) {
@@ -136,14 +151,6 @@ public abstract class AbstractEndpoint implements HandlerMethodEndpoint {
 		return IntStream.range(0, BridgeMethodResolver.findBridgedMethod(this.method).getParameterCount())
 				.mapToObj(index -> new MethodParameter(this.method, index))
 				.collect(Collectors.toList());
-	}
-
-	private AsyncMessageListener<?> createMessageListener() {
-		Assert.notNull(this.handlerMethodFactory, "No handlerMethodFactory has been set");
-		InvocableHandlerMethod handlerMethod = this.handlerMethodFactory.createInvocableHandlerMethod(this.bean, this.method);
-		return CompletionStage.class.isAssignableFrom(handlerMethod.getReturnType().getParameterType())
-			? new AsyncMessagingMessageListenerAdapter<>(handlerMethod)
-			: AsyncComponentAdapters.adapt(new MessagingMessageListenerAdapter<>(handlerMethod));
 	}
 
 }

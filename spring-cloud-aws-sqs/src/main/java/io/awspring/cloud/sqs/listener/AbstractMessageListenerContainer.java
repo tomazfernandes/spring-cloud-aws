@@ -73,6 +73,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	 * Set the id for this container instance.
 	 * @param id the id.
 	 */
+	@Override
 	public void setId(String id) {
 		Assert.notNull(id, "id cannot be null");
 		this.id = id;
@@ -117,6 +118,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 		this.messageInterceptors.add(messageInterceptor);
 	}
 
+	@Override
 	public void setMessageListener(MessageListener<T> messageListener) {
 		this.messageListener = AsyncComponentAdapters.adapt(messageListener);
 	}
