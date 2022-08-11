@@ -228,7 +228,7 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 		public void waitAcknowledgementsToFinish() {
 			Duration ackShutdownTimeout = Duration.ofSeconds(20);
 			Instant start = Instant.now();
-			while (!this.runningAcks.isEmpty() || Instant.now().isAfter(start.plus(ackShutdownTimeout))) {
+			while (!this.runningAcks.isEmpty() && Instant.now().isBefore(start.plus(ackShutdownTimeout))) {
 				logger.debug("Waiting up to {} seconds for {} acks to finish", ackShutdownTimeout.getSeconds(), this.runningAcks);
 				try {
 					Thread.sleep(200);

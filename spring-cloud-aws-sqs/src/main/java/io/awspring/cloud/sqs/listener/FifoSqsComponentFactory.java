@@ -23,12 +23,15 @@ import java.util.function.Function;
  */
 public class FifoSqsComponentFactory<T> implements ContainerComponentFactory<T> {
 
-	// Immediate (sync) ack
+	// Defaults to immediate (sync) ack
 	private static final Duration DEFAULT_FIFO_SQS_ACK_INTERVAL = Duration.ZERO;
 
 	private static final Integer DEFAULT_FIFO_SQS_ACK_THRESHOLD = 0;
 
-	private static final AcknowledgementOrdering DEFAULT_FIFO_SQS_ACK_ORDERING = AcknowledgementOrdering.ORDERED;
+	// Since immediate acks hold the thread until done, we can execute in parallel and use processing order
+	private static final AcknowledgementOrdering DEFAULT_FIFO_SQS_ACK_ORDERING_IMMEDIATE = AcknowledgementOrdering.PARALLEL;
+
+	private static final AcknowledgementOrdering DEFAULT_FIFO_SQS_ACK_ORDERING_BATCHING = AcknowledgementOrdering.ORDERED;
 
 	@Override
 	public MessageSource<T> createMessageSource(ContainerOptions options) {
@@ -65,25 +68,27 @@ public class FifoSqsComponentFactory<T> implements ContainerComponentFactory<T> 
 
 	@Override
 	public AcknowledgementProcessor<T> createAcknowledgementProcessor(ContainerOptions options) {
-		return (options.getAcknowledgementInterval() == null || options.getAcknowledgementInterval() == Duration.ZERO)
-			&& (options.getAcknowledgementThreshold() == null || options.getAcknowledgementThreshold() == 0)
+		return (options.getAcknowledgementInterval() == null || DEFAULT_FIFO_SQS_ACK_INTERVAL.equals(options.getAcknowledgementInterval()))
+			&& (options.getAcknowledgementThreshold() == null || DEFAULT_FIFO_SQS_ACK_THRESHOLD.equals(options.getAcknowledgementThreshold()))
 				? createAndConfigureImmediateProcessor(options)
 				: createAndConfigureBatchingAckProcessor(options);
 	}
 
 	protected ImmediateAcknowledgementProcessor<T> createAndConfigureImmediateProcessor(ContainerOptions options) {
 		ImmediateAcknowledgementProcessor<T> processor = new ImmediateAcknowledgementProcessor<>();
+		processor.setBatchSize(10);
 		ConfigUtils.INSTANCE
-			.acceptIfNotNullOrElse(processor::setAcknowledgementOrdering, options.getAcknowledgementOrdering(), DEFAULT_FIFO_SQS_ACK_ORDERING);
+			.acceptIfNotNullOrElse(processor::setAcknowledgementOrdering, options.getAcknowledgementOrdering(), DEFAULT_FIFO_SQS_ACK_ORDERING_IMMEDIATE);
 		return processor;
 	}
 
 	protected BatchingAcknowledgementProcessor<T> createAndConfigureBatchingAckProcessor(ContainerOptions options) {
 		BatchingAcknowledgementProcessor<T> processor = new BatchingAcknowledgementProcessor<>();
+		processor.setBatchSize(10);
 		ConfigUtils.INSTANCE
 			.acceptIfNotNullOrElse(processor::setAcknowledgementInterval, options.getAcknowledgementInterval(), DEFAULT_FIFO_SQS_ACK_INTERVAL)
 			.acceptIfNotNullOrElse(processor::setAcknowledgementThreshold, options.getAcknowledgementThreshold(), DEFAULT_FIFO_SQS_ACK_THRESHOLD)
-			.acceptIfNotNullOrElse(processor::setAcknowledgementOrdering, options.getAcknowledgementOrdering(), DEFAULT_FIFO_SQS_ACK_ORDERING);
+			.acceptIfNotNullOrElse(processor::setAcknowledgementOrdering, options.getAcknowledgementOrdering(), DEFAULT_FIFO_SQS_ACK_ORDERING_BATCHING);
 		return processor;
 	}
 

@@ -28,6 +28,8 @@ public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAc
 
 	private final Lock orderedExecutionLock = new ReentrantLock(true);
 
+	private int batchSize;
+
 	private AcknowledgementExecutor<T> acknowledgementExecutor;
 
 	private AcknowledgementOrdering acknowledgementOrdering;
@@ -55,6 +57,11 @@ public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAc
 		this.acknowledgementOrdering = acknowledgementOrdering;
 	}
 
+	public void setBatchSize(int batchSize) {
+		Assert.isTrue(batchSize > 0, "batchSize must be greater than zero");
+		this.batchSize = batchSize;
+	}
+
 	@Override
 	public void setId(String id) {
 		Assert.notNull(id, "id cannot be null");
@@ -72,7 +79,7 @@ public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAc
 			Assert.notNull(this.acknowledgementExecutor, "acknowledgementExecutor not set");
 			Assert.notNull(this.acknowledgementOrdering, "acknowledgementOrdering not set");
 			Assert.notNull(this.id, "id not set");
-			logger.debug("Starting {} with ordering {}", this.id, this.acknowledgementOrdering);
+			logger.debug("Starting {} with ordering {} and batch size {}", this.id, this.acknowledgementOrdering, this.batchSize);
 			this.running = true;
 			doStart();
 		}
@@ -149,8 +156,8 @@ public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAc
 		logger.trace("Partitioning {} messages in {}", messagesToAck.size(), this.id);
 		List<Message<T>> messagesToUse = getMessagesAsList(messagesToAck);
 		int totalSize = messagesToUse.size();
-		return IntStream.rangeClosed(0, (totalSize - 1) / 10)
-			.mapToObj(index -> messagesToUse.subList(index * 10, Math.min((index + 1) * 10, totalSize)))
+		return IntStream.rangeClosed(0, (totalSize - 1) / this.batchSize)
+			.mapToObj(index -> messagesToUse.subList(index * this.batchSize, Math.min((index + 1) * this.batchSize, totalSize)))
 			.collect(Collectors.toList());
 	}
 
