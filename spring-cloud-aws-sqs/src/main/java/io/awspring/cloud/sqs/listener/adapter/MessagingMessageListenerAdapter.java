@@ -15,8 +15,6 @@
  */
 package io.awspring.cloud.sqs.listener.adapter;
 
-import io.awspring.cloud.sqs.MessageHeaderUtils;
-import io.awspring.cloud.sqs.listener.ListenerExecutionFailedException;
 import io.awspring.cloud.sqs.listener.MessageListener;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
@@ -35,23 +33,11 @@ public class MessagingMessageListenerAdapter<T> extends AbstractMethodInvokingLi
 
 	@Override
 	public void onMessage(Message<T> message) {
-		try {
-			super.invokeHandler(message);
-		}
-		catch (Exception ex) {
-			throw new ListenerExecutionFailedException("Listener failed to process message "
-				+ MessageHeaderUtils.getId(message), ex, message);
-		}
+		super.invokeHandler(message);
 	}
 
 	@Override
 	public void onMessage(Collection<Message<T>> messages) {
-		try {
-			super.invokeHandler(messages);
-		}
-		catch (Exception ex) {
-			throw new ListenerExecutionFailedException("Listener failed to process messages "
-				+ MessageHeaderUtils.getId(messages) , ex, messages);
-		}
+		super.invokeHandler(messages);
 	}
 }

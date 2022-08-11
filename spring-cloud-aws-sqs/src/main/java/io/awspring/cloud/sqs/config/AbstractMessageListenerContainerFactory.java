@@ -145,9 +145,7 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Messa
 		C container = createContainerInstance(endpoint, options);
 		configureContainerOptions(endpoint, options);
 		endpoint.setupContainer(container);
-		ConfigUtils.INSTANCE
-			.acceptIfInstance(container, AbstractMessageListenerContainer.class,
-				abstractContainer -> configureContainer(abstractContainer, endpoint));
+		configureContainer(container, endpoint);
 		return container;
 	}
 
@@ -166,7 +164,14 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Messa
 		return createContainer(new EndpointAdapter(Arrays.asList(logicalEndpointNames)));
 	}
 
-	private void configureContainer(AbstractMessageListenerContainer<T> container, Endpoint endpoint) {
+	@SuppressWarnings("unchecked")
+	protected void configureContainer(C container, Endpoint endpoint) {
+		ConfigUtils.INSTANCE
+			.acceptIfInstance(container, AbstractMessageListenerContainer.class,
+				abstractContainer -> configureAbstractContainer(abstractContainer, endpoint));
+	}
+
+	protected void configureAbstractContainer(AbstractMessageListenerContainer<T> container, Endpoint endpoint) {
 		container.setQueueNames(endpoint.getLogicalNames());
 		ConfigUtils.INSTANCE
 			.acceptIfNotNull(endpoint.getId(), container::setId)

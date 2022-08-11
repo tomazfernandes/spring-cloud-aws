@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import io.awspring.cloud.sqs.SqsThread;
+import io.awspring.cloud.sqs.MessageExecutionThread;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
@@ -82,20 +82,20 @@ public class AsyncComponentAdapters {
 		}
 
 		protected <T> CompletableFuture<T> execute(Supplier<T> executable) {
-			if (Thread.currentThread() instanceof SqsThread) {
-				logger.trace("Already in a {}, not switching", SqsThread.class.getSimpleName());
+			if (Thread.currentThread() instanceof MessageExecutionThread) {
+				logger.trace("Already in a {}, not switching", MessageExecutionThread.class.getSimpleName());
 				return AsyncExecutionAdapters.adaptFromBlocking(executable);
 			}
-			logger.trace("Not in a {}, submitting to executor", SqsThread.class.getSimpleName());
+			logger.trace("Not in a {}, submitting to executor", MessageExecutionThread.class.getSimpleName());
 			return CompletableFuture.supplyAsync(executable, this.executor);
 		}
 
 		protected CompletableFuture<Void> execute(Runnable executable) {
-			if (Thread.currentThread() instanceof SqsThread) {
-				logger.trace("Already in a {}, not switching", SqsThread.class.getSimpleName());
+			if (Thread.currentThread() instanceof MessageExecutionThread) {
+				logger.trace("Already in a {}, not switching", MessageExecutionThread.class.getSimpleName());
 				return AsyncExecutionAdapters.adaptFromBlocking(executable);
 			}
-			logger.trace("Not in a {}, submitting to executor", SqsThread.class.getSimpleName());
+			logger.trace("Not in a {}, submitting to executor", MessageExecutionThread.class.getSimpleName());
 			return CompletableFuture.runAsync(executable, this.executor);
 		}
 

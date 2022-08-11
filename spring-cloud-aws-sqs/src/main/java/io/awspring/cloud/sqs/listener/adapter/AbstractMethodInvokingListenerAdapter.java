@@ -16,7 +16,10 @@
 package io.awspring.cloud.sqs.listener.adapter;
 
 import java.util.Collection;
+import java.util.Collections;
 
+import io.awspring.cloud.sqs.MessageHeaderUtils;
+import io.awspring.cloud.sqs.listener.ListenerExecutionFailedException;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 import org.springframework.messaging.support.MessageBuilder;
@@ -38,12 +41,30 @@ public abstract class AbstractMethodInvokingListenerAdapter<T> {
 		this.handlerMethod = handlerMethod;
 	}
 
-	protected final Object invokeHandler(Message<T> message) throws Exception {
-		return handlerMethod.invoke(message);
+	protected final Object invokeHandler(Message<T> message) {
+		try {
+			return handlerMethod.invoke(message);
+		}
+		catch (Exception e) {
+			throw createListenerException(message, e);
+		}
 	}
 
-	protected final Object invokeHandler(Collection<Message<T>> messages) throws Exception {
-		return handlerMethod.invoke(MessageBuilder.withPayload(messages).build());
+	protected final Object invokeHandler(Collection<Message<T>> messages) {
+		try {
+			return handlerMethod.invoke(MessageBuilder.withPayload(messages).build());
+		} catch (Exception e) {
+			throw createListenerException(messages, e);
+		}
+	}
+
+	protected ListenerExecutionFailedException createListenerException(Collection<Message<T>> message, Throwable t) {
+		return new ListenerExecutionFailedException("Listener failed to process message "
+			+ MessageHeaderUtils.getId(message), t, message);
+	}
+
+	protected ListenerExecutionFailedException createListenerException(Message<T> message, Throwable t) {
+		return createListenerException(Collections.singletonList(message), t);
 	}
 
 }

@@ -19,13 +19,13 @@ package io.awspring.cloud.sqs;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SqsThread extends Thread {
+public class MessageExecutionThread extends Thread {
 
-	public SqsThread(ThreadGroup threadGroup, Runnable runnable, String nextThreadName) {
+	public MessageExecutionThread(ThreadGroup threadGroup, Runnable runnable, String nextThreadName) {
 		super(threadGroup, runnable, nextThreadName);
 	}
 
-	public SqsThread() {
+	public MessageExecutionThread() {
 		super();
 	}
 }

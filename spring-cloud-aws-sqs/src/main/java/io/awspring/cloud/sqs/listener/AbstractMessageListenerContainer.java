@@ -15,7 +15,6 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import io.awspring.cloud.sqs.CompletableFutures;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
@@ -26,7 +25,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;

@@ -21,11 +21,11 @@ import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SqsThreadFactory extends CustomizableThreadFactory {
+public class MessageExecutionThreadFactory extends CustomizableThreadFactory {
 
 	@Override
 	public Thread createThread(Runnable runnable) {
-		SqsThread thread = new SqsThread(getThreadGroup(), runnable, nextThreadName());
+		MessageExecutionThread thread = new MessageExecutionThread(getThreadGroup(), runnable, nextThreadName());
 		thread.setDaemon(false);
 		thread.setPriority(Thread.NORM_PRIORITY);
 		return thread;

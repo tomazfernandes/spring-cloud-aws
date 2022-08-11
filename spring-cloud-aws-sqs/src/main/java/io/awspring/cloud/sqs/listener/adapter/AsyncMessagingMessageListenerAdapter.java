@@ -42,44 +42,23 @@ public class AsyncMessagingMessageListenerAdapter<T> extends AbstractMethodInvok
 
 	@Override
 	public CompletableFuture<Void> onMessage(Message<T> message) {
-		try {
-			return CompletableFutures.exceptionallyCompose(invokeAsyncHandler(message),
-				t -> createListenerException(message, t));
-		}
-		catch (Exception e) {
-			return createListenerException(message, e);
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	private CompletableFuture<Void> invokeAsyncHandler(Message<T> message) throws Exception {
-		return (CompletableFuture<Void>) super.invokeHandler(message);
-	}
-
-	private CompletableFuture<Void> createListenerException(Message<T> message, Throwable t) {
-		return CompletableFutures.failedFuture(new ListenerExecutionFailedException("Listener failed to process message "
-			+ MessageHeaderUtils.getId(message), t, message));
+		return CompletableFutures.exceptionallyCompose(invokeAsyncHandler(message),
+				t -> CompletableFutures.failedFuture(createListenerException(message, t)));
 	}
 
 	@Override
 	public CompletableFuture<Void> onMessage(Collection<Message<T>> messages) {
-		try {
-			return CompletableFutures.exceptionallyCompose(invokeAsyncHandler(messages),
-				t -> createListenerException(messages, t));
-		}
-		catch (Exception e) {
-			return createListenerException(messages, e);
-		}
+		return CompletableFutures.exceptionallyCompose(invokeAsyncHandler(messages),
+			t -> CompletableFutures.failedFuture(createListenerException(messages, t)));
 	}
 
 	@SuppressWarnings("unchecked")
-	private CompletableFuture<Void> invokeAsyncHandler(Collection<Message<T>> messages) throws Exception {
+	private CompletableFuture<Void> invokeAsyncHandler(Collection<Message<T>> messages){
 		return (CompletableFuture<Void>) super.invokeHandler(messages);
 	}
 
-	private CompletableFuture<Void> createListenerException(Collection<Message<T>> messages, Throwable e) {
-		return CompletableFutures.failedFuture(new ListenerExecutionFailedException("Listener failed to process messages "
-			+ MessageHeaderUtils.getId(messages), e, messages));
+	@SuppressWarnings("unchecked")
+	private CompletableFuture<Void> invokeAsyncHandler(Message<T> message) {
+		return (CompletableFuture<Void>) super.invokeHandler(message);
 	}
-
 }

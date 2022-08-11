@@ -60,9 +60,13 @@ public class SqsMessageListenerContainerFactory<T>
 	@Override
 	protected SqsMessageListenerContainer<T> createContainerInstance(Endpoint endpoint, ContainerOptions containerOptions) {
 		logger.debug("Creating {} for endpoint {}", SqsMessageListenerContainer.class.getSimpleName(), endpoint.getId() != null ? endpoint.getId() : endpoint.getLogicalNames());
-		Assert.notNull(this.sqsAsyncClientSupplier, "asyncClient not set");
-		SqsAsyncClient asyncClient = this.sqsAsyncClientSupplier.get();
+		Assert.notNull(this.sqsAsyncClientSupplier, "asyncClientSupplier not set");
+		SqsAsyncClient asyncClient = getSqsAsyncClientInstance();
 		return new SqsMessageListenerContainer<>(asyncClient, containerOptions);
+	}
+
+	protected SqsAsyncClient getSqsAsyncClientInstance() {
+		return this.sqsAsyncClientSupplier.get();
 	}
 
 	protected void doConfigureContainerOptions(Endpoint endpoint, ContainerOptions options) {

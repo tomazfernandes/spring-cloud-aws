@@ -147,7 +147,7 @@ public abstract class AbstractEndpoint implements HandlerMethodEndpoint {
 		return parameters.stream().anyMatch(param -> clazz.isAssignableFrom(param.getParameterType()));
 	}
 
-	private List<MethodParameter> getMethodParameters() {
+	protected List<MethodParameter> getMethodParameters() {
 		return IntStream.range(0, BridgeMethodResolver.findBridgedMethod(this.method).getParameterCount())
 				.mapToObj(index -> new MethodParameter(this.method, index))
 				.collect(Collectors.toList());
