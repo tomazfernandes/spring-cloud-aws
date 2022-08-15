@@ -15,16 +15,18 @@
  */
 package io.awspring.cloud.sqs.listener.acknowledgement;
 
+import io.awspring.cloud.sqs.LifecycleHandler;
 import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.ExecutorAware;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.util.Assert;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -32,9 +34,7 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -59,7 +59,7 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 
 	private Executor executor;
 
-	private ScheduledExecutorService taskScheduler;
+	private TaskScheduler taskScheduler;
 
 	public void setAcknowledgementInterval(Duration ackInterval) {
 		Assert.notNull(ackInterval, "ackInterval cannot be null");
@@ -101,15 +101,26 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 			() -> getClass().getSimpleName() + " cannot be used with Duration.ZERO and acknowledgement threshold 0." +
 				"Consider using a " + ImmediateAcknowledgementProcessor.class + "instead");
 		this.acks = new LinkedBlockingQueue<>();
-		this.taskScheduler = Executors.newSingleThreadScheduledExecutor();
-		this.acknowledgementProcessor = new BufferingAcknowledgementProcessor<>(this);
+		this.taskScheduler = createTaskScheduler();
+		this.acknowledgementProcessor = createAcknowledgementProcessor();
 		this.executor.execute(this.acknowledgementProcessor);
+	}
+
+	protected TaskScheduler createTaskScheduler() {
+		ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+		scheduler.setThreadNamePrefix(getId() + "-");
+		scheduler.initialize();
+		return scheduler;
+	}
+
+	protected BufferingAcknowledgementProcessor<T> createAcknowledgementProcessor() {
+		return new BufferingAcknowledgementProcessor<>(this);
 	}
 
 	@Override
 	public void doStop() {
 		this.acknowledgementProcessor.waitAcknowledgementsToFinish();
-		this.taskScheduler.shutdownNow();
+		LifecycleHandler.get().dispose(this.taskScheduler);
 	}
 
 	private static class BufferingAcknowledgementProcessor<T> implements Runnable {
@@ -126,10 +137,11 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 
 		private final BatchingAcknowledgementProcessor<T> parent;
 
-		private final ScheduledExecutorService taskScheduler;
+		private final TaskScheduler taskScheduler;
 
 		private final BlockingQueue<Message<T>> acksBuffer;
 
+		// Should always be updated under ackLock
 		private volatile Instant lastAcknowledgement;
 
 		private BufferingAcknowledgementProcessor(BatchingAcknowledgementProcessor<T> parent) {
@@ -174,20 +186,20 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 		private void maybeStartScheduledThread() {
 			if (this.ackInterval != Duration.ZERO) {
 				logger.debug("Starting scheduled thread with interval of {}ms", this.ackInterval.toMillis());
-				scheduleNextExecution(this.ackInterval.toMillis());
+				scheduleNextExecution(Instant.now().plus(this.ackInterval));
 			}
 		}
 
-		private void scheduleNextExecution(long nextExecutionDelay) {
+		private void scheduleNextExecution(Instant nextExecutionDelay) {
 			if (!this.parent.isRunning()) {
 				return;
 			}
 			this.taskScheduler.schedule(() -> {
 				this.ackLock.lock();
 				pollAndExecuteScheduled();
-				scheduleNextExecution(Instant.now().until(this.lastAcknowledgement.plus(this.ackInterval), ChronoUnit.MILLIS));
+				scheduleNextExecution(this.lastAcknowledgement.plus(this.ackInterval));
 				this.ackLock.unlock();
-			}, nextExecutionDelay, TimeUnit.MILLISECONDS);
+			}, nextExecutionDelay);
 		}
 
 		private void pollAndExecuteScheduled() {

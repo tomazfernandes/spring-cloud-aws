@@ -47,4 +47,16 @@ public class OnSuccessAcknowledgementHandler<T> implements AcknowledgementHandle
 		return callback.onAcknowledge(messages);
 	}
 
+	@Override
+	public CompletableFuture<Void> onError(Message<T> message, Throwable t, AcknowledgementCallback<T> callback) {
+		logger.trace("Skipping ack for message {}", MessageHeaderUtils.getId(message));
+		return CompletableFuture.completedFuture(null);
+	}
+
+	@Override
+	public CompletableFuture<Void> onError(Collection<Message<T>> messages, Throwable t, AcknowledgementCallback<T> callback) {
+		logger.trace("Skipping acks for messages {}", MessageHeaderUtils.getId(messages));
+		return CompletableFuture.completedFuture(null);
+	}
+
 }

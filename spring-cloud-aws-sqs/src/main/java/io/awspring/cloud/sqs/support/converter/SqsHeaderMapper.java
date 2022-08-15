@@ -4,7 +4,7 @@ import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.listener.QueueAttributes;
 import io.awspring.cloud.sqs.listener.QueueMessageVisibility;
 import io.awspring.cloud.sqs.listener.SqsHeaders;
-import io.awspring.cloud.sqs.listener.acknowledgement.SqsAcknowledge;
+import io.awspring.cloud.sqs.listener.acknowledgement.SqsAcknowledgement;
 import io.awspring.cloud.sqs.support.converter.context.ContextAwareHeaderMapper;
 import io.awspring.cloud.sqs.support.converter.context.MessageConversionContext;
 import io.awspring.cloud.sqs.support.converter.context.SqsMessageConversionContext;
@@ -82,7 +82,7 @@ public class SqsHeaderMapper implements ContextAwareHeaderMapper<Message> {
 		accessor.setHeader(SqsHeaders.SQS_QUEUE_URL_HEADER, queueAttributes.getQueueUrl());
 		accessor.setHeader(SqsHeaders.SQS_QUEUE_ATTRIBUTES_HEADER, queueAttributes);
 		accessor.setHeader(SqsHeaders.SQS_ACKNOWLEDGMENT_HEADER,
-			new SqsAcknowledge(sqsAsyncClient, queueAttributes.getQueueUrl(), source.receiptHandle()));
+			new SqsAcknowledgement(sqsAsyncClient, queueAttributes.getQueueUrl(), source.receiptHandle(), source.messageId()));
 		accessor.setHeader(SqsHeaders.SQS_VISIBILITY_HEADER,
 			new QueueMessageVisibility(sqsAsyncClient, queueAttributes.getQueueUrl(), source.receiptHandle()));
 	}

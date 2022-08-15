@@ -38,6 +38,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.messaging.Message;
+import org.springframework.util.Assert;
 import org.springframework.util.StopWatch;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
@@ -105,7 +106,7 @@ class SqsLoadIntegrationTests extends BaseSqsIntegrationTest {
 		@Autowired
 		LoadSimulator loadSimulator;
 
-		final int totalMessages = 10;
+		final int totalMessages = 20;
 		final boolean sendMessages = true;
 		final boolean receiveMessages = true;
 		final boolean receivesManyTestEnabled = true;
@@ -118,7 +119,7 @@ class SqsLoadIntegrationTests extends BaseSqsIntegrationTest {
 
 		@Override
 		public void afterSingletonsInstantiated() {
-			loadSimulator.setLoadEnabled(true);
+			loadSimulator.setLoadEnabled(false);
 			loadSimulator.setBound(1000);
 			loadSimulator.setRandom(false);
 		}
@@ -150,10 +151,11 @@ class SqsLoadIntegrationTests extends BaseSqsIntegrationTest {
 
 	private void testWithLoad(String queue1, String queue2, Collection<String> receivedCollection)
 		throws InterruptedException, ExecutionException {
+		Assert.isTrue(settings.totalMessages >= 20, "Minimum of 20 messages");
 		String queueUrl1 = fetchQueueUrl(queue1);
 		String queueUrl2 = fetchQueueUrl(queue2);
 		LoadSimulator sendLoadSimulator = new LoadSimulator();
-		sendLoadSimulator.setLoadEnabled(settings.totalMessages > 10000);
+		sendLoadSimulator.setLoadEnabled(settings.totalMessages > 1000);
 		logger.debug("Starting watch");
 		StopWatch watch = new StopWatch();
 		watch.start();
@@ -161,13 +163,13 @@ class SqsLoadIntegrationTests extends BaseSqsIntegrationTest {
 		IntStream.range(0, Math.max(settings.totalMessages / 20, 1)).forEach(index -> {
 			sendMessageBatchAsync(queueUrl1);
 			sendMessageBatchAsync(queueUrl2);
-			if (index % 10 == 0) {
+			if (index % 20 == 0) {
 				sendLoadSimulator.runLoad(50);
 			}
 		});
 		doTry(() -> await()
 			.atMost(Duration.ofSeconds(settings.latchAwaitSeconds))
-			.pollDelay(Duration.ofMillis(100))
+			.pollDelay(Duration.ofMillis(getPollDelay()))
 			.until(() -> receivedCollection.size() >= settings.totalMessages));
 		logger.debug("Received all {} messages", settings.totalMessages);
 		int acksToWait = settings.receivesManyTestEnabled && settings.receivesBatchesTestEnabled
@@ -175,8 +177,8 @@ class SqsLoadIntegrationTests extends BaseSqsIntegrationTest {
 		logger.debug("Waiting for {} acks.", acksToWait);
 		doTry(() -> await()
 			.atMost(Duration.ofSeconds(settings.latchAwaitSeconds))
-			.pollDelay(Duration.ofMillis(100))
-			.until(() -> messageContainer.successfullyAcked.size() + messageContainer.errorAcking.size() >= acksToWait));
+			.pollDelay(Duration.ofMillis(getPollDelay()))
+			.until(() -> messageContainer.successfullyAcked.size() >= acksToWait));
 		logger.debug("Acked all {} messages", acksToWait);
 		logger.debug("Messages received by listener: {}", receivedCollection.size());
 		logger.debug("messageContainer.successfullyAcked: {}", messageContainer.successfullyAcked.size());
@@ -192,6 +194,10 @@ class SqsLoadIntegrationTests extends BaseSqsIntegrationTest {
 		logger.info("{} seconds for {}consuming {} messages with {}. Messages / second: {}",
 			totalTimeSeconds, this.settings.sendMessages ? "sending and " : "",
 			settings.totalMessages, loadSimulator, settings.totalMessages / totalTimeSeconds);
+	}
+
+	private int getPollDelay() {
+		return settings.totalMessages > 10000 ? 1000 : 100;
 	}
 
 	private void doTry(Runnable action) {
@@ -293,7 +299,7 @@ class SqsLoadIntegrationTests extends BaseSqsIntegrationTest {
 			loadSimulator.runLoad();
 			this.messageContainer.receivedByListener.add(MessageHeaderUtils.getId(message));
 			int count;
-			if ((count = messagesReceived.incrementAndGet()) % 500 == 0) {
+			if ((count = messagesReceived.incrementAndGet()) % 1000 == 0) {
 				logger.debug("Listener processed {} messages", count);
 			}
 			logger.trace("Finished processing {}", MessageHeaderUtils.getId(message));
@@ -347,7 +353,7 @@ class SqsLoadIntegrationTests extends BaseSqsIntegrationTest {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions()
 				.setMaxInflightMessagesPerQueue(settings.maxInflight)
-				.setPollTimeout(Duration.ofSeconds(1))
+				.setPollTimeout(Duration.ofSeconds(3))
 				.setMessagesPerPoll(settings.messagesPerPoll)
 				.setPermitAcquireTimeout(Duration.ofSeconds(1))
 				.setAcknowledgementInterval(Duration.ofMillis(500))

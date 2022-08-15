@@ -32,12 +32,14 @@ public class SqsAcknowledgementExecutor<T> implements AcknowledgementExecutor<T>
 
 	@Override
 	public void setQueueAttributes(QueueAttributes queueAttributes) {
+		Assert.notNull(queueAttributes, "queueAttributes cannot be null");
 		this.queueUrl = queueAttributes.getQueueUrl();
 		this.queueName = queueAttributes.getQueueName();
 	}
 
 	@Override
 	public void setSqsAsyncClient(SqsAsyncClient sqsAsyncClient) {
+		Assert.notNull(sqsAsyncClient, "sqsAsyncClient cannot be null");
 		this.sqsAsyncClient = sqsAsyncClient;
 	}
 

@@ -1,5 +1,6 @@
 package io.awspring.cloud.sqs;
 
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 
@@ -82,6 +83,16 @@ public class LifecycleHandler {
 			return ((SmartLifecycle) object).isRunning();
 		}
 		return true;
+	}
+
+	public void dispose(Object destroyable) {
+		if (destroyable instanceof DisposableBean) {
+			try {
+				((DisposableBean) destroyable).destroy();
+			} catch (Exception e) {
+				throw new IllegalStateException("Error destroying disposable " + destroyable);
+			}
+		}
 	}
 
 }

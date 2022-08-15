@@ -12,22 +12,17 @@ import java.util.stream.Collectors;
  */
 public class SqsAcknowledgementException extends SqsException {
 
-	private Collection<Message<?>> failedAcknowledgements;
+	private final Collection<Message<?>> failedAcknowledgements;
 
-	private String queueUrl;
-
-	public SqsAcknowledgementException(String msg) {
-		super(msg);
-	}
-
-	public SqsAcknowledgementException(String msg, Throwable cause) {
-		super(msg, cause);
-	}
+	private final String queueUrl;
 
 	public <T> SqsAcknowledgementException(String errorMessage, Collection<Message<T>> failedAcknowledgements, String queueUrl, Throwable e) {
 		super(errorMessage, e);
-		this.failedAcknowledgements = failedAcknowledgements.stream().map(msg -> (Message<?>) msg).collect(Collectors.toList());
 		this.queueUrl = queueUrl;
+		this.failedAcknowledgements = failedAcknowledgements
+			.stream()
+			.map(msg -> (Message<?>) msg)
+			.collect(Collectors.toList());
 	}
 
 	public Collection<Message<?>> getFailedAcknowledgements() {

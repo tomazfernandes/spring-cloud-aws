@@ -35,7 +35,6 @@ import io.awspring.cloud.sqs.listener.source.MessageSource;
 import io.awspring.cloud.sqs.listener.source.PollingMessageSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.DisposableBean;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
@@ -116,7 +115,7 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 
 	@SuppressWarnings("unchecked")
 	protected void configureMessageSources(ContainerComponentFactory<T> componentFactory) {
-		Executor executor = createSourceTaskExecutor();
+		Executor executor = createSourcesTaskExecutor();
 		ConfigUtils.INSTANCE
 			.acceptMany(this.messageSources, source -> source.setMessageSink(this.messageSink))
 			.acceptManyIfInstance(this.messageSources, PollingMessageSource.class, pms -> pms.setBackPressureHandler(createBackPressureHandler()))
@@ -179,7 +178,7 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 			.build();
 	}
 
-	protected Executor createSourceTaskExecutor() {
+	protected Executor createSourcesTaskExecutor() {
 		SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor();
 		executor.setThreadNamePrefix(getId() + "#message_source-");
 		return executor;
@@ -215,17 +214,9 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 	}
 
 	private void shutdownComponentsTaskExecutor() {
-		if (getComponentsTaskExecutor() instanceof DisposableBean) {
-			try {
-				((DisposableBean) getComponentsTaskExecutor()).destroy();
-			}
-			catch (Exception e) {
-				throw new IllegalStateException("Error destroying TaskExecutor for sink in container " + getId());
-			}
-		}
-		else if (getComponentsTaskExecutor() instanceof ExecutorService) {
-			((ExecutorService) getComponentsTaskExecutor()).shutdownNow();
-		}
+		LifecycleHandler.get().dispose(getComponentsTaskExecutor());
+		ConfigUtils.INSTANCE.acceptIfInstance(getComponentsTaskExecutor(),
+			ExecutorService.class, ExecutorService::shutdownNow);
 	}
 
 }

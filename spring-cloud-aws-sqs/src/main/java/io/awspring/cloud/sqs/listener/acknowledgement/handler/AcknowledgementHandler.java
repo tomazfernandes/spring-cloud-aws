@@ -30,7 +30,6 @@ import org.springframework.messaging.Message;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-@FunctionalInterface
 public interface AcknowledgementHandler<T> {
 
 	/**
@@ -39,11 +38,12 @@ public interface AcknowledgementHandler<T> {
 	 * @param message the message.
 	 * @return a completable future.
 	 */
-	CompletableFuture<Void> onSuccess(Message<T> message, AcknowledgementCallback<T> callback);
+	default CompletableFuture<Void> onSuccess(Message<T> message, AcknowledgementCallback<T> callback) {
+		return CompletableFuture.completedFuture(null);
+	}
 
 	default CompletableFuture<Void> onSuccess(Collection<Message<T>> messages, AcknowledgementCallback<T> callback) {
-		return CompletableFutures
-			.failedFuture(new UnsupportedOperationException("Batch not implemented for this component"));
+		return CompletableFuture.completedFuture(null);
 	}
 
 	/**

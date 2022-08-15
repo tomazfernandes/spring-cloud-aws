@@ -139,7 +139,7 @@ abstract class BaseSqsIntegrationTest {
 		return useLocalStackClient
 			? createLocalStackClient()
 			: SqsAsyncClient.builder().httpClientBuilder(NettyNioAsyncHttpClient.builder()
-				.maxConcurrency(10000)
+				.maxConcurrency(6000)
 			)
 			.build();
 	}

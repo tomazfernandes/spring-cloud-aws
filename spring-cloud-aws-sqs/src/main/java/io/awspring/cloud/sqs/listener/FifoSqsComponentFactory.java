@@ -76,7 +76,7 @@ public class FifoSqsComponentFactory<T> implements ContainerComponentFactory<T> 
 
 	protected ImmediateAcknowledgementProcessor<T> createAndConfigureImmediateProcessor(ContainerOptions options) {
 		ImmediateAcknowledgementProcessor<T> processor = new ImmediateAcknowledgementProcessor<>();
-		processor.setBatchSize(10);
+		processor.setMaxAcknowledgementsPerBatch(10);
 		ConfigUtils.INSTANCE
 			.acceptIfNotNullOrElse(processor::setAcknowledgementOrdering, options.getAcknowledgementOrdering(), DEFAULT_FIFO_SQS_ACK_ORDERING_IMMEDIATE);
 		return processor;
@@ -84,7 +84,7 @@ public class FifoSqsComponentFactory<T> implements ContainerComponentFactory<T> 
 
 	protected BatchingAcknowledgementProcessor<T> createAndConfigureBatchingAckProcessor(ContainerOptions options) {
 		BatchingAcknowledgementProcessor<T> processor = new BatchingAcknowledgementProcessor<>();
-		processor.setBatchSize(10);
+		processor.setMaxAcknowledgementsPerBatch(10);
 		ConfigUtils.INSTANCE
 			.acceptIfNotNullOrElse(processor::setAcknowledgementInterval, options.getAcknowledgementInterval(), DEFAULT_FIFO_SQS_ACK_INTERVAL)
 			.acceptIfNotNullOrElse(processor::setAcknowledgementThreshold, options.getAcknowledgementThreshold(), DEFAULT_FIFO_SQS_ACK_THRESHOLD)
