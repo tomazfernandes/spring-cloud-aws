@@ -67,6 +67,8 @@ public class ContainerOptions {
 
 	private static final PermitAcquiringStrategy DEFAULT_PERMIT_ACQUIRING_STRATEGY = PermitAcquiringStrategy.PARTIAL_BATCHES_ENABLED;
 
+	private static final QueueNotFoundStrategy DEFAULT_QUEUE_NOT_FOUND_STRATEGY = QueueNotFoundStrategy.CREATE;
+
 	private int maxInflightMessagesPerQueue = DEFAULT_MAX_INFLIGHT_MSG_PER_QUEUE;
 
 	private int messagesPerPoll = DEFAULT_MESSAGES_PER_POLL;
@@ -92,6 +94,8 @@ public class ContainerOptions {
 	private MessagingMessageConverter<?> messageConverter = DEFAULT_MESSAGE_CONVERTER;
 
 	private AcknowledgementMode acknowledgementMode = DEFAULT_ACKNOWLEDGEMENT_MODE;
+
+	private QueueNotFoundStrategy queueNotFoundStrategy = DEFAULT_QUEUE_NOT_FOUND_STRATEGY;
 
 	private AcknowledgementOrdering acknowledgementOrdering;
 
@@ -223,6 +227,11 @@ public class ContainerOptions {
 		return this;
 	}
 
+	public ContainerOptions setQueueNotFoundStrategy(QueueNotFoundStrategy queueNotFoundStrategy) {
+		this.queueNotFoundStrategy = queueNotFoundStrategy;
+		return this;
+	}
+
 	/**
 	 * Return the maximum allowed number of inflight messages for each queue.
 	 * @return the number.
@@ -309,6 +318,10 @@ public class ContainerOptions {
 
 	public AcknowledgementOrdering getAcknowledgementOrdering() {
 		return this.acknowledgementOrdering;
+	}
+
+	public QueueNotFoundStrategy getQueueNotFoundStrategy() {
+		return this.queueNotFoundStrategy;
 	}
 
 	/**

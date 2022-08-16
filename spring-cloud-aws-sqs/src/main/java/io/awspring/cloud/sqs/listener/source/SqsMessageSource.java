@@ -20,6 +20,7 @@ import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.QueueAttributes;
 import io.awspring.cloud.sqs.listener.QueueAttributesAware;
 import io.awspring.cloud.sqs.listener.QueueAttributesResolver;
+import io.awspring.cloud.sqs.listener.QueueNotFoundStrategy;
 import io.awspring.cloud.sqs.listener.SqsAsyncClientAware;
 import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementExecutor;
 import io.awspring.cloud.sqs.listener.acknowledgement.ExecutingAcknowledgementProcessor;
@@ -66,11 +67,16 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> implements SqsAsyncClientAware {
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessageSource.class);
-	private final int MESSAGE_VISIBILITY_DISABLED = -1;
+
+	private static final int MESSAGE_VISIBILITY_DISABLED = -1;
 
 	private SqsAsyncClient sqsAsyncClient;
 
 	private String queueUrl;
+
+	private QueueAttributes queueAttributes;
+
+	private QueueNotFoundStrategy queueNotFoundStrategy;
 
 	private MessagingMessageConverter<Message> messagingMessageConverter;
 
@@ -100,29 +106,45 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 		this.messageAttributeNames = containerOptions.getMessageAttributeNames();
 		this.messageSystemAttributeNames = containerOptions.getMessageSystemAttributeNames();
 		this.messagingMessageConverter = getOrCreateMessageConverter(containerOptions);
+		this.queueNotFoundStrategy = containerOptions.getQueueNotFoundStrategy();
 		this.messageVisibility = containerOptions.getMessageVisibility() != null
 				? (int) containerOptions.getMessageVisibility().getSeconds()
 				: MESSAGE_VISIBILITY_DISABLED;
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	protected void doStart() {
 		Assert.notNull(this.sqsAsyncClient, "sqsAsyncClient not set.");
 		Assert.notNull(this.queueAttributeNames, "queueAttributeNames not set.");
 		Assert.notNull(this.messagingMessageConverter, "messagingMessageConverter not set.");
-		QueueAttributes queueAttributes = QueueAttributesResolver.resolve(getPollingEndpointName(), this.sqsAsyncClient,
-				this.queueAttributeNames);
-		this.queueUrl = queueAttributes.getQueueUrl();
+		this.queueAttributes = resolveQueueAttributes();
+		this.queueUrl = this.queueAttributes.getQueueUrl();
 		this.messageConversionContext = maybeCreateConversionContext();
+		configureConversionContextAndAcknowledgement();
+	}
+
+	@SuppressWarnings("unchecked")
+	private void configureConversionContextAndAcknowledgement() {
 		ConfigUtils.INSTANCE
 				.acceptIfInstance(this.messageConversionContext, SqsAsyncClientAware.class,
 						saca -> saca.setSqsAsyncClient(this.sqsAsyncClient))
 				.acceptIfInstance(this.messageConversionContext, QueueAttributesAware.class,
-						qaa -> qaa.setQueueAttributes(queueAttributes))
+						qaa -> qaa.setQueueAttributes(this.queueAttributes))
 				.acceptIfInstance(getAcknowledgmentProcessor(), ExecutingAcknowledgementProcessor.class, eap -> eap
-						.setAcknowledgementExecutor(createAndConfigureAcknowledgementExecutor(queueAttributes)));
+						.setAcknowledgementExecutor(createAndConfigureAcknowledgementExecutor(this.queueAttributes)));
 	}
+
+	// @formatter:off
+	private QueueAttributes resolveQueueAttributes() {
+		return QueueAttributesResolver.builder()
+			.queueName(getPollingEndpointName())
+			.sqsAsyncClient(this.sqsAsyncClient)
+			.queueAttributeNames(this.queueAttributeNames)
+			.queueNotFoundStrategy(this.queueNotFoundStrategy).build()
+			.resolveQueueAttributes()
+			.join();
+	}
+	// @formatter:on
 
 	protected AcknowledgementExecutor<T> createAndConfigureAcknowledgementExecutor(QueueAttributes queueAttributes) {
 		SqsAcknowledgementExecutor<T> executor = createAcknowledgementExecutorInstance();

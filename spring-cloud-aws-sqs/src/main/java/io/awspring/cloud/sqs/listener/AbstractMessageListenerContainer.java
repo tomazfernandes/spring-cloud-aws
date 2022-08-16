@@ -45,7 +45,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	private final Object lifecycleMonitor = new Object();
 
-	private volatile boolean isRunning;
+	private boolean isRunning;
 
 	private String id;
 
@@ -223,7 +223,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 			logger.debug("Starting container {}", getId());
 			doStart();
 		}
-		logger.debug("Container {} started", this.id);
+		logger.info("Container {} started", this.id);
 	}
 
 	private String resolveContainerId() {

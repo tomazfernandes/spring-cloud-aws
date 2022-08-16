@@ -124,8 +124,12 @@ public abstract class AbstractAcknowledgementProcessor<T>
 
 	@Override
 	public void stop() {
+		if (!isRunning()) {
+			logger.debug("{} already stopped", this.id);
+			return;
+		}
 		synchronized (this.lifecycleMonitor) {
-			logger.info("Stopping {}", this.id);
+			logger.debug("Stopping {}", this.id);
 			this.running = false;
 			doStop();
 		}
