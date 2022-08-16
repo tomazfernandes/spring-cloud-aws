@@ -15,14 +15,12 @@
  */
 package io.awspring.cloud.sqs.listener.sink.adapter;
 
-import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
 import java.util.Collection;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
