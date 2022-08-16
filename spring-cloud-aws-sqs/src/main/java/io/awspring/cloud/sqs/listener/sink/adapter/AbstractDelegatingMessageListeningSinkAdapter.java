@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,21 +18,21 @@ package io.awspring.cloud.sqs.listener.sink.adapter;
 import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.LifecycleHandler;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
+import io.awspring.cloud.sqs.listener.ExecutorAware;
 import io.awspring.cloud.sqs.listener.SqsAsyncClientAware;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import io.awspring.cloud.sqs.listener.sink.MessageProcessingPipelineSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
-import io.awspring.cloud.sqs.listener.ExecutorAware;
+import java.util.concurrent.Executor;
 import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
-
-import java.util.concurrent.Executor;
 
 /**
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractDelegatingMessageListeningSinkAdapter<T> implements MessageProcessingPipelineSink<T>, ExecutorAware, SqsAsyncClientAware {
+public abstract class AbstractDelegatingMessageListeningSinkAdapter<T>
+		implements MessageProcessingPipelineSink<T>, ExecutorAware, SqsAsyncClientAware {
 
 	private final MessageSink<T> delegate;
 
@@ -44,21 +44,19 @@ public abstract class AbstractDelegatingMessageListeningSinkAdapter<T> implement
 	@SuppressWarnings("unchecked")
 	@Override
 	public void setMessagePipeline(MessageProcessingPipeline<T> messageProcessingPipeline) {
-		ConfigUtils.INSTANCE
-			.acceptIfInstance(this.delegate, MessageProcessingPipelineSink.class,
+		ConfigUtils.INSTANCE.acceptIfInstance(this.delegate, MessageProcessingPipelineSink.class,
 				mpps -> mpps.setMessagePipeline(messageProcessingPipeline));
 	}
 
 	@Override
 	public void setExecutor(Executor taskExecutor) {
-		ConfigUtils.INSTANCE.acceptIfInstance(this.delegate, ExecutorAware.class,
-				ea -> ea.setExecutor(taskExecutor));
+		ConfigUtils.INSTANCE.acceptIfInstance(this.delegate, ExecutorAware.class, ea -> ea.setExecutor(taskExecutor));
 	}
 
 	@Override
 	public void setSqsAsyncClient(SqsAsyncClient sqsAsyncClient) {
 		ConfigUtils.INSTANCE.acceptIfInstance(this.delegate, SqsAsyncClientAware.class,
-			saca -> saca.setSqsAsyncClient(sqsAsyncClient));
+				saca -> saca.setSqsAsyncClient(sqsAsyncClient));
 	}
 
 	@Override

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,12 @@ package io.awspring.cloud.sqs.listener.sink.adapter;
 
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
-import org.springframework.messaging.Message;
-import org.springframework.util.Assert;
-
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.messaging.Message;
+import org.springframework.util.Assert;
 
 /**
  * @author Tomaz Fernandes

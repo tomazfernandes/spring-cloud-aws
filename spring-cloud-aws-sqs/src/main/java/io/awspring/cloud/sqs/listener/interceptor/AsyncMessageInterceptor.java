@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ package io.awspring.cloud.sqs.listener.interceptor;
 
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
-
 import org.springframework.messaging.Message;
 
 /**
@@ -34,8 +33,7 @@ import org.springframework.messaging.Message;
 public interface AsyncMessageInterceptor<T> {
 
 	/**
-	 * Perform an action on the message or return a different one before processing.
-	 * Executed before processing.
+	 * Perform an action on the message or return a different one before processing. Executed before processing.
 	 * @param message the message to be intercepted.
 	 * @return a completable future containing the resulting message.
 	 */

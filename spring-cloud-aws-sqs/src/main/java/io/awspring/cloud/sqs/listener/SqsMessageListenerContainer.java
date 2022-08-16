@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,7 @@ package io.awspring.cloud.sqs.listener;
 import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
-
 import java.util.Collection;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
@@ -61,14 +59,14 @@ public class SqsMessageListenerContainer<T> extends AbstractPipelineMessageListe
 
 	@Override
 	protected void doConfigureMessageSources(Collection<MessageSource<T>> messageSources) {
-		ConfigUtils.INSTANCE
-			.acceptManyIfInstance(messageSources, SqsAsyncClientAware.class, asca -> asca.setSqsAsyncClient(this.sqsAsyncClient));
+		ConfigUtils.INSTANCE.acceptManyIfInstance(messageSources, SqsAsyncClientAware.class,
+				asca -> asca.setSqsAsyncClient(this.sqsAsyncClient));
 	}
 
 	@Override
 	protected void doConfigureMessageSink(MessageSink<T> messageSink) {
-		ConfigUtils.INSTANCE
-			.acceptIfInstance(messageSink, SqsAsyncClientAware.class, asca -> asca.setSqsAsyncClient(this.sqsAsyncClient));
+		ConfigUtils.INSTANCE.acceptIfInstance(messageSink, SqsAsyncClientAware.class,
+				asca -> asca.setSqsAsyncClient(this.sqsAsyncClient));
 	}
 
 }

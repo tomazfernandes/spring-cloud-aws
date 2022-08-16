@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,17 +23,16 @@ import io.awspring.cloud.sqs.listener.acknowledgement.SqsAcknowledgement;
 import io.awspring.cloud.sqs.support.converter.context.ContextAwareHeaderMapper;
 import io.awspring.cloud.sqs.support.converter.context.MessageConversionContext;
 import io.awspring.cloud.sqs.support.converter.context.SqsMessageConversionContext;
+import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.Message;
-
-import java.time.Instant;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * @author Tomaz Fernandes
@@ -83,22 +82,23 @@ public class SqsHeaderMapper implements ContextAwareHeaderMapper<Message> {
 	public MessageHeaders createContextHeaders(Message source, MessageConversionContext context) {
 		logger.trace("Creating context headers for message {}", source.messageId());
 		MessageHeaderAccessor accessor = new MessageHeaderAccessor();
-		ConfigUtils.INSTANCE
-			.acceptIfInstance(context, SqsMessageConversionContext.class, sqsContext -> addSqsContextHeaders(source, sqsContext, accessor));
+		ConfigUtils.INSTANCE.acceptIfInstance(context, SqsMessageConversionContext.class,
+				sqsContext -> addSqsContextHeaders(source, sqsContext, accessor));
 		MessageHeaders messageHeaders = accessor.toMessageHeaders();
 		logger.trace("Context headers {} created for message {}", messageHeaders, source.messageId());
 		return messageHeaders;
 	}
 
-	private void addSqsContextHeaders(Message source, SqsMessageConversionContext sqsContext, MessageHeaderAccessor accessor) {
+	private void addSqsContextHeaders(Message source, SqsMessageConversionContext sqsContext,
+			MessageHeaderAccessor accessor) {
 		QueueAttributes queueAttributes = sqsContext.getQueueAttributes();
 		SqsAsyncClient sqsAsyncClient = sqsContext.getSqsAsyncClient();
 		accessor.setHeader(SqsHeaders.SQS_QUEUE_NAME_HEADER, queueAttributes.getQueueName());
 		accessor.setHeader(SqsHeaders.SQS_QUEUE_URL_HEADER, queueAttributes.getQueueUrl());
 		accessor.setHeader(SqsHeaders.SQS_QUEUE_ATTRIBUTES_HEADER, queueAttributes);
-		accessor.setHeader(SqsHeaders.SQS_ACKNOWLEDGMENT_HEADER,
-			new SqsAcknowledgement(sqsAsyncClient, queueAttributes.getQueueUrl(), source.receiptHandle(), source.messageId()));
+		accessor.setHeader(SqsHeaders.SQS_ACKNOWLEDGMENT_HEADER, new SqsAcknowledgement(sqsAsyncClient,
+				queueAttributes.getQueueUrl(), source.receiptHandle(), source.messageId()));
 		accessor.setHeader(SqsHeaders.SQS_VISIBILITY_HEADER,
-			new QueueMessageVisibility(sqsAsyncClient, queueAttributes.getQueueUrl(), source.receiptHandle()));
+				new QueueMessageVisibility(sqsAsyncClient, queueAttributes.getQueueUrl(), source.receiptHandle()));
 	}
 }

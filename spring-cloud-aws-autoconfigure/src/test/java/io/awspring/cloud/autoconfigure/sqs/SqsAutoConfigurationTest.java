@@ -26,12 +26,10 @@ import io.awspring.cloud.sqs.config.SqsMessageListenerContainerFactory;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
-
 import java.net.URI;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -127,12 +125,14 @@ class SqsAutoConfigurationTest {
 
 		@Bean
 		AsyncErrorHandler<Object> asyncErrorHandler() {
-			return new AsyncErrorHandler<Object>() {};
+			return new AsyncErrorHandler<Object>() {
+			};
 		}
 
 		@Bean
 		AsyncMessageInterceptor<?> asyncMessageInterceptor() {
-			return new AsyncMessageInterceptor<Object>() {};
+			return new AsyncMessageInterceptor<Object>() {
+			};
 		}
 
 		@Bean

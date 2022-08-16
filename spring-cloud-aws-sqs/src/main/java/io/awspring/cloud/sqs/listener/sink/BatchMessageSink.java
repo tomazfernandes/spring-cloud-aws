@@ -15,18 +15,14 @@
  */
 package io.awspring.cloud.sqs.listener.sink;
 
+import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
-
-import io.awspring.cloud.sqs.MessageHeaderUtils;
-import io.awspring.cloud.sqs.listener.MessageProcessingContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 
 /**
- * {@link MessageSink} implementation that emits the whole received batch of messages to
- * the configured {@link io.awspring.cloud.sqs.listener.AsyncMessageListener}.
+ * {@link MessageSink} implementation that emits the whole received batch of messages to the configured
+ * {@link io.awspring.cloud.sqs.listener.AsyncMessageListener}.
  *
  * @author Tomaz Fernandes
  * @since 3.0

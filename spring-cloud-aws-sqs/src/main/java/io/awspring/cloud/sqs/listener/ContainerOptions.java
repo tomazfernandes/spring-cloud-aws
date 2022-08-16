@@ -15,26 +15,24 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementMode;
 import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementOrdering;
+import io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementMode;
 import io.awspring.cloud.sqs.support.converter.MessagingMessageConverter;
 import io.awspring.cloud.sqs.support.converter.SqsMessagingMessageConverter;
-import org.springframework.util.Assert;
-import org.springframework.util.ReflectionUtils;
-import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
-import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
+import org.springframework.util.Assert;
+import org.springframework.util.ReflectionUtils;
+import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
+import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
 
 /**
- * Contains the options to be used by the {@link MessageListenerContainer} at runtime.
- * If changes are made after the container has started, those changes will be reflected upon
- * container restart.
+ * Contains the options to be used by the {@link MessageListenerContainer} at runtime. If changes are made after the
+ * container has started, those changes will be reflected upon container restart.
  *
  * @author Tomaz Fernandes
  * @since 3.0
@@ -57,9 +55,11 @@ public class ContainerOptions {
 
 	private static final List<QueueAttributeName> DEFAULT_QUEUE_ATTRIBUTES_NAMES = Collections.emptyList();
 
-	private static final List<String> DEFAULT_MESSAGE_ATTRIBUTES_NAMES = Collections.singletonList(QueueAttributeName.ALL.toString());
+	private static final List<String> DEFAULT_MESSAGE_ATTRIBUTES_NAMES = Collections
+			.singletonList(QueueAttributeName.ALL.toString());
 
-	private static final List<String> DEFAULT_MESSAGE_SYSTEM_ATTRIBUTES = Collections.singletonList(QueueAttributeName.ALL.toString());
+	private static final List<String> DEFAULT_MESSAGE_SYSTEM_ATTRIBUTES = Collections
+			.singletonList(QueueAttributeName.ALL.toString());
 
 	private static final MessagingMessageConverter<?> DEFAULT_MESSAGE_CONVERTER = new SqsMessagingMessageConverter();
 
@@ -186,8 +186,10 @@ public class ContainerOptions {
 		return this;
 	}
 
-	public ContainerOptions setMessageSystemAttributeNames(Collection<MessageSystemAttributeName> messageSystemAttributeNames) {
-		this.messageSystemAttributeNames = messageSystemAttributeNames.stream().map(MessageSystemAttributeName::toString).collect(Collectors.toList());
+	public ContainerOptions setMessageSystemAttributeNames(
+			Collection<MessageSystemAttributeName> messageSystemAttributeNames) {
+		this.messageSystemAttributeNames = messageSystemAttributeNames.stream()
+				.map(MessageSystemAttributeName::toString).collect(Collectors.toList());
 		return this;
 	}
 
@@ -333,8 +335,8 @@ public class ContainerOptions {
 	 * Validate these options.
 	 */
 	public void validate() {
-		Assert.isTrue(this.messagesPerPoll <= maxInflightMessagesPerQueue,
-			String.format("messagesPerPoll should be less than or equal to maxInflightMessagesPerQueue. Values provided: %s and %s respectively",
+		Assert.isTrue(this.messagesPerPoll <= maxInflightMessagesPerQueue, String.format(
+				"messagesPerPoll should be less than or equal to maxInflightMessagesPerQueue. Values provided: %s and %s respectively",
 				this.messagesPerPoll, this.maxInflightMessagesPerQueue));
 		Assert.isTrue(this.messagesPerPoll <= 10, "messagesPerPoll must be less than or equal to 10.");
 	}

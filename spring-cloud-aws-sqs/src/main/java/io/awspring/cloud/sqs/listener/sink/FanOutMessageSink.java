@@ -15,18 +15,16 @@
  */
 package io.awspring.cloud.sqs.listener.sink;
 
-import java.util.Collection;
-import java.util.concurrent.CompletableFuture;
-
 import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
+import java.util.Collection;
+import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 
 /**
- * {@link MessageProcessingPipelineSink} implementation that processes all messages
- * from the provided batch in parallel.
+ * {@link MessageProcessingPipelineSink} implementation that processes all messages from the provided batch in parallel.
  *
  * @param <T> the {@link Message} payload type.
  *
@@ -40,6 +38,7 @@ public class FanOutMessageSink<T> extends AbstractMessageProcessingPipelineSink<
 	@Override
 	protected CompletableFuture<Void> doEmit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
 		logger.trace("Emitting messages {}", MessageHeaderUtils.getId(messages));
-		return CompletableFuture.allOf(messages.stream().map(msg -> execute(msg, context)).toArray(CompletableFuture[]::new));
+		return CompletableFuture
+				.allOf(messages.stream().map(msg -> execute(msg, context)).toArray(CompletableFuture[]::new));
 	}
 }

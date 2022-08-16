@@ -15,10 +15,9 @@
  */
 package io.awspring.cloud.sqs.listener.acknowledgement;
 
+import io.awspring.cloud.sqs.CompletableFutures;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
-
-import io.awspring.cloud.sqs.CompletableFutures;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
@@ -62,7 +61,7 @@ public class SqsAcknowledgement implements AsyncAcknowledgement, Acknowledgement
 	@Override
 	public CompletableFuture<Void> acknowledgeAsync() {
 		return CompletableFutures.exceptionallyCompose(doAcknowledgeAsync(),
-			t -> CompletableFutures.failedFuture(createAcknowledgementException("Error acknowledging message", t)));
+				t -> CompletableFutures.failedFuture(createAcknowledgementException("Error acknowledging message", t)));
 	}
 
 	private CompletableFuture<Void> doAcknowledgeAsync() {
@@ -77,15 +76,18 @@ public class SqsAcknowledgement implements AsyncAcknowledgement, Acknowledgement
 	public void acknowledge() {
 		try {
 			doAcknowledgeAsync().get();
-		} catch (InterruptedException e) {
+		}
+		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 			throw createAcknowledgementException("Interrupted while acknowledging message", e);
-		} catch (Exception e) {
+		}
+		catch (Exception e) {
 			throw createAcknowledgementException("Error acknowledging message", e);
 		}
 	}
 
 	private SqsAcknowledgementException createAcknowledgementException(String message, Throwable t) {
-		return new SqsAcknowledgementException(message + " MessageId: " + this.messageId, Collections.emptyList(), this.queueUrl, t);
+		return new SqsAcknowledgementException(message + " MessageId: " + this.messageId, Collections.emptyList(),
+				this.queueUrl, t);
 	}
 }

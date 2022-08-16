@@ -17,13 +17,11 @@ package io.awspring.cloud.sqs;
 
 import io.awspring.cloud.sqs.listener.SqsHeaders;
 import io.awspring.cloud.sqs.listener.acknowledgement.Acknowledgement;
-
+import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAcknowledgement;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
-import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAcknowledgement;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 
@@ -64,12 +62,14 @@ public class MessageHeaderUtils {
 		return getHeader(message, SqsHeaders.SQS_ACKNOWLEDGMENT_HEADER, Acknowledgement.class);
 	}
 
-	public static <T, U> Collection<T> getHeader(Collection<Message<U>> messages, String headerName, Class<T> classToCast) {
+	public static <T, U> Collection<T> getHeader(Collection<Message<U>> messages, String headerName,
+			Class<T> classToCast) {
 		return messages.stream().map(msg -> getHeader(msg, headerName, classToCast)).collect(Collectors.toList());
 	}
 
 	public static <T> T getHeader(Message<?> message, String headerName, Class<T> classToCast) {
-		return Objects.requireNonNull(message.getHeaders().get(headerName, classToCast), () -> String.format("Header %s not found in message %s", headerName, message));
+		return Objects.requireNonNull(message.getHeaders().get(headerName, classToCast),
+				() -> String.format("Header %s not found in message %s", headerName, message));
 	}
 
 	public static String getHeaderAsString(Message<?> message, String headerName) {

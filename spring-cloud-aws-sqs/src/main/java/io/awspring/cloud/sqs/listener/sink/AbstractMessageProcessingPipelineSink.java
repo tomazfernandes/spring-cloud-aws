@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,17 +15,16 @@
  */
 package io.awspring.cloud.sqs.listener.sink;
 
+import io.awspring.cloud.sqs.MessageHeaderUtils;
+import io.awspring.cloud.sqs.listener.ExecutorAware;
+import io.awspring.cloud.sqs.listener.MessageProcessingContext;
+import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.Supplier;
-
-import io.awspring.cloud.sqs.MessageHeaderUtils;
-import io.awspring.cloud.sqs.listener.MessageProcessingContext;
-import io.awspring.cloud.sqs.listener.ExecutorAware;
-import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
@@ -36,15 +35,16 @@ import org.springframework.util.Assert;
 import org.springframework.util.StopWatch;
 
 /**
- * Base implementation for {@link MessageProcessingPipelineSink} containing {@link SmartLifecycle} features
- * and useful execution methods that can be used by subclasses.
+ * Base implementation for {@link MessageProcessingPipelineSink} containing {@link SmartLifecycle} features and useful
+ * execution methods that can be used by subclasses.
  *
  * @param <T> the {@link Message} payload type.
  *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractMessageProcessingPipelineSink<T> implements MessageProcessingPipelineSink<T>, ExecutorAware {
+public abstract class AbstractMessageProcessingPipelineSink<T>
+		implements MessageProcessingPipelineSink<T>, ExecutorAware {
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractMessageProcessingPipelineSink.class);
 
@@ -84,7 +84,8 @@ public abstract class AbstractMessageProcessingPipelineSink<T> implements Messag
 		return doEmit(messages, context);
 	}
 
-	protected abstract CompletableFuture<Void> doEmit(Collection<Message<T>> messages, MessageProcessingContext<T> context);
+	protected abstract CompletableFuture<Void> doEmit(Collection<Message<T>> messages,
+			MessageProcessingContext<T> context);
 
 	/**
 	 * Send the provided {@link Message} to the {@link TaskExecutor} as a unit of work.
@@ -95,13 +96,12 @@ public abstract class AbstractMessageProcessingPipelineSink<T> implements Messag
 	protected CompletableFuture<Void> execute(Message<T> message, MessageProcessingContext<T> context) {
 		StopWatch watch = getStartedWatch();
 		return doExecute(() -> this.messageProcessingPipeline.process(message, context))
-			.whenComplete((v, t) -> context.runBackPressureReleaseCallback())
-			.whenComplete((v, t) -> measureExecution(watch, Collections.singletonList(message)));
+				.whenComplete((v, t) -> context.runBackPressureReleaseCallback())
+				.whenComplete((v, t) -> measureExecution(watch, Collections.singletonList(message)));
 	}
 
 	/**
-	 * Send the provided {@link Message} instances to the {@link TaskExecutor}
-	 * as a unit of work.
+	 * Send the provided {@link Message} instances to the {@link TaskExecutor} as a unit of work.
 	 * @param messages the messages to be executed.
 	 * @param context the processing context.
 	 * @return the processing result.
@@ -109,8 +109,8 @@ public abstract class AbstractMessageProcessingPipelineSink<T> implements Messag
 	protected CompletableFuture<Void> execute(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
 		StopWatch watch = getStartedWatch();
 		return doExecute(() -> this.messageProcessingPipeline.process(messages, context))
-			.whenComplete((v, t) -> messages.forEach(msg -> context.runBackPressureReleaseCallback()))
-			.whenComplete((v, t) -> measureExecution(watch, messages));
+				.whenComplete((v, t) -> messages.forEach(msg -> context.runBackPressureReleaseCallback()))
+				.whenComplete((v, t) -> measureExecution(watch, messages));
 	}
 
 	private StopWatch getStartedWatch() {
@@ -122,12 +122,14 @@ public abstract class AbstractMessageProcessingPipelineSink<T> implements Messag
 	private void measureExecution(StopWatch watch, Collection<Message<T>> messages) {
 		watch.stop();
 		if (logger.isTraceEnabled()) {
-			logger.trace("Messages {} processed in {}ms", MessageHeaderUtils.getId(messages), watch.getTotalTimeMillis());
+			logger.trace("Messages {} processed in {}ms", MessageHeaderUtils.getId(messages),
+					watch.getTotalTimeMillis());
 		}
 	}
 
 	private CompletableFuture<Void> doExecute(Supplier<CompletableFuture<?>> supplier) {
-		return CompletableFuture.supplyAsync(supplier, this.executor).thenCompose(x -> x).thenRun(() -> {});
+		return CompletableFuture.supplyAsync(supplier, this.executor).thenCompose(x -> x).thenRun(() -> {
+		});
 	}
 
 	@Override
@@ -147,8 +149,8 @@ public abstract class AbstractMessageProcessingPipelineSink<T> implements Messag
 
 	private String getOrCreateId() {
 		return this.executor instanceof ThreadPoolTaskExecutor
-			? ((ThreadPoolTaskExecutor) this.executor).getThreadNamePrefix()
-			: UUID.randomUUID().toString();
+				? ((ThreadPoolTaskExecutor) this.executor).getThreadNamePrefix()
+				: UUID.randomUUID().toString();
 	}
 
 	@Override

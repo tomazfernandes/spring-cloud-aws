@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,8 @@ package io.awspring.cloud.sqs.listener;
 import java.util.concurrent.Executor;
 
 /**
- * Enables a class to receive a container managed {@link Executor}.
- * Note that this is not automatic - changes to the container should be necessary
- * to actually receive the instance.
+ * Enables a class to receive a container managed {@link Executor}. Note that this is not automatic - changes to the
+ * container should be necessary to actually receive the instance.
  *
  * @author Tomaz Fernandes
  * @since 3.0

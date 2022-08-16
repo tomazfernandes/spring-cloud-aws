@@ -20,7 +20,6 @@ import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -56,7 +55,8 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	private AsyncMessageListener<T> messageListener;
 
-	private AsyncErrorHandler<T> errorHandler = new AsyncErrorHandler<T>() {};
+	private AsyncErrorHandler<T> errorHandler = new AsyncErrorHandler<T>() {
+	};
 
 	private final Collection<AsyncMessageInterceptor<T>> messageInterceptors = new ArrayList<>();
 
@@ -229,8 +229,8 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	private String resolveContainerId() {
 		String firstQueueName = this.queueNames.iterator().next();
 		return firstQueueName.startsWith("http")
-			? firstQueueName.substring(Math.max(firstQueueName.length() - 10, 0)) + "-container"
-			: firstQueueName.substring(0, Math.min(15, firstQueueName.length())) + "-container";
+				? firstQueueName.substring(Math.max(firstQueueName.length() - 10, 0)) + "-container"
+				: firstQueueName.substring(0, Math.min(15, firstQueueName.length())) + "-container";
 	}
 
 	protected void doStart() {

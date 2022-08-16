@@ -70,9 +70,8 @@ import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
- * {@link BeanPostProcessor} implementation that scans the bean for a
- * {@link SqsListener @SqsListener} annotation, extracts information to a {@link SqsEndpoint},
- * and registers it in the {@link EndpointRegistrar}.
+ * {@link BeanPostProcessor} implementation that scans the bean for a {@link SqsListener @SqsListener} annotation,
+ * extracts information to a {@link SqsEndpoint}, and registers it in the {@link EndpointRegistrar}.
  *
  * @author Tomaz Fernandes
  * @since 3.0
@@ -132,30 +131,30 @@ public class SqsListenerAnnotationBeanPostProcessor
 	private Endpoint createEndpointFromAnnotation(Object bean, Method method, SqsListener annotation) {
 		Endpoint endpoint = doCreateEndpointFromAnnotation(annotation);
 		ConfigUtils.INSTANCE.acceptIfInstance(endpoint, HandlerMethodEndpoint.class, hme -> {
-				hme.setBean(bean);
-				hme.setMethod(method);
-				hme.setHandlerMethodFactory(this.delegatingHandlerMethodFactory);
-			});
+			hme.setBean(bean);
+			hme.setMethod(method);
+			hme.setHandlerMethodFactory(this.delegatingHandlerMethodFactory);
+		});
 		return endpoint;
 	}
 
 	private Endpoint doCreateEndpointFromAnnotation(SqsListener sqsListenerAnnotation) {
 		return SqsEndpoint.from(resolveDestinationNames(sqsListenerAnnotation.value()))
-			.factoryBeanName(resolveExpression().asString(sqsListenerAnnotation.factory(), "factory"))
-			.id(getEndpointId(sqsListenerAnnotation.id()))
-			.pollTimeoutSeconds(
-				resolveExpression().asInteger(sqsListenerAnnotation.pollTimeoutSeconds(), "pollTimeoutSeconds"))
-			.maxInflightMessagesPerQueue(resolveExpression()
-				.asInteger(sqsListenerAnnotation.maxInflightMessagesPerQueue(), "maxInflightMessagesPerQueue"))
-			.messageVisibility(
-				resolveExpression().asInteger(sqsListenerAnnotation.messageVisibilitySeconds(), "messageVisibility"))
-			.build();
+				.factoryBeanName(resolveExpression().asString(sqsListenerAnnotation.factory(), "factory"))
+				.id(getEndpointId(sqsListenerAnnotation.id()))
+				.pollTimeoutSeconds(
+						resolveExpression().asInteger(sqsListenerAnnotation.pollTimeoutSeconds(), "pollTimeoutSeconds"))
+				.maxInflightMessagesPerQueue(resolveExpression()
+						.asInteger(sqsListenerAnnotation.maxInflightMessagesPerQueue(), "maxInflightMessagesPerQueue"))
+				.messageVisibility(resolveExpression().asInteger(sqsListenerAnnotation.messageVisibilitySeconds(),
+						"messageVisibility"))
+				.build();
 	}
 
 	private Set<String> resolveDestinationNames(String[] destinationNames) {
 		return Arrays.stream(destinationNames)
-			.map(destinationName -> resolveExpression().asString(destinationName, "queueNames"))
-			.collect(Collectors.toSet());
+				.map(destinationName -> resolveExpression().asString(destinationName, "queueNames"))
+				.collect(Collectors.toSet());
 	}
 
 	protected String getEndpointId(String id) {
@@ -170,7 +169,7 @@ public class SqsListenerAnnotationBeanPostProcessor
 	@Override
 	public void afterSingletonsInstantiated() {
 		ConfigUtils.INSTANCE.acceptIfInstance(getBeanFactory(), ListableBeanFactory.class,
-					lbf -> lbf.getBeansOfType(SqsListenerCustomizer.class).values()
+				lbf -> lbf.getBeansOfType(SqsListenerCustomizer.class).values()
 						.forEach(customizer -> customizer.configure(this.endpointRegistrar)));
 		this.endpointRegistrar.setBeanFactory(getBeanFactory());
 		initializeHandlerMethodFactory();
@@ -186,13 +185,14 @@ public class SqsListenerAnnotationBeanPostProcessor
 	protected void initializeHandlerMethodFactory() {
 		MessageHandlerMethodFactory handlerMethodFactory = this.endpointRegistrar.getMessageHandlerMethodFactory();
 		ConfigUtils.INSTANCE.acceptIfInstance(handlerMethodFactory, DefaultMessageHandlerMethodFactory.class,
-			this::configureDefaultHandlerMethodFactory);
+				this::configureDefaultHandlerMethodFactory);
 		this.delegatingHandlerMethodFactory.setDelegate(handlerMethodFactory);
 	}
 
 	protected void configureDefaultHandlerMethodFactory(DefaultMessageHandlerMethodFactory handlerMethodFactory) {
 		CompositeMessageConverter compositeMessageConverter = createCompositeMessageConverter();
-		List<HandlerMethodArgumentResolver> methodArgumentResolvers = createArgumentResolvers(compositeMessageConverter);
+		List<HandlerMethodArgumentResolver> methodArgumentResolvers = createArgumentResolvers(
+				compositeMessageConverter);
 		this.endpointRegistrar.getMethodArgumentResolversConsumer().accept(methodArgumentResolvers);
 		handlerMethodFactory.setArgumentResolvers(methodArgumentResolvers);
 		handlerMethodFactory.afterPropertiesSet();

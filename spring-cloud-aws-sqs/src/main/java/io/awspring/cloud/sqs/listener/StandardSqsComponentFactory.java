@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@ import io.awspring.cloud.sqs.listener.sink.FanOutMessageSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
 import io.awspring.cloud.sqs.listener.source.SqsMessageSource;
-
 import java.time.Duration;
 
 /**
@@ -48,22 +47,22 @@ public class StandardSqsComponentFactory<T> implements ContainerComponentFactory
 	@Override
 	public MessageSink<T> createMessageSink(ContainerOptions options) {
 		return MessageDeliveryStrategy.SINGLE_MESSAGE.equals(options.getMessageDeliveryStrategy())
-			? new FanOutMessageSink<>()
-			: new BatchMessageSink<>();
+				? new FanOutMessageSink<>()
+				: new BatchMessageSink<>();
 	}
 
 	@Override
 	public AcknowledgementProcessor<T> createAcknowledgementProcessor(ContainerOptions options) {
 		return options.getAcknowledgementInterval() == Duration.ZERO && options.getAcknowledgementThreshold() == 0
-			? createAndConfigureImmediateProcessor(options)
-			: createAndConfigureBatchingProcessor(options);
+				? createAndConfigureImmediateProcessor(options)
+				: createAndConfigureBatchingProcessor(options);
 	}
 
 	protected ImmediateAcknowledgementProcessor<T> createAndConfigureImmediateProcessor(ContainerOptions options) {
 		ImmediateAcknowledgementProcessor<T> processor = createImmediateProcessorInstance();
 		processor.setMaxAcknowledgementsPerBatch(10);
-		ConfigUtils.INSTANCE
-			.acceptIfNotNullOrElse(processor::setAcknowledgementOrdering, options.getAcknowledgementOrdering(), DEFAULT_STANDARD_SQS_ACK_ORDERING);
+		ConfigUtils.INSTANCE.acceptIfNotNullOrElse(processor::setAcknowledgementOrdering,
+				options.getAcknowledgementOrdering(), DEFAULT_STANDARD_SQS_ACK_ORDERING);
 		return processor;
 	}
 
@@ -75,9 +74,12 @@ public class StandardSqsComponentFactory<T> implements ContainerComponentFactory
 		BatchingAcknowledgementProcessor<T> processor = createBatchingProcessorInstance();
 		processor.setMaxAcknowledgementsPerBatch(10);
 		ConfigUtils.INSTANCE
-			.acceptIfNotNullOrElse(processor::setAcknowledgementInterval, options.getAcknowledgementInterval(), DEFAULT_STANDARD_SQS_ACK_INTERVAL)
-			.acceptIfNotNullOrElse(processor::setAcknowledgementThreshold, options.getAcknowledgementThreshold(), DEFAULT_STANDARD_SQS_ACK_THRESHOLD)
-			.acceptIfNotNullOrElse(processor::setAcknowledgementOrdering, options.getAcknowledgementOrdering(), DEFAULT_STANDARD_SQS_ACK_ORDERING);
+				.acceptIfNotNullOrElse(processor::setAcknowledgementInterval, options.getAcknowledgementInterval(),
+						DEFAULT_STANDARD_SQS_ACK_INTERVAL)
+				.acceptIfNotNullOrElse(processor::setAcknowledgementThreshold, options.getAcknowledgementThreshold(),
+						DEFAULT_STANDARD_SQS_ACK_THRESHOLD)
+				.acceptIfNotNullOrElse(processor::setAcknowledgementOrdering, options.getAcknowledgementOrdering(),
+						DEFAULT_STANDARD_SQS_ACK_ORDERING);
 		return processor;
 	}
 

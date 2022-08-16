@@ -15,6 +15,8 @@
  */
 package io.awspring.cloud.sqs;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import io.awspring.cloud.sqs.config.SqsBootstrapConfiguration;
 import io.awspring.cloud.sqs.config.SqsMessageListenerContainerFactory;
@@ -24,6 +26,15 @@ import io.awspring.cloud.sqs.listener.acknowledgement.BatchingAcknowledgementPro
 import io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementMode;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -40,18 +51,6 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Tomaz Fernandes
@@ -77,10 +76,8 @@ class SqsInterceptorIntegrationTests extends BaseSqsIntegrationTest {
 	@BeforeAll
 	static void beforeTests() {
 		SqsAsyncClient client = createAsyncClient();
-		CompletableFuture.allOf(
-			createQueue(client, RECEIVES_CHANGED_MESSAGE_ON_COMPONENTS_QUEUE_NAME),
-			createQueue(client, RECEIVES_CHANGED_MESSAGE_ON_ERROR_QUEUE_NAME)
-		).join();
+		CompletableFuture.allOf(createQueue(client, RECEIVES_CHANGED_MESSAGE_ON_COMPONENTS_QUEUE_NAME),
+				createQueue(client, RECEIVES_CHANGED_MESSAGE_ON_ERROR_QUEUE_NAME)).join();
 	}
 
 	@Autowired
@@ -125,7 +122,8 @@ class SqsInterceptorIntegrationTests extends BaseSqsIntegrationTest {
 
 		@SqsListener(queueNames = RECEIVES_CHANGED_MESSAGE_ON_COMPONENTS_QUEUE_NAME, id = "receives-changed-payload-on-success")
 		void listen(Message<String> message, @Header(SqsHeaders.SQS_QUEUE_NAME_HEADER) String queueName) {
-			logger.debug("Received message {} with id {} from queue {}", message.getPayload(), MessageHeaderUtils.getId(message), queueName);
+			logger.debug("Received message {} with id {} from queue {}", message.getPayload(),
+					MessageHeaderUtils.getId(message), queueName);
 			if (isChangedPayload(message)) {
 				latchContainer.receivesChangedMessageLatch.countDown();
 			}
@@ -142,7 +140,8 @@ class SqsInterceptorIntegrationTests extends BaseSqsIntegrationTest {
 
 		@SqsListener(queueNames = RECEIVES_CHANGED_MESSAGE_ON_ERROR_QUEUE_NAME, id = "receives-changed-payload-on-error")
 		void listen(Message<String> message, @Header(SqsHeaders.SQS_QUEUE_NAME_HEADER) String queueName) {
-			logger.debug("Received message {} with id {} from queue {}", message.getPayload(), MessageHeaderUtils.getId(message), queueName);
+			logger.debug("Received message {} with id {} from queue {}", message.getPayload(),
+					MessageHeaderUtils.getId(message), queueName);
 			if (isChangedPayload(message)) {
 				latchContainer.receivesChangedMessageOnErrorLatch.countDown();
 			}
@@ -166,11 +165,9 @@ class SqsInterceptorIntegrationTests extends BaseSqsIntegrationTest {
 		@Bean
 		public SqsMessageListenerContainerFactory<String> defaultSqsListenerContainerFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
-			factory.getContainerOptions()
-				.setPermitAcquireTimeout(Duration.ofSeconds(1))
-				.setQueueAttributeNames(Collections.singletonList(QueueAttributeName.QUEUE_ARN))
-				.setAcknowledgementMode(AcknowledgementMode.ALWAYS)
-				.setPollTimeout(Duration.ofSeconds(3));
+			factory.getContainerOptions().setPermitAcquireTimeout(Duration.ofSeconds(1))
+					.setQueueAttributeNames(Collections.singletonList(QueueAttributeName.QUEUE_ARN))
+					.setAcknowledgementMode(AcknowledgementMode.ALWAYS).setPollTimeout(Duration.ofSeconds(3));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			factory.addMessageInterceptor(getMessageInterceptor());
 			factory.setErrorHandler(getErrorHandler());
@@ -210,7 +207,8 @@ class SqsInterceptorIntegrationTests extends BaseSqsIntegrationTest {
 						accessor.copyHeaders(message.getHeaders());
 						accessor.removeHeader(SqsHeaders.SQS_MESSAGE_ID_HEADER);
 						accessor.setHeader(SqsHeaders.SQS_MESSAGE_ID_HEADER, CHANGED_ID);
-						return CompletableFuture.completedFuture(MessageBuilder.createMessage(CHANGED_PAYLOAD, accessor.toMessageHeaders()));
+						return CompletableFuture.completedFuture(
+								MessageBuilder.createMessage(CHANGED_PAYLOAD, accessor.toMessageHeaders()));
 					}
 					return CompletableFuture.completedFuture(message);
 				}
@@ -261,7 +259,8 @@ class SqsInterceptorIntegrationTests extends BaseSqsIntegrationTest {
 	}
 
 	private static boolean isChangedPayload(Message<?> message) {
-		return message != null && message.getPayload().equals(CHANGED_PAYLOAD) && MessageHeaderUtils.getId(message).equals(CHANGED_ID.toString());
+		return message != null && message.getPayload().equals(CHANGED_PAYLOAD)
+				&& MessageHeaderUtils.getId(message).equals(CHANGED_ID.toString());
 	}
 
 }

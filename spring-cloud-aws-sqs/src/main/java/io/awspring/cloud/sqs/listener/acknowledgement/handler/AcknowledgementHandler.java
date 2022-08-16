@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,9 @@
  */
 package io.awspring.cloud.sqs.listener.acknowledgement.handler;
 
+import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementCallback;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
-
-import io.awspring.cloud.sqs.CompletableFutures;
-import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementCallback;
 import org.springframework.messaging.Message;
 
 /**
@@ -57,7 +55,8 @@ public interface AcknowledgementHandler<T> {
 		return CompletableFuture.completedFuture(null);
 	}
 
-	default CompletableFuture<Void> onError(Collection<Message<T>> messages, Throwable t, AcknowledgementCallback<T> callback) {
+	default CompletableFuture<Void> onError(Collection<Message<T>> messages, Throwable t,
+			AcknowledgementCallback<T> callback) {
 		return CompletableFuture.completedFuture(null);
 	}
 

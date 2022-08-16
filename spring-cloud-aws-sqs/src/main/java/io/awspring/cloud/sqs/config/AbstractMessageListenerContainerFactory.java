@@ -27,11 +27,9 @@ import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
@@ -150,9 +148,8 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Messa
 	}
 
 	private void configureContainerOptions(Endpoint endpoint, ContainerOptions options) {
-		ConfigUtils.INSTANCE
-			.acceptIfInstance(endpoint, AbstractEndpoint.class, abstractEndpoint ->
-				abstractEndpoint.configureMessageDeliveryStrategy(options::setMessageDeliveryStrategy));
+		ConfigUtils.INSTANCE.acceptIfInstance(endpoint, AbstractEndpoint.class, abstractEndpoint -> abstractEndpoint
+				.configureMessageDeliveryStrategy(options::setMessageDeliveryStrategy));
 		doConfigureContainerOptions(endpoint, options);
 	}
 
@@ -166,20 +163,18 @@ public abstract class AbstractMessageListenerContainerFactory<T, C extends Messa
 
 	@SuppressWarnings("unchecked")
 	protected void configureContainer(C container, Endpoint endpoint) {
-		ConfigUtils.INSTANCE
-			.acceptIfInstance(container, AbstractMessageListenerContainer.class,
+		ConfigUtils.INSTANCE.acceptIfInstance(container, AbstractMessageListenerContainer.class,
 				abstractContainer -> configureAbstractContainer(abstractContainer, endpoint));
 	}
 
 	protected void configureAbstractContainer(AbstractMessageListenerContainer<T> container, Endpoint endpoint) {
 		container.setQueueNames(endpoint.getLogicalNames());
-		ConfigUtils.INSTANCE
-			.acceptIfNotNull(endpoint.getId(), container::setId)
-			.acceptIfNotNull(this.containerComponentFactory, container::setContainerComponentFactory)
-			.acceptIfNotNull(this.messageListener, container::setAsyncMessageListener)
-			.acceptIfNotNull(this.errorHandler, container::setAsyncErrorHandler)
-			.acceptIfNotNull(this.messageInterceptors,
-				interceptors -> interceptors.forEach(container::addAsyncMessageInterceptor));
+		ConfigUtils.INSTANCE.acceptIfNotNull(endpoint.getId(), container::setId)
+				.acceptIfNotNull(this.containerComponentFactory, container::setContainerComponentFactory)
+				.acceptIfNotNull(this.messageListener, container::setAsyncMessageListener)
+				.acceptIfNotNull(this.errorHandler, container::setAsyncErrorHandler)
+				.acceptIfNotNull(this.messageInterceptors,
+						interceptors -> interceptors.forEach(container::addAsyncMessageInterceptor));
 	}
 
 	protected abstract C createContainerInstance(Endpoint endpoint, ContainerOptions containerOptions);

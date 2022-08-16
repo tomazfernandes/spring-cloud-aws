@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,18 +16,16 @@
 package io.awspring.cloud.sqs.listener;
 
 import io.awspring.cloud.sqs.SqsException;
-import io.awspring.cloud.sqs.listener.QueueAttributes;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.sqs.SqsAsyncClient;
-import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
-
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.sqs.SqsAsyncClient;
+import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
 
 /**
  * @author Tomaz Fernandes
@@ -40,11 +38,13 @@ public class QueueAttributesResolver {
 	private QueueAttributesResolver() {
 	}
 
-	public static QueueAttributes resolve(String queueName, SqsAsyncClient sqsAsyncClient, Collection<QueueAttributeName> queueAttributeNames) {
+	public static QueueAttributes resolve(String queueName, SqsAsyncClient sqsAsyncClient,
+			Collection<QueueAttributeName> queueAttributeNames) {
 		try {
 			logger.debug("Resolving attributes for queue {}", queueName);
 			String queueUrl = resolveQueueUrl(queueName, sqsAsyncClient);
-			return new QueueAttributes(queueName, queueUrl, getQueueAttributes(sqsAsyncClient, queueAttributeNames, queueUrl, queueName));
+			return new QueueAttributes(queueName, queueUrl,
+					getQueueAttributes(sqsAsyncClient, queueAttributeNames, queueUrl, queueName));
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
@@ -55,21 +55,28 @@ public class QueueAttributesResolver {
 		}
 	}
 
-	private static String resolveQueueUrl(String queueName, SqsAsyncClient sqsAsyncClient) throws InterruptedException, ExecutionException {
+	private static String resolveQueueUrl(String queueName, SqsAsyncClient sqsAsyncClient)
+			throws InterruptedException, ExecutionException {
 		return isValidQueueUrl(queueName)
 			? queueName
 			: sqsAsyncClient.getQueueUrl(req -> req.queueName(queueName)).get().queueUrl();
 	}
 
-	private static Map<QueueAttributeName, String> getQueueAttributes(SqsAsyncClient sqsAsyncClient, Collection<QueueAttributeName> queueAttributeNames, String queueUrl, String queueName) throws InterruptedException, ExecutionException {
+	private static Map<QueueAttributeName, String> getQueueAttributes(SqsAsyncClient sqsAsyncClient,
+			Collection<QueueAttributeName> queueAttributeNames, String queueUrl, String queueName)
+			throws InterruptedException, ExecutionException {
 		return queueAttributeNames.isEmpty()
 			? Collections.emptyMap()
 			: doGetAttributes(sqsAsyncClient, queueAttributeNames, queueUrl, queueName);
 	}
 
-	private static Map<QueueAttributeName, String> doGetAttributes(SqsAsyncClient sqsAsyncClient, Collection<QueueAttributeName> queueAttributeNames, String queueUrl, String queueName) throws InterruptedException, ExecutionException {
+	private static Map<QueueAttributeName, String> doGetAttributes(SqsAsyncClient sqsAsyncClient,
+			Collection<QueueAttributeName> queueAttributeNames, String queueUrl, String queueName)
+			throws InterruptedException, ExecutionException {
 		logger.debug("Resolving attributes {} for queue {}", queueAttributeNames, queueName);
-		Map<QueueAttributeName, String> attributes = sqsAsyncClient.getQueueAttributes(req -> req.queueUrl(queueUrl).attributeNames(queueAttributeNames)).get().attributes();
+		Map<QueueAttributeName, String> attributes = sqsAsyncClient
+				.getQueueAttributes(req -> req.queueUrl(queueUrl).attributeNames(queueAttributeNames)).get()
+				.attributes();
 		logger.debug("Attributes for queue {} resolved", queueName);
 		return attributes;
 	}

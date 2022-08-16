@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,13 @@
  */
 package io.awspring.cloud.sqs;
 
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.context.SmartLifecycle;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
-
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.context.SmartLifecycle;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 
 /**
  * Utility methods to handle {@link SmartLifecycle} hooks.
@@ -52,8 +51,7 @@ public class LifecycleHandler {
 	}
 
 	/**
-	 * Execute the provided action if the provided objects
-	 * are {@link SmartLifecycle} instances.
+	 * Execute the provided action if the provided objects are {@link SmartLifecycle} instances.
 	 * @param action the action.
 	 * @param objects the objects.
 	 */
@@ -64,11 +62,9 @@ public class LifecycleHandler {
 			}
 			else if (object instanceof Collection) {
 				if (this.parallelLifecycle) {
-					CompletableFuture
-						.allOf(((Collection<?>) object).stream()
-							.map(obj -> CompletableFuture.runAsync(() -> manageLifecycle(action, obj), executor))
-							.toArray(CompletableFuture[]::new))
-						.join();
+					CompletableFuture.allOf(((Collection<?>) object).stream()
+							.map(obj -> CompletableFuture.runAsync(() -> manageLifecycle(action, obj), this.executor))
+							.toArray(CompletableFuture[]::new)).join();
 				}
 				else {
 					((Collection<?>) object).forEach(obj -> manageLifecycle(action, obj));
@@ -104,7 +100,8 @@ public class LifecycleHandler {
 		if (destroyable instanceof DisposableBean) {
 			try {
 				((DisposableBean) destroyable).destroy();
-			} catch (Exception e) {
+			}
+			catch (Exception e) {
 				throw new IllegalStateException("Error destroying disposable " + destroyable);
 			}
 		}

@@ -20,14 +20,13 @@ import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.messaging.Message;
-
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.messaging.Message;
 
 /**
  * Utility class for adapting blocking components to asynchronous
@@ -101,7 +100,8 @@ public class AsyncComponentAdapters {
 
 	}
 
-	public static class BlockingMessageInterceptorAdapter<T> extends AbstractThreadingComponentAdapter implements AsyncMessageInterceptor<T> {
+	public static class BlockingMessageInterceptorAdapter<T> extends AbstractThreadingComponentAdapter
+			implements AsyncMessageInterceptor<T> {
 
 		private final MessageInterceptor<T> blockingMessageInterceptor;
 
@@ -130,7 +130,8 @@ public class AsyncComponentAdapters {
 		}
 	}
 
-	public static class BlockingMessageListenerAdapter<T> extends AbstractThreadingComponentAdapter implements AsyncMessageListener<T> {
+	public static class BlockingMessageListenerAdapter<T> extends AbstractThreadingComponentAdapter
+			implements AsyncMessageListener<T> {
 
 		private final MessageListener<T> blockingMessageListener;
 
@@ -149,7 +150,8 @@ public class AsyncComponentAdapters {
 		}
 	}
 
-	public static class BlockingErrorHandlerAdapter<T> extends AbstractThreadingComponentAdapter implements AsyncErrorHandler<T> {
+	public static class BlockingErrorHandlerAdapter<T> extends AbstractThreadingComponentAdapter
+			implements AsyncErrorHandler<T> {
 
 		private final ErrorHandler<T> blockingErrorHandler;
 

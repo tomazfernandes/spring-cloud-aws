@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,16 @@
 package io.awspring.cloud.sqs.listener.adapter;
 
 import io.awspring.cloud.sqs.listener.MessageListener;
+import java.util.Collection;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
-
-import java.util.Collection;
 
 /**
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class MessagingMessageListenerAdapter<T> extends AbstractMethodInvokingListenerAdapter<T> implements MessageListener<T> {
+public class MessagingMessageListenerAdapter<T> extends AbstractMethodInvokingListenerAdapter<T>
+		implements MessageListener<T> {
 
 	public MessagingMessageListenerAdapter(InvocableHandlerMethod handlerMethod) {
 		super(handlerMethod);

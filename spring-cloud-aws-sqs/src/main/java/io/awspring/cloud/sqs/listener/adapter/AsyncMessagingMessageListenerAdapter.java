@@ -16,12 +16,9 @@
 package io.awspring.cloud.sqs.listener.adapter;
 
 import io.awspring.cloud.sqs.CompletableFutures;
-import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.AsyncMessageListener;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
-
-import io.awspring.cloud.sqs.listener.ListenerExecutionFailedException;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 
@@ -49,11 +46,11 @@ public class AsyncMessagingMessageListenerAdapter<T> extends AbstractMethodInvok
 	@Override
 	public CompletableFuture<Void> onMessage(Collection<Message<T>> messages) {
 		return CompletableFutures.exceptionallyCompose(invokeAsyncHandler(messages),
-			t -> CompletableFutures.failedFuture(createListenerException(messages, t)));
+				t -> CompletableFutures.failedFuture(createListenerException(messages, t)));
 	}
 
 	@SuppressWarnings("unchecked")
-	private CompletableFuture<Void> invokeAsyncHandler(Collection<Message<T>> messages){
+	private CompletableFuture<Void> invokeAsyncHandler(Collection<Message<T>> messages) {
 		return (CompletableFuture<Void>) super.invokeHandler(messages);
 	}
 

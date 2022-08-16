@@ -15,13 +15,12 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import org.springframework.lang.Nullable;
-import org.springframework.messaging.Message;
-import org.springframework.messaging.support.MessageBuilder;
-
 import java.util.Collection;
 import java.util.Collections;
 import java.util.stream.Collectors;
+import org.springframework.lang.Nullable;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
 
 /**
  * Exception thrown when the {@link AsyncMessageListener} completes with an exception.
@@ -38,9 +37,11 @@ public class ListenerExecutionFailedException extends RuntimeException {
 		this.failedMessages = Collections.singletonList(failedMessage);
 	}
 
-	public <T> ListenerExecutionFailedException(String message, Throwable cause, Collection<Message<T>> failedMessages) {
+	public <T> ListenerExecutionFailedException(String message, Throwable cause,
+			Collection<Message<T>> failedMessages) {
 		super(message, cause);
-		this.failedMessages = failedMessages.stream().map(msg -> (Message<?>) msg).collect(Collectors.toList());;
+		this.failedMessages = failedMessages.stream().map(msg -> (Message<?>) msg).collect(Collectors.toList());
+		;
 	}
 
 	public Message<?> getFailedMessage() {

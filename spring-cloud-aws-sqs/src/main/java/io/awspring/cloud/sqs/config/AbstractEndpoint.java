@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,13 +21,6 @@ import io.awspring.cloud.sqs.listener.MessageListener;
 import io.awspring.cloud.sqs.listener.MessageListenerContainer;
 import io.awspring.cloud.sqs.listener.adapter.AsyncMessagingMessageListenerAdapter;
 import io.awspring.cloud.sqs.listener.adapter.MessagingMessageListenerAdapter;
-import org.springframework.core.BridgeMethodResolver;
-import org.springframework.core.MethodParameter;
-import org.springframework.lang.Nullable;
-import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
-import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
-import org.springframework.util.Assert;
-
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.List;
@@ -35,6 +28,12 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.springframework.core.BridgeMethodResolver;
+import org.springframework.core.MethodParameter;
+import org.springframework.lang.Nullable;
+import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
+import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
+import org.springframework.util.Assert;
 
 /**
  * Base class for implementing an {@link Endpoint}.
@@ -57,7 +56,7 @@ public abstract class AbstractEndpoint implements HandlerMethodEndpoint {
 	private MessageHandlerMethodFactory handlerMethodFactory;
 
 	protected AbstractEndpoint(Collection<String> logicalNames, @Nullable String listenerContainerFactoryName,
-							   String id) {
+			String id) {
 		Assert.notEmpty(logicalNames, "logicalNames cannot be empty.");
 		this.id = id;
 		this.logicalNames = logicalNames;
@@ -114,7 +113,8 @@ public abstract class AbstractEndpoint implements HandlerMethodEndpoint {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public void setupContainer(MessageListenerContainer container) {
 		Assert.notNull(this.handlerMethodFactory, "No handlerMethodFactory has been set");
-		InvocableHandlerMethod handlerMethod = this.handlerMethodFactory.createInvocableHandlerMethod(this.bean, this.method);
+		InvocableHandlerMethod handlerMethod = this.handlerMethodFactory.createInvocableHandlerMethod(this.bean,
+				this.method);
 		if (CompletionStage.class.isAssignableFrom(handlerMethod.getReturnType().getParameterType())) {
 			container.setAsyncMessageListener(createAsyncMessageListenerInstance(handlerMethod));
 		}
@@ -149,8 +149,7 @@ public abstract class AbstractEndpoint implements HandlerMethodEndpoint {
 
 	protected List<MethodParameter> getMethodParameters() {
 		return IntStream.range(0, BridgeMethodResolver.findBridgedMethod(this.method).getParameterCount())
-				.mapToObj(index -> new MethodParameter(this.method, index))
-				.collect(Collectors.toList());
+				.mapToObj(index -> new MethodParameter(this.method, index)).collect(Collectors.toList());
 	}
 
 }

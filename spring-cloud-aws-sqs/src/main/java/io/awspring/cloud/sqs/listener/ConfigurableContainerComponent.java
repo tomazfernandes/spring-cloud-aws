@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,9 @@
 package io.awspring.cloud.sqs.listener;
 
 /**
- * Representation of a {@link MessageListenerContainer} component
- * that can be configured using a {@link ContainerOptions} instance.
- * Note that the provided options should be a copy, so any changes
- * on it will have no effect on the container.
+ * Representation of a {@link MessageListenerContainer} component that can be configured using a
+ * {@link ContainerOptions} instance. Note that the provided options should be a copy, so any changes on it will have no
+ * effect on the container.
  *
  * @author Tomaz Fernandes
  * @since 3.0

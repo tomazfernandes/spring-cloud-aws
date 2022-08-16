@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
@@ -63,9 +62,11 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 
 	private final Collection<Endpoint> endpoints = new ArrayList<>();
 
-	private Consumer<List<MessageConverter>> messageConvertersConsumer = converters -> {};
+	private Consumer<List<MessageConverter>> messageConvertersConsumer = converters -> {
+	};
 
-	private Consumer<List<HandlerMethodArgumentResolver>> methodArgumentResolversConsumer = resolvers -> {};
+	private Consumer<List<HandlerMethodArgumentResolver>> methodArgumentResolversConsumer = resolvers -> {
+	};
 
 	private ObjectMapper objectMapper;
 

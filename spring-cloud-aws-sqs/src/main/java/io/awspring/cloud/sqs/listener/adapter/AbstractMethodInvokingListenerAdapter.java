@@ -15,11 +15,10 @@
  */
 package io.awspring.cloud.sqs.listener.adapter;
 
-import java.util.Collection;
-import java.util.Collections;
-
 import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.ListenerExecutionFailedException;
+import java.util.Collection;
+import java.util.Collections;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 import org.springframework.messaging.support.MessageBuilder;
@@ -53,14 +52,15 @@ public abstract class AbstractMethodInvokingListenerAdapter<T> {
 	protected final Object invokeHandler(Collection<Message<T>> messages) {
 		try {
 			return handlerMethod.invoke(MessageBuilder.withPayload(messages).build());
-		} catch (Exception e) {
+		}
+		catch (Exception e) {
 			throw createListenerException(messages, e);
 		}
 	}
 
 	protected ListenerExecutionFailedException createListenerException(Collection<Message<T>> message, Throwable t) {
-		return new ListenerExecutionFailedException("Listener failed to process message "
-			+ MessageHeaderUtils.getId(message), t, message);
+		return new ListenerExecutionFailedException(
+				"Listener failed to process message " + MessageHeaderUtils.getId(message), t, message);
 	}
 
 	protected ListenerExecutionFailedException createListenerException(Message<T> message, Throwable t) {

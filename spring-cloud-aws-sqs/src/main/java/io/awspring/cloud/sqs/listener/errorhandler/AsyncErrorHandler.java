@@ -15,10 +15,9 @@
  */
 package io.awspring.cloud.sqs.listener.errorhandler;
 
+import io.awspring.cloud.sqs.CompletableFutures;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
-
-import io.awspring.cloud.sqs.CompletableFutures;
 import org.springframework.messaging.Message;
 
 /**

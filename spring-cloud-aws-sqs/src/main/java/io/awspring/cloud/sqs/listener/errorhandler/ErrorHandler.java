@@ -15,9 +15,8 @@
  */
 package io.awspring.cloud.sqs.listener.errorhandler;
 
-import org.springframework.messaging.Message;
-
 import java.util.Collection;
+import org.springframework.messaging.Message;
 
 /**
  * @author Tomaz Fernandes

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,12 +33,6 @@ import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import io.awspring.cloud.sqs.listener.source.AcknowledgementProcessingMessageSource;
 import io.awspring.cloud.sqs.listener.source.MessageSource;
 import io.awspring.cloud.sqs.listener.source.PollingMessageSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -47,6 +41,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
  * {@link MessageListenerContainer} implementation for SQS queues.
@@ -91,23 +89,24 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 	private Collection<MessageSource<T>> createMessageSources(ContainerComponentFactory<T> componentFactory) {
 		List<String> queueNames = new ArrayList<>(getQueueNames());
 		return IntStream.range(0, queueNames.size())
-			.mapToObj(index -> createMessageSource(queueNames.get(index), index, componentFactory))
-			.collect(Collectors.toList());
+				.mapToObj(index -> createMessageSource(queueNames.get(index), index, componentFactory))
+				.collect(Collectors.toList());
 	}
 
-	private MessageSource<T> createMessageSource(String queueName, int index, ContainerComponentFactory<T> componentFactory) {
+	private MessageSource<T> createMessageSource(String queueName, int index,
+			ContainerComponentFactory<T> componentFactory) {
 		MessageSource<T> messageSource = componentFactory.createMessageSource(getContainerOptions());
 		ConfigUtils.INSTANCE
-			.acceptIfInstance(messageSource, PollingMessageSource.class, pms -> pms.setPollingEndpointName(queueName))
-			.acceptIfInstance(messageSource, IdentifiableContainerComponent.class, icc -> icc.setId(getId() + "-" + index));
+			.acceptIfInstance(messageSource, PollingMessageSource.class,
+				pms -> pms.setPollingEndpointName(queueName))
+			.acceptIfInstance(messageSource, IdentifiableContainerComponent.class,
+				icc -> icc.setId(getId() + "-" + index));
 		return messageSource;
 	}
 
 	private void configureComponents(ContainerComponentFactory<T> componentFactory) {
 		this.componentsTaskExecutor = resolveComponentsTaskExecutor();
-		getContainerOptions()
-			.configure(this.messageSources)
-			.configure(this.messageSink);
+		getContainerOptions().configure(this.messageSources).configure(this.messageSink);
 		configureMessageSources(componentFactory);
 		configureMessageSink(createMessageProcessingPipeline(componentFactory));
 		configurePipelineComponents();
@@ -116,11 +115,13 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 	@SuppressWarnings("unchecked")
 	protected void configureMessageSources(ContainerComponentFactory<T> componentFactory) {
 		Executor executor = createSourcesTaskExecutor();
-		ConfigUtils.INSTANCE
-			.acceptMany(this.messageSources, source -> source.setMessageSink(this.messageSink))
-			.acceptManyIfInstance(this.messageSources, PollingMessageSource.class, pms -> pms.setBackPressureHandler(createBackPressureHandler()))
-			.acceptManyIfInstance(this.messageSources, AcknowledgementProcessingMessageSource.class, ams -> ams.setAcknowledgementProcessor(componentFactory.createAcknowledgementProcessor(getContainerOptions())))
-			.acceptManyIfInstance(this.messageSources, ExecutorAware.class, teac -> teac.setExecutor(executor));
+		ConfigUtils.INSTANCE.acceptMany(this.messageSources, source -> source.setMessageSink(this.messageSink))
+				.acceptManyIfInstance(this.messageSources, PollingMessageSource.class,
+						pms -> pms.setBackPressureHandler(createBackPressureHandler()))
+				.acceptManyIfInstance(this.messageSources, AcknowledgementProcessingMessageSource.class,
+						ams -> ams.setAcknowledgementProcessor(
+								componentFactory.createAcknowledgementProcessor(getContainerOptions())))
+				.acceptManyIfInstance(this.messageSources, ExecutorAware.class, teac -> teac.setExecutor(executor));
 		doConfigureMessageSources(this.messageSources);
 	}
 
@@ -129,9 +130,11 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 	@SuppressWarnings("unchecked")
 	protected void configureMessageSink(MessageProcessingPipeline<T> messageProcessingPipeline) {
 		ConfigUtils.INSTANCE
-			.acceptIfInstance(this.messageSink, IdentifiableContainerComponent.class, icc -> icc.setId(getId()))
-			.acceptIfInstance(this.messageSink, ExecutorAware.class, teac -> teac.setExecutor(getComponentsTaskExecutor()))
-			.acceptIfInstance(this.messageSink, MessageProcessingPipelineSink.class, mls -> mls.setMessagePipeline(messageProcessingPipeline));
+				.acceptIfInstance(this.messageSink, IdentifiableContainerComponent.class, icc -> icc.setId(getId()))
+				.acceptIfInstance(this.messageSink, ExecutorAware.class,
+						teac -> teac.setExecutor(getComponentsTaskExecutor()))
+				.acceptIfInstance(this.messageSink, MessageProcessingPipelineSink.class,
+						mls -> mls.setMessagePipeline(messageProcessingPipeline));
 		doConfigureMessageSink(this.messageSink);
 	}
 
@@ -139,43 +142,42 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 
 	protected void configurePipelineComponents() {
 		ConfigUtils.INSTANCE
-			.acceptManyIfInstance(getMessageInterceptors(), ExecutorAware.class, teac -> teac.setExecutor(getComponentsTaskExecutor()))
-			.acceptIfInstance(getMessageListener(), ExecutorAware.class, teac -> teac.setExecutor(getComponentsTaskExecutor()))
-			.acceptIfInstance(getErrorHandler(), ExecutorAware.class, teac -> teac.setExecutor(getComponentsTaskExecutor()));
+				.acceptManyIfInstance(getMessageInterceptors(), ExecutorAware.class,
+						teac -> teac.setExecutor(getComponentsTaskExecutor()))
+				.acceptIfInstance(getMessageListener(), ExecutorAware.class,
+						teac -> teac.setExecutor(getComponentsTaskExecutor()))
+				.acceptIfInstance(getErrorHandler(), ExecutorAware.class,
+						teac -> teac.setExecutor(getComponentsTaskExecutor()));
 	}
 
-	protected MessageProcessingPipeline<T> createMessageProcessingPipeline(ContainerComponentFactory<T> componentFactory) {
-		return MessageProcessingPipelineBuilder
-			.<T>first(BeforeProcessingContextInterceptorExecutionStage::new)
-			.then(BeforeProcessingInterceptorExecutionStage::new)
-			.then(MessageListenerExecutionStage::new)
-			.thenInTheFuture(ErrorHandlerExecutionStage::new)
-			.thenInTheFuture(AfterProcessingInterceptorExecutionStage::new)
-			.thenInTheFuture(AfterProcessingContextInterceptorExecutionStage::new)
-			.thenInTheFuture(AcknowledgementHandlerExecutionStage::new)
-			.build(MessageProcessingConfiguration.<T>builder()
-				.interceptors(getMessageInterceptors())
-				.messageListener(getMessageListener())
-				.errorHandler(getErrorHandler())
-				.ackHandler(componentFactory.createAcknowledgementHandler(getContainerOptions()))
-				.build());
+	protected MessageProcessingPipeline<T> createMessageProcessingPipeline(
+			ContainerComponentFactory<T> componentFactory) {
+		return MessageProcessingPipelineBuilder.<T> first(BeforeProcessingContextInterceptorExecutionStage::new)
+				.then(BeforeProcessingInterceptorExecutionStage::new).then(MessageListenerExecutionStage::new)
+				.thenInTheFuture(ErrorHandlerExecutionStage::new)
+				.thenInTheFuture(AfterProcessingInterceptorExecutionStage::new)
+				.thenInTheFuture(AfterProcessingContextInterceptorExecutionStage::new)
+				.thenInTheFuture(AcknowledgementHandlerExecutionStage::new)
+				.build(MessageProcessingConfiguration.<T> builder()
+					.interceptors(getMessageInterceptors())
+					.messageListener(getMessageListener())
+					.errorHandler(getErrorHandler())
+					.ackHandler(componentFactory.createAcknowledgementHandler(getContainerOptions()))
+					.build());
 	}
 
 	private Executor resolveComponentsTaskExecutor() {
 		return getContainerOptions().getContainerComponentsTaskExecutor() != null
-			? getContainerOptions().getContainerComponentsTaskExecutor()
-			: createComponentsTaskExecutor();
+				? getContainerOptions().getContainerComponentsTaskExecutor()
+				: createComponentsTaskExecutor();
 	}
 
 	protected BackPressureHandler createBackPressureHandler() {
-		return SemaphoreBackPressureHandler
-			.builder()
-			.batchSize(getContainerOptions().getMessagesPerPoll())
-			.totalPermits(getContainerOptions().getMaxInFlightMessagesPerQueue())
-			.acquireTimeout(getContainerOptions().getPermitAcquireTimeout())
-			.permitAcquiringStrategy(getContainerOptions().getPermitAcquiringStrategy())
-			.throughputConfiguration(getContainerOptions().getBackPressureMode())
-			.build();
+		return SemaphoreBackPressureHandler.builder().batchSize(getContainerOptions().getMessagesPerPoll())
+				.totalPermits(getContainerOptions().getMaxInFlightMessagesPerQueue())
+				.acquireTimeout(getContainerOptions().getPermitAcquireTimeout())
+				.permitAcquiringStrategy(getContainerOptions().getPermitAcquiringStrategy())
+				.throughputConfiguration(getContainerOptions().getBackPressureMode()).build();
 	}
 
 	protected Executor createSourcesTaskExecutor() {
@@ -215,8 +217,8 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 
 	private void shutdownComponentsTaskExecutor() {
 		LifecycleHandler.get().dispose(getComponentsTaskExecutor());
-		ConfigUtils.INSTANCE.acceptIfInstance(getComponentsTaskExecutor(),
-			ExecutorService.class, ExecutorService::shutdownNow);
+		ConfigUtils.INSTANCE.acceptIfInstance(getComponentsTaskExecutor(), ExecutorService.class,
+				ExecutorService::shutdownNow);
 	}
 
 }

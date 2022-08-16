@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,6 @@ package io.awspring.cloud.sqs.listener.acknowledgement;
 
 import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.IdentifiableContainerComponent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.messaging.Message;
-import org.springframework.util.Assert;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -30,12 +25,17 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.messaging.Message;
+import org.springframework.util.Assert;
 
 /**
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAcknowledgementProcessor<T>, AcknowledgementCallback<T>, IdentifiableContainerComponent {
+public abstract class AbstractAcknowledgementProcessor<T>
+		implements ExecutingAcknowledgementProcessor<T>, AcknowledgementCallback<T>, IdentifiableContainerComponent {
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractAcknowledgementProcessor.class);
 
@@ -94,7 +94,8 @@ public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAc
 			Assert.notNull(this.acknowledgementExecutor, "acknowledgementExecutor not set");
 			Assert.notNull(this.acknowledgementOrdering, "acknowledgementOrdering not set");
 			Assert.notNull(this.id, "id not set");
-			logger.debug("Starting {} with ordering {} and batch size {}", this.id, this.acknowledgementOrdering, this.maxAcknowledgementsPerBatch);
+			logger.debug("Starting {} with ordering {} and batch size {}", this.id, this.acknowledgementOrdering,
+					this.maxAcknowledgementsPerBatch);
 			this.running = true;
 			doStart();
 		}
@@ -140,15 +141,13 @@ public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAc
 
 	protected CompletableFuture<Void> sendToExecutor(Collection<Message<T>> messagesToAck) {
 		return AcknowledgementOrdering.PARALLEL.equals(this.acknowledgementOrdering)
-			? sendToExecutorParallel(messagesToAck)
-			: sendToExecutorOrdered(messagesToAck);
+				? sendToExecutorParallel(messagesToAck)
+				: sendToExecutorOrdered(messagesToAck);
 	}
 
 	private CompletableFuture<Void> sendToExecutorParallel(Collection<Message<T>> messagesToAck) {
-		return CompletableFuture.allOf(partitionMessages(messagesToAck)
-			.stream()
-			.map(this.acknowledgementExecutor::execute)
-			.toArray(CompletableFuture[]::new));
+		return CompletableFuture.allOf(partitionMessages(messagesToAck).stream()
+				.map(this.acknowledgementExecutor::execute).toArray(CompletableFuture[]::new));
 	}
 
 	private CompletableFuture<Void> sendToExecutorOrdered(Collection<Message<T>> messagesToAck) {
@@ -164,7 +163,7 @@ public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAc
 
 	private void doSendToExecutorOrdered(Collection<Message<T>> messagesToAck) {
 		this.lastAcknowledgementFuture = this.lastAcknowledgementFuture
-			.thenCompose(theVoid -> this.acknowledgementExecutor.execute(messagesToAck));
+				.thenCompose(theVoid -> this.acknowledgementExecutor.execute(messagesToAck));
 	}
 
 	private Collection<Collection<Message<T>>> partitionMessages(Collection<Message<T>> messagesToAck) {
@@ -172,8 +171,9 @@ public abstract class AbstractAcknowledgementProcessor<T> implements ExecutingAc
 		List<Message<T>> messagesToUse = getMessagesAsList(messagesToAck);
 		int totalSize = messagesToUse.size();
 		return IntStream.rangeClosed(0, (totalSize - 1) / this.maxAcknowledgementsPerBatch)
-			.mapToObj(index -> messagesToUse.subList(index * this.maxAcknowledgementsPerBatch, Math.min((index + 1) * this.maxAcknowledgementsPerBatch, totalSize)))
-			.collect(Collectors.toList());
+				.mapToObj(index -> messagesToUse.subList(index * this.maxAcknowledgementsPerBatch,
+						Math.min((index + 1) * this.maxAcknowledgementsPerBatch, totalSize)))
+				.collect(Collectors.toList());
 	}
 
 	private List<Message<T>> getMessagesAsList(Collection<Message<T>> messagesToAck) {

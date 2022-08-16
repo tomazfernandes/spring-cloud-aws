@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,6 @@ package io.awspring.cloud.sqs.listener.acknowledgement;
 import io.awspring.cloud.sqs.LifecycleHandler;
 import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.ExecutorAware;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.messaging.Message;
-import org.springframework.scheduling.TaskScheduler;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
-import org.springframework.util.Assert;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
@@ -40,6 +33,12 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.messaging.Message;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.util.Assert;
 
 /**
  * @author Tomaz Fernandes
@@ -80,9 +79,11 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 	@Override
 	protected CompletableFuture<Void> doOnAcknowledge(Message<T> message) {
 		if (!this.acks.offer(message)) {
-			logger.warn("Acknowledgement queue full, dropping acknowledgement for message {}", MessageHeaderUtils.getId(message));
+			logger.warn("Acknowledgement queue full, dropping acknowledgement for message {}",
+					MessageHeaderUtils.getId(message));
 		}
-		logger.trace("Received message {} to ack in {}. Queue size: {}", MessageHeaderUtils.getId(message), getId(), this.acks.size());
+		logger.trace("Received message {} to ack in {}. Queue size: {}", MessageHeaderUtils.getId(message), getId(),
+				this.acks.size());
 		return CompletableFuture.completedFuture(null);
 	}
 
@@ -98,8 +99,8 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 		Assert.notNull(this.ackThreshold, "ackThreshold not set");
 		Assert.notNull(this.executor, "executor not set");
 		Assert.state(this.ackInterval != Duration.ZERO || this.ackThreshold > 0,
-			() -> getClass().getSimpleName() + " cannot be used with Duration.ZERO and acknowledgement threshold 0." +
-				"Consider using a " + ImmediateAcknowledgementProcessor.class + "instead");
+				() -> getClass().getSimpleName() + " cannot be used with Duration.ZERO and acknowledgement threshold 0."
+						+ "Consider using a " + ImmediateAcknowledgementProcessor.class + "instead");
 		this.acks = new LinkedBlockingQueue<>();
 		this.taskScheduler = createTaskScheduler();
 		this.acknowledgementProcessor = createAcknowledgementProcessor();
@@ -169,7 +170,8 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 						this.ackLock.lock();
 						int bufferSize = acksBuffer.size();
 						if (bufferSize >= this.ackThreshold) {
-							logger.trace("Acknowledgement buffer threshold of {} reached for {}. Buffer size: {}", this.ackThreshold, this.parent.getId(), bufferSize);
+							logger.trace("Acknowledgement buffer threshold of {} reached for {}. Buffer size: {}",
+									this.ackThreshold, this.parent.getId(), bufferSize);
 							pollAndExecuteAcks(this.ackThreshold);
 							this.lastAcknowledgement = Instant.now();
 						}
@@ -233,7 +235,8 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 		private Message<T> pollMessage() {
 			Message<T> polledMessage = this.acksBuffer.poll();
 			Assert.notNull(polledMessage, "poll should never return null");
-			logger.trace("Retrieved message {} from the queue. Queue size: {}", MessageHeaderUtils.getId(polledMessage), this.acks.size());
+			logger.trace("Retrieved message {} from the queue. Queue size: {}", MessageHeaderUtils.getId(polledMessage),
+					this.acks.size());
 			return polledMessage;
 		}
 
@@ -241,16 +244,19 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 			Duration ackShutdownTimeout = Duration.ofSeconds(20);
 			Instant start = Instant.now();
 			while (!this.runningAcks.isEmpty() && Instant.now().isBefore(start.plus(ackShutdownTimeout))) {
-				logger.debug("Waiting up to {} seconds for {} acks to finish", ackShutdownTimeout.getSeconds(), this.runningAcks);
+				logger.debug("Waiting up to {} seconds for {} acks to finish", ackShutdownTimeout.getSeconds(),
+						this.runningAcks);
 				try {
 					Thread.sleep(200);
-				} catch (InterruptedException e) {
+				}
+				catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 					throw new IllegalStateException("Interrupted while waiting for tasks to finish");
 				}
 			}
 			if (!this.runningAcks.isEmpty()) {
-				logger.warn("{} acks not finished in {} seconds, proceeding with shutdown.", this.runningAcks.size(), ackShutdownTimeout.getSeconds());
+				logger.warn("{} acks not finished in {} seconds, proceeding with shutdown.", this.runningAcks.size(),
+						ackShutdownTimeout.getSeconds());
 				this.runningAcks.forEach(future -> future.cancel(true));
 			}
 		}

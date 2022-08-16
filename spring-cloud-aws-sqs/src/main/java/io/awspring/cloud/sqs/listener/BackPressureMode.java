@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,23 +26,20 @@ public enum BackPressureMode {
 	/**
 	 * Enable automatic throughput switching.
 	 * <p>
-	 * Starts in a low throughput mode where only one poll is made at a time.
-	 * When a message is received, switches to HIGH throughput mode.
-	 * If a poll returns empty and there are no inflight messages,
-	 * switches back to low throughput mode, and so forth.
+	 * Starts in a low throughput mode where only one poll is made at a time. When a message is received, switches to
+	 * HIGH throughput mode. If a poll returns empty and there are no inflight messages, switches back to low throughput
+	 * mode, and so forth.
 	 * <p>
-	 * This is the default setting and should be ideal for most
-	 * applications.
+	 * This is the default setting and should be ideal for most applications.
 	 */
 	AUTO,
 
 	/**
-	 * Enable fixed high throughput mode.
-	 * In this mode up to (maxInflightMessages / messagesPerPoll) simultaneous polls
+	 * Enable fixed high throughput mode. In this mode up to (maxInflightMessages / messagesPerPoll) simultaneous polls
 	 * will be made until maxInflightMessages is achieved.
 	 * <p>
-	 * Useful for really high-throughput scenarios where the occasional
-	 * automatic switch to a lower throughput would be costly.
+	 * Useful for really high-throughput scenarios where the occasional automatic switch to a lower throughput would be
+	 * costly.
 	 */
 	HIGH_THROUGHPUT
 

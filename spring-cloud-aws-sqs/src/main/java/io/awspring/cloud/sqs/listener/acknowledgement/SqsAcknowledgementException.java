@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,9 @@
 package io.awspring.cloud.sqs.listener.acknowledgement;
 
 import io.awspring.cloud.sqs.SqsException;
-import org.springframework.messaging.Message;
-
 import java.util.Collection;
 import java.util.stream.Collectors;
+import org.springframework.messaging.Message;
 
 /**
  * @author Tomaz Fernandes
@@ -31,13 +30,12 @@ public class SqsAcknowledgementException extends SqsException {
 
 	private final String queueUrl;
 
-	public <T> SqsAcknowledgementException(String errorMessage, Collection<Message<T>> failedAcknowledgements, String queueUrl, Throwable e) {
+	public <T> SqsAcknowledgementException(String errorMessage, Collection<Message<T>> failedAcknowledgements,
+			String queueUrl, Throwable e) {
 		super(errorMessage, e);
 		this.queueUrl = queueUrl;
-		this.failedAcknowledgements = failedAcknowledgements
-			.stream()
-			.map(msg -> (Message<?>) msg)
-			.collect(Collectors.toList());
+		this.failedAcknowledgements = failedAcknowledgements.stream().map(msg -> (Message<?>) msg)
+				.collect(Collectors.toList());
 	}
 
 	public Collection<Message<?>> getFailedAcknowledgements() {

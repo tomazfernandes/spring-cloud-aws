@@ -18,7 +18,6 @@ package io.awspring.cloud.sqs.config;
 import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
-
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,8 +57,10 @@ public class SqsMessageListenerContainerFactory<T>
 	}
 
 	@Override
-	protected SqsMessageListenerContainer<T> createContainerInstance(Endpoint endpoint, ContainerOptions containerOptions) {
-		logger.debug("Creating {} for endpoint {}", SqsMessageListenerContainer.class.getSimpleName(), endpoint.getId() != null ? endpoint.getId() : endpoint.getLogicalNames());
+	protected SqsMessageListenerContainer<T> createContainerInstance(Endpoint endpoint,
+			ContainerOptions containerOptions) {
+		logger.debug("Creating {} for endpoint {}", SqsMessageListenerContainer.class.getSimpleName(),
+				endpoint.getId() != null ? endpoint.getId() : endpoint.getLogicalNames());
 		Assert.notNull(this.sqsAsyncClientSupplier, "asyncClientSupplier not set");
 		SqsAsyncClient asyncClient = getSqsAsyncClientInstance();
 		return new SqsMessageListenerContainer<>(asyncClient, containerOptions);
@@ -70,8 +71,8 @@ public class SqsMessageListenerContainerFactory<T>
 	}
 
 	protected void doConfigureContainerOptions(Endpoint endpoint, ContainerOptions options) {
-		ConfigUtils.INSTANCE
-			.acceptIfInstance(endpoint, SqsEndpoint.class, sqsEndpoint -> configureFromSqsEndpoint(sqsEndpoint, options));
+		ConfigUtils.INSTANCE.acceptIfInstance(endpoint, SqsEndpoint.class,
+				sqsEndpoint -> configureFromSqsEndpoint(sqsEndpoint, options));
 	}
 
 	private void configureFromSqsEndpoint(SqsEndpoint sqsEndpoint, ContainerOptions options) {

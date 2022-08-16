@@ -15,9 +15,8 @@
  */
 package io.awspring.cloud.sqs.config;
 
-import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
-
 import java.lang.reflect.Method;
+import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 
 /**
  * @author Tomaz Fernandes

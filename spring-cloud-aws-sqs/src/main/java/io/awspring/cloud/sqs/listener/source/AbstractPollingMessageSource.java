@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,12 +24,6 @@ import io.awspring.cloud.sqs.listener.IdentifiableContainerComponent;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementProcessor;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.messaging.Message;
-import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -37,18 +31,24 @@ import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.messaging.Message;
+import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 /**
- * Base {@link PollingMessageSource} implementation with
- * {@link org.springframework.context.SmartLifecycle} and backpressure handling capabilities.
+ * Base {@link PollingMessageSource} implementation with {@link org.springframework.context.SmartLifecycle} and
+ * backpressure handling capabilities.
  *
- * The connected {@link MessageSink} should use the provided completion callback to signal
- * each completed message processing.
+ * The connected {@link MessageSink} should use the provided completion callback to signal each completed message
+ * processing.
  *
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractPollingMessageSource<T> implements PollingMessageSource<T>, IdentifiableContainerComponent {
+public abstract class AbstractPollingMessageSource<T>
+		implements PollingMessageSource<T>, IdentifiableContainerComponent {
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractPollingMessageSource.class);
 
@@ -68,7 +68,8 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 
 	private final Object lifecycleMonitor = new Object();
 
-	private final Collection<CompletableFuture<?>> pollingFutures = Collections.synchronizedCollection(new ArrayList<>());
+	private final Collection<CompletableFuture<?>> pollingFutures = Collections
+			.synchronizedCollection(new ArrayList<>());
 
 	private String id;
 
@@ -93,7 +94,7 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 	public void setBackPressureHandler(BackPressureHandler backPressureHandler) {
 		Assert.notNull(backPressureHandler, "backPressureHandler cannot be null");
 		Assert.isInstanceOf(BatchAwareBackPressureHandler.class, backPressureHandler,
-			getClass().getSimpleName() + " requires a " + BatchAwareBackPressureHandler.class);
+				getClass().getSimpleName() + " requires a " + BatchAwareBackPressureHandler.class);
 		this.backPressureHandler = (BatchAwareBackPressureHandler) backPressureHandler;
 	}
 
@@ -139,9 +140,12 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 			logger.debug("Starting {} for queue {}", getClass().getSimpleName(), this.pollingEndpointName);
 			this.running = true;
 			ConfigUtils.INSTANCE
-				.acceptIfInstance(this.backPressureHandler, IdentifiableContainerComponent.class, icc -> icc.setId(this.id))
-				.acceptIfInstance(this.acknowledgmentProcessor, IdentifiableContainerComponent.class, icc -> icc.setId(this.id))
-				.acceptIfInstance(this.acknowledgmentProcessor, ExecutorAware.class, ea -> ea.setExecutor(this.executor));
+					.acceptIfInstance(this.backPressureHandler, IdentifiableContainerComponent.class,
+							icc -> icc.setId(this.id))
+					.acceptIfInstance(this.acknowledgmentProcessor, IdentifiableContainerComponent.class,
+							icc -> icc.setId(this.id))
+					.acceptIfInstance(this.acknowledgmentProcessor, ExecutorAware.class,
+							ea -> ea.setExecutor(this.executor));
 			doStart();
 			this.acknowledgmentProcessor.start();
 			startPollingThread();
@@ -169,7 +173,8 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 				}
 				logger.trace("{} permits acquired for queue {}", acquiredPermits, this.pollingEndpointName);
 				if (!isRunning()) {
-					logger.debug("MessageSource was stopped after permits where acquired. Returning {} permits", acquiredPermits);
+					logger.debug("MessageSource was stopped after permits where acquired. Returning {} permits",
+							acquiredPermits);
 					this.backPressureHandler.release(acquiredPermits);
 					continue;
 				}
@@ -181,7 +186,8 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 			}
 			catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
-				throw new IllegalStateException("MessageSource thread interrupted for endpoint " + this.pollingEndpointName, e);
+				throw new IllegalStateException(
+						"MessageSource thread interrupted for endpoint " + this.pollingEndpointName, e);
 			}
 			catch (Exception e) {
 				logger.error("Error in MessageSource for queue {}. Resuming", this.pollingEndpointName, e);
@@ -213,12 +219,14 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 	}
 
 	private MessageProcessingContext<T> createContext() {
-		return MessageProcessingContext.<T>create()
-			.setBackPressureReleaseCallback(() -> {
-				logger.debug("Releasing permit for queue {}", this.pollingEndpointName);
-				this.backPressureHandler.release(1);
-			})
+		return MessageProcessingContext.<T> create()
+			.setBackPressureReleaseCallback(this::releaseBackPressure)
 			.setAcknowledgmentCallback(this.acknowledgmentProcessor.getAcknowledgementCallback());
+	}
+
+	private void releaseBackPressure() {
+		logger.debug("Releasing permit for queue {}", this.pollingEndpointName);
+		this.backPressureHandler.release(1);
 	}
 
 	private Void handleSinkException(Throwable t) {
@@ -266,13 +274,14 @@ public abstract class AbstractPollingMessageSource<T> implements PollingMessageS
 
 	private void waitExistingTasksToFinish() {
 		if (this.shutdownTimeout.isZero()) {
-			logger.debug("Shutdown timeout set to zero for queue {} - not waiting for tasks to finish", this.pollingEndpointName);
+			logger.debug("Shutdown timeout set to zero for queue {} - not waiting for tasks to finish",
+					this.pollingEndpointName);
 			return;
 		}
 		boolean tasksFinished = this.backPressureHandler.drain(this.shutdownTimeout);
 		if (!tasksFinished) {
 			logger.warn("Tasks did not finish in {} seconds for queue {}, proceeding with shutdown",
-				this.shutdownTimeout.getSeconds(), this.pollingEndpointName);
+					this.shutdownTimeout.getSeconds(), this.pollingEndpointName);
 		}
 	}
 

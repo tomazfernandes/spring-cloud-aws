@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,10 @@ import io.awspring.cloud.sqs.listener.QueueAttributes;
 import io.awspring.cloud.sqs.listener.QueueAttributesAware;
 import io.awspring.cloud.sqs.listener.SqsAsyncClientAware;
 import io.awspring.cloud.sqs.listener.SqsHeaders;
+import java.util.Collection;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
@@ -30,18 +34,14 @@ import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
 
-import java.util.Collection;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
-
-public class SqsAcknowledgementExecutor<T> implements AcknowledgementExecutor<T>, SqsAsyncClientAware, QueueAttributesAware {
+public class SqsAcknowledgementExecutor<T>
+		implements AcknowledgementExecutor<T>, SqsAsyncClientAware, QueueAttributesAware {
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsAcknowledgementExecutor.class);
 
-    private SqsAsyncClient sqsAsyncClient;
-    
-    private String queueUrl;
+	private SqsAsyncClient sqsAsyncClient;
+
+	private String queueUrl;
 
 	private String queueName;
 
@@ -70,13 +70,16 @@ public class SqsAcknowledgementExecutor<T> implements AcknowledgementExecutor<T>
 		}
 	}
 
-	private SqsAcknowledgementException createAcknowledgementException(Collection<Message<T>> messagesToAck, Throwable e) {
-		return new SqsAcknowledgementException("Error acknowledging messages " + MessageHeaderUtils.getId(messagesToAck),
-			messagesToAck, this.queueUrl, e);
+	private SqsAcknowledgementException createAcknowledgementException(Collection<Message<T>> messagesToAck,
+			Throwable e) {
+		return new SqsAcknowledgementException(
+				"Error acknowledging messages " + MessageHeaderUtils.getId(messagesToAck), messagesToAck, this.queueUrl,
+				e);
 	}
 
 	private CompletableFuture<Void> deleteMessages(Collection<Message<T>> messagesToAck) {
-		logger.trace("Acknowledging messages for queue {}: {}", this.queueName, MessageHeaderUtils.getId(messagesToAck));
+		logger.trace("Acknowledging messages for queue {}: {}", this.queueName,
+				MessageHeaderUtils.getId(messagesToAck));
 		StopWatch watch = new StopWatch();
 		watch.start();
 		return CompletableFutures.exceptionallyCompose(this.sqsAsyncClient
@@ -106,13 +109,16 @@ public class SqsAcknowledgementExecutor<T> implements AcknowledgementExecutor<T>
 		watch.stop();
 		long totalTimeMillis = watch.getTotalTimeMillis();
 		if (totalTimeMillis > 1000) {
-			logger.warn("Acknowledgement operation took {} seconds to finish in queue {} for messages {}", totalTimeMillis, this.queueName, MessageHeaderUtils.getId(messagesToAck));
+			logger.warn("Acknowledgement operation took {} seconds to finish in queue {} for messages {}",
+					totalTimeMillis, this.queueName, MessageHeaderUtils.getId(messagesToAck));
 		}
 		if (t != null) {
-			logger.error("Error acknowledging in queue {} messages {} in {}ms", this.queueName, MessageHeaderUtils.getId(messagesToAck), totalTimeMillis, t);
+			logger.error("Error acknowledging in queue {} messages {} in {}ms", this.queueName,
+					MessageHeaderUtils.getId(messagesToAck), totalTimeMillis, t);
 		}
 		else {
-			logger.trace("Done acknowledging in queue {} messages: {} in {}ms", this.queueName, MessageHeaderUtils.getId(messagesToAck), totalTimeMillis);
+			logger.trace("Done acknowledging in queue {} messages: {} in {}ms", this.queueName,
+					MessageHeaderUtils.getId(messagesToAck), totalTimeMillis);
 		}
 	}
 

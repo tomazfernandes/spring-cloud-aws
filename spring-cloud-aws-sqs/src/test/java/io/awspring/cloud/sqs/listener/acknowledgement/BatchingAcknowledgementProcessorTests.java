@@ -1,15 +1,27 @@
+/*
+ * Copyright 2013-2022 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.awspring.cloud.sqs.listener.acknowledgement;
 
-import io.awspring.cloud.sqs.listener.SqsHeaders;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageHeaders;
-import org.springframework.messaging.support.MessageBuilder;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
+import io.awspring.cloud.sqs.listener.SqsHeaders;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
@@ -22,13 +34,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
+import org.springframework.messaging.support.MessageBuilder;
 
 /**
  * @author Tomaz Fernandes
@@ -61,20 +74,18 @@ class BatchingAcknowledgementProcessorTests {
 	MessageHeaders messageHeaders;
 
 	@Test
-	void shouldAckAfterBatch() throws Exception{
+	void shouldAckAfterBatch() throws Exception {
 		given(message.getHeaders()).willReturn(messageHeaders);
 		given(messageHeaders.get(SqsHeaders.SQS_MESSAGE_ID_HEADER, UUID.class)).willReturn(MESSAGE_ID);
 		ExecutorService executor = Executors.newSingleThreadExecutor();
-		List<Message<String>> messages = IntStream.range(0, ACK_THRESHOLD_TEN)
-			.mapToObj(index -> message)
-			.collect(Collectors.toList());
+		List<Message<String>> messages = IntStream.range(0, ACK_THRESHOLD_TEN).mapToObj(index -> message)
+				.collect(Collectors.toList());
 		given(ackExecutor.execute(messages)).willReturn(CompletableFuture.completedFuture(null));
 		CountDownLatch ackLatch = new CountDownLatch(1);
 		BatchingAcknowledgementProcessor<String> processor = new BatchingAcknowledgementProcessor<String>() {
 			@Override
 			protected CompletableFuture<Void> sendToExecutor(Collection<Message<String>> messagesToAck) {
-				ackLatch.countDown();
-				return super.sendToExecutor(messagesToAck);
+				return super.sendToExecutor(messagesToAck).thenRun(ackLatch::countDown);
 			}
 		};
 		processor.setAcknowledgementInterval(ACK_INTERVAL_ZERO);
@@ -98,9 +109,7 @@ class BatchingAcknowledgementProcessorTests {
 		given(message.getHeaders()).willReturn(messageHeaders);
 		given(messageHeaders.get(SqsHeaders.SQS_MESSAGE_ID_HEADER, UUID.class)).willReturn(MESSAGE_ID);
 		ExecutorService executor = Executors.newSingleThreadExecutor();
-		List<Message<String>> messages = IntStream.range(0, 5)
-			.mapToObj(index -> message)
-			.collect(Collectors.toList());
+		List<Message<String>> messages = IntStream.range(0, 5).mapToObj(index -> message).collect(Collectors.toList());
 		given(ackExecutor.execute(messages)).willReturn(CompletableFuture.completedFuture(null));
 		CountDownLatch ackLatch = new CountDownLatch(1);
 		BatchingAcknowledgementProcessor<String> processor = new BatchingAcknowledgementProcessor<String>() {
@@ -131,9 +140,7 @@ class BatchingAcknowledgementProcessorTests {
 		given(message.getHeaders()).willReturn(messageHeaders);
 		given(messageHeaders.get(SqsHeaders.SQS_MESSAGE_ID_HEADER, UUID.class)).willReturn(MESSAGE_ID);
 		ExecutorService executor = Executors.newSingleThreadExecutor();
-		List<Message<String>> messages = IntStream.range(0, 15)
-			.mapToObj(index -> message)
-			.collect(Collectors.toList());
+		List<Message<String>> messages = IntStream.range(0, 15).mapToObj(index -> message).collect(Collectors.toList());
 		given(ackExecutor.execute(any())).willReturn(CompletableFuture.completedFuture(null));
 		CountDownLatch ackLatch = new CountDownLatch(1);
 		BatchingAcknowledgementProcessor<String> processor = new BatchingAcknowledgementProcessor<String>() {
@@ -164,9 +171,8 @@ class BatchingAcknowledgementProcessorTests {
 	void shouldAcknowledgeInOrder() throws Exception {
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 		int nummberOfMessages = 100;
-		List<Message<String>> messages = IntStream.range(0, nummberOfMessages)
-			.mapToObj(this::createMessage)
-			.collect(Collectors.toList());
+		List<Message<String>> messages = IntStream.range(0, nummberOfMessages).mapToObj(this::createMessage)
+				.collect(Collectors.toList());
 		given(ackExecutor.execute(any())).willReturn(CompletableFuture.completedFuture(null));
 		CountDownLatch ackLatch = new CountDownLatch(1);
 		BatchingAcknowledgementProcessor<String> processor = new BatchingAcknowledgementProcessor<String>() {
@@ -195,20 +201,21 @@ class BatchingAcknowledgementProcessorTests {
 
 		List<Collection<Message<String>>> executedBatches = messagesCaptor.getAllValues();
 
-		IntStream
-			.range(0, Math.min(messages.size() / MAX_ACKNOWLEDGEMENTS_PER_BATCH_TEN, 1))
-			.forEach(index -> assertThat(executedBatches.get(index))
-				.containsExactlyElementsOf(messages.subList(index * 10, Math.max((index + 1) * 10, messages.size()))));
+		IntStream.range(0, Math.min(messages.size() / MAX_ACKNOWLEDGEMENTS_PER_BATCH_TEN, 1))
+				.forEach(index -> assertThat(executedBatches.get(index)).containsExactlyElementsOf(
+						messages.subList(index * 10, Math.max((index + 1) * 10, messages.size()))));
 	}
 
 	private Message<String> createMessage(int index) {
-		return MessageBuilder.withPayload(String.valueOf(index)).setHeader(SqsHeaders.SQS_MESSAGE_ID_HEADER, UUID.randomUUID()).build();
+		return MessageBuilder.withPayload(String.valueOf(index))
+				.setHeader(SqsHeaders.SQS_MESSAGE_ID_HEADER, UUID.randomUUID()).build();
 	}
 
 	private void sleepFor(int amount) {
 		try {
 			Thread.sleep(new Random().nextInt(amount));
-		} catch (InterruptedException e) {
+		}
+		catch (InterruptedException e) {
 			throw new RuntimeException(e);
 		}
 	}

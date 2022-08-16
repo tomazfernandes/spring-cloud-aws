@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +19,12 @@ import io.awspring.cloud.sqs.CompletableFutures;
 import io.awspring.cloud.sqs.listener.ListenerExecutionFailedException;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.messaging.Message;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.messaging.Message;
 
 /**
  * Stage responsible for executing the {@link AsyncMessageInterceptor}s.
@@ -65,7 +64,8 @@ public class AfterProcessingContextInterceptorExecutionStage<T> implements Messa
 					.thenCompose(msg -> CompletableFutures.failedFuture(t)));
 	}
 
-	private CompletableFuture<Collection<Message<T>>> applyInterceptors(Collection<Message<T>> messages, Throwable t, List<AsyncMessageInterceptor<T>> messageInterceptors) {
+	private CompletableFuture<Collection<Message<T>>> applyInterceptors(Collection<Message<T>> messages, Throwable t,
+			List<AsyncMessageInterceptor<T>> messageInterceptors) {
 		return messageInterceptors.stream()
 			.reduce(CompletableFuture.<Void>completedFuture(null),
 				(voidFuture, interceptor) -> voidFuture.thenCompose(theVoid -> interceptor.afterProcessing(messages, t)), (a, b) -> a)

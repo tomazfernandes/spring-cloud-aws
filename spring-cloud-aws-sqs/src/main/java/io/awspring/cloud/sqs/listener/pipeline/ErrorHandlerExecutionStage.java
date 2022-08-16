@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2013-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,13 @@ package io.awspring.cloud.sqs.listener.pipeline;
 import io.awspring.cloud.sqs.CompletableFutures;
 import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.ListenerExecutionFailedException;
-import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
+import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
+import java.util.Collection;
+import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
-
-import java.util.Collection;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Stage responsible for executing the {@link AsyncErrorHandler}.
@@ -44,36 +43,37 @@ public class ErrorHandlerExecutionStage<T> implements MessageProcessingPipeline<
 	}
 
 	@Override
-	public CompletableFuture<Message<T>> process(CompletableFuture<Message<T>> messageFuture, MessageProcessingContext<T> context) {
-		return CompletableFutures.exceptionallyCompose(messageFuture, t -> handleError(ListenerExecutionFailedException.unwrapMessage(t), t));
+	public CompletableFuture<Message<T>> process(CompletableFuture<Message<T>> messageFuture,
+			MessageProcessingContext<T> context) {
+		return CompletableFutures.exceptionallyCompose(messageFuture,
+				t -> handleError(ListenerExecutionFailedException.unwrapMessage(t), t));
 	}
 
 	private CompletableFuture<Message<T>> handleError(Message<T> failedMessage, Throwable t) {
 		logger.debug("Handling error {} for message {}", t, MessageHeaderUtils.getId(failedMessage));
-		return CompletableFutures
-			.exceptionallyCompose(this.errorHandler.handle(failedMessage, t).thenApply(theVoid -> failedMessage),
+		return CompletableFutures.exceptionallyCompose(
+				this.errorHandler.handle(failedMessage, t).thenApply(theVoid -> failedMessage),
 				eht -> CompletableFutures.failedFuture(maybeWrap(failedMessage, eht)));
 	}
 
 	private Throwable maybeWrap(Message<T> failedMessage, Throwable eht) {
-		return ListenerExecutionFailedException.hasListenerException(eht)
-			? eht
-			: new ListenerExecutionFailedException("Error handler returned an exception", eht, failedMessage);
+		return ListenerExecutionFailedException.hasListenerException(eht) ? eht
+				: new ListenerExecutionFailedException("Error handler returned an exception", eht, failedMessage);
 	}
 
 	@Override
-	public CompletableFuture<Collection<Message<T>>> processMany(CompletableFuture<Collection<Message<T>>> messagesFuture, MessageProcessingContext<T> context) {
-		return CompletableFutures
-			.exceptionallyCompose(messagesFuture,
+	public CompletableFuture<Collection<Message<T>>> processMany(
+			CompletableFuture<Collection<Message<T>>> messagesFuture, MessageProcessingContext<T> context) {
+		return CompletableFutures.exceptionallyCompose(messagesFuture,
 				t -> handleErrors(ListenerExecutionFailedException.unwrapMessages(t), t));
 	}
 
 	private CompletableFuture<Collection<Message<T>>> handleErrors(Collection<Message<T>> failedMessages, Throwable t) {
 		logger.debug("Handling error {} for message {}", t, MessageHeaderUtils.getId(failedMessages));
-		return CompletableFutures
-			.exceptionallyCompose(this.errorHandler.handle(failedMessages, t).thenApply(theVoid -> failedMessages),
-				eht -> CompletableFutures.failedFuture(
-					new ListenerExecutionFailedException("Error handler returned an exception", eht , failedMessages)));
+		return CompletableFutures.exceptionallyCompose(
+				this.errorHandler.handle(failedMessages, t).thenApply(theVoid -> failedMessages),
+				eht -> CompletableFutures.failedFuture(new ListenerExecutionFailedException(
+						"Error handler returned an exception", eht, failedMessages)));
 	}
 
 }

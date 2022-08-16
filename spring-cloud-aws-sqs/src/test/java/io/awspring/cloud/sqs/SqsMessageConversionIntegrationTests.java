@@ -15,6 +15,8 @@
  */
 package io.awspring.cloud.sqs;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sqs.annotation.SqsListener;
@@ -22,6 +24,14 @@ import io.awspring.cloud.sqs.config.SqsBootstrapConfiguration;
 import io.awspring.cloud.sqs.config.SqsMessageListenerContainerFactory;
 import io.awspring.cloud.sqs.listener.SqsHeaders;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -37,17 +47,6 @@ import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
 import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
-
-import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Tomaz Fernandes
@@ -77,14 +76,12 @@ class SqsMessageConversionIntegrationTests extends BaseSqsIntegrationTest {
 	@BeforeAll
 	static void beforeTests() {
 		SqsAsyncClient client = createAsyncClient();
-		CompletableFuture.allOf(
-			createQueue(client, RESOLVES_POJO_TYPES_QUEUE_NAME),
-			createQueue(client, RESOLVES_POJO_MESSAGE_QUEUE_NAME),
-			createQueue(client, RESOLVES_POJO_LIST_QUEUE_NAME),
-			createQueue(client, RESOLVES_POJO_MESSAGE_LIST_QUEUE_NAME),
-			createQueue(client, RESOLVES_POJO_FROM_HEADER_QUEUE_NAME),
-			createQueue(client, RESOLVES_MY_OTHER_POJO_FROM_HEADER_QUEUE_NAME)
-		).join();
+		CompletableFuture.allOf(createQueue(client, RESOLVES_POJO_TYPES_QUEUE_NAME),
+				createQueue(client, RESOLVES_POJO_MESSAGE_QUEUE_NAME),
+				createQueue(client, RESOLVES_POJO_LIST_QUEUE_NAME),
+				createQueue(client, RESOLVES_POJO_MESSAGE_LIST_QUEUE_NAME),
+				createQueue(client, RESOLVES_POJO_FROM_HEADER_QUEUE_NAME),
+				createQueue(client, RESOLVES_MY_OTHER_POJO_FROM_HEADER_QUEUE_NAME)).join();
 	}
 
 	@Test
@@ -113,18 +110,21 @@ class SqsMessageConversionIntegrationTests extends BaseSqsIntegrationTest {
 
 	@Test
 	void resolvesPojoFromHeader() throws Exception {
-		sendMessageTo(RESOLVES_POJO_FROM_HEADER_QUEUE_NAME, new MyPojo("pojoParameterType", "secondValue"), getHeaderMapping(MyPojo.class));
+		sendMessageTo(RESOLVES_POJO_FROM_HEADER_QUEUE_NAME, new MyPojo("pojoParameterType", "secondValue"),
+				getHeaderMapping(MyPojo.class));
 		assertThat(latchContainer.resolvesPojoFromMappingLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Test
 	void resolvesMyOtherPojoFromHeader() throws Exception {
-		sendMessageTo(RESOLVES_MY_OTHER_POJO_FROM_HEADER_QUEUE_NAME, new MyOtherPojo("pojoParameterType", "secondValue"), getHeaderMapping(MyOtherPojo.class));
+		sendMessageTo(RESOLVES_MY_OTHER_POJO_FROM_HEADER_QUEUE_NAME,
+				new MyOtherPojo("pojoParameterType", "secondValue"), getHeaderMapping(MyOtherPojo.class));
 		assertThat(latchContainer.resolvesMyOtherPojoFromMappingLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	private Map<String, MessageAttributeValue> getHeaderMapping(Class<?> clazz) {
-		return Collections.singletonMap(SqsHeaders.SQS_DEFAULT_TYPE_HEADER, MessageAttributeValue.builder().stringValue(clazz.getName()).dataType("String").build());
+		return Collections.singletonMap(SqsHeaders.SQS_DEFAULT_TYPE_HEADER,
+				MessageAttributeValue.builder().stringValue(clazz.getName()).dataType("String").build());
 	}
 
 	static class ResolvesPojoListener {
@@ -225,9 +225,8 @@ class SqsMessageConversionIntegrationTests extends BaseSqsIntegrationTest {
 		@Bean
 		public SqsMessageListenerContainerFactory<String> defaultSqsListenerContainerFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
-			factory.getContainerOptions()
-				.setPermitAcquireTimeout(Duration.ofSeconds(1))
-				.setPollTimeout(Duration.ofSeconds(3));
+			factory.getContainerOptions().setPermitAcquireTimeout(Duration.ofSeconds(1))
+					.setPollTimeout(Duration.ofSeconds(3));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			return factory;
 		}
@@ -236,9 +235,8 @@ class SqsMessageConversionIntegrationTests extends BaseSqsIntegrationTest {
 		public SqsMessageListenerContainerFactory<MyInterface> myPojoListenerContainerFactory() {
 			SqsMessageListenerContainerFactory<MyInterface> factory = new SqsMessageListenerContainerFactory<>();
 			factory.getContainerOptions()
-				.setQueueAttributeNames(Collections.singletonList(QueueAttributeName.VISIBILITY_TIMEOUT))
-				.setPermitAcquireTimeout(Duration.ofSeconds(1))
-				.setPollTimeout(Duration.ofSeconds(1));
+					.setQueueAttributeNames(Collections.singletonList(QueueAttributeName.VISIBILITY_TIMEOUT))
+					.setPermitAcquireTimeout(Duration.ofSeconds(1)).setPollTimeout(Duration.ofSeconds(1));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			factory.addMessageInterceptor(new AsyncMessageInterceptor<MyInterface>() {
 				@Override
@@ -248,7 +246,8 @@ class SqsMessageConversionIntegrationTests extends BaseSqsIntegrationTest {
 					if (payload instanceof MyPojo) {
 						Assert.notNull(((MyPojo) payload).firstField, "null firstField");
 						latchContainer.resolvesPojoFromMappingLatch.countDown();
-					} else if (payload instanceof MyOtherPojo) {
+					}
+					else if (payload instanceof MyOtherPojo) {
 						Assert.notNull(((MyOtherPojo) payload).otherFirstField, "null otherFirstField");
 						latchContainer.resolvesMyOtherPojoFromMappingLatch.countDown();
 					}
@@ -306,20 +305,25 @@ class SqsMessageConversionIntegrationTests extends BaseSqsIntegrationTest {
 		}
 	}
 
-	private void sendMessageTo(String queueName, Object messageBody) throws InterruptedException, ExecutionException, JsonProcessingException {
+	private void sendMessageTo(String queueName, Object messageBody)
+			throws InterruptedException, ExecutionException, JsonProcessingException {
 		String queueUrl = sqsAsyncClient.getQueueUrl(req -> req.queueName(queueName)).get().queueUrl();
 		String payload = objectMapper.writeValueAsString(messageBody);
 		sqsAsyncClient.sendMessage(req -> req.messageBody(payload).queueUrl(queueUrl).build()).get();
 		logger.debug("Sent message to queue {} with messageBody {}", queueName, messageBody);
 	}
 
-	private void sendMessageTo(String queueName, Object messageBody, Map<String, MessageAttributeValue> messageAttributes) throws InterruptedException, ExecutionException, JsonProcessingException {
+	private void sendMessageTo(String queueName, Object messageBody,
+			Map<String, MessageAttributeValue> messageAttributes)
+			throws InterruptedException, ExecutionException, JsonProcessingException {
 		String queueUrl = sqsAsyncClient.getQueueUrl(req -> req.queueName(queueName)).get().queueUrl();
 		String payload = objectMapper.writeValueAsString(messageBody);
-		sqsAsyncClient.sendMessage(req -> req.messageBody(payload).queueUrl(queueUrl).messageAttributes(messageAttributes).build()).get();
+		sqsAsyncClient
+				.sendMessage(
+						req -> req.messageBody(payload).queueUrl(queueUrl).messageAttributes(messageAttributes).build())
+				.get();
 		logger.debug("Sent message to queue {} with messageBody {}", queueName, messageBody);
 	}
-
 
 	static class MyPojo implements MyInterface {
 
