@@ -60,6 +60,7 @@ public class FifoSqsComponentFactory<T> implements ContainerComponentFactory<T> 
 				getMessageGroupingHeader());
 	}
 
+	// @formatter:off
 	private MessageSink<T> createDeliverySink(MessageDeliveryStrategy messageDeliveryStrategy) {
 		return MessageDeliveryStrategy.SINGLE_MESSAGE.equals(messageDeliveryStrategy)
 			? new OrderedMessageSink<>()
@@ -92,6 +93,7 @@ public class FifoSqsComponentFactory<T> implements ContainerComponentFactory<T> 
 				? createAndConfigureImmediateProcessor(options)
 				: createAndConfigureBatchingAckProcessor(options);
 	}
+	// @formatter:on
 
 	protected ImmediateAcknowledgementProcessor<T> createAndConfigureImmediateProcessor(ContainerOptions options) {
 		ImmediateAcknowledgementProcessor<T> processor = new ImmediateAcknowledgementProcessor<>();

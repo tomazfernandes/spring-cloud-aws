@@ -39,6 +39,7 @@ public class AfterProcessingContextInterceptorExecutionStage<T> implements Messa
 	public AfterProcessingContextInterceptorExecutionStage(MessageProcessingConfiguration<T> configuration) {
 	}
 
+	// @formatter:off
 	@Override
 	public CompletableFuture<Message<T>> process(CompletableFuture<Message<T>> messageFuture, MessageProcessingContext<T> context) {
 		return CompletableFutures.handleCompose(messageFuture,
@@ -71,5 +72,6 @@ public class AfterProcessingContextInterceptorExecutionStage<T> implements Messa
 				(voidFuture, interceptor) -> voidFuture.thenCompose(theVoid -> interceptor.afterProcessing(messages, t)), (a, b) -> a)
 			.thenApply(theVoid -> messages);
 	}
+	// @formatter:on
 
 }

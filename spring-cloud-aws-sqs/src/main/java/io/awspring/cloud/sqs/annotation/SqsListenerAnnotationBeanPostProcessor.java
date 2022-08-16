@@ -207,6 +207,7 @@ public class SqsListenerAnnotationBeanPostProcessor
 		return new CompositeMessageConverter(messageConverters);
 	}
 
+	// @formatter:off
 	protected List<HandlerMethodArgumentResolver> createArgumentResolvers(MessageConverter messageConverter) {
 		return Arrays.asList(
 				new AcknowledgementHandlerMethodArgumentResolver(),
@@ -220,6 +221,7 @@ public class SqsListenerAnnotationBeanPostProcessor
 				new MessageMethodArgumentResolver(messageConverter),
 				new PayloadMethodArgumentResolver(messageConverter));
 	}
+	// @formatter:on
 
 	protected MappingJackson2MessageConverter createDefaultMappingJackson2MessageConverter(ObjectMapper objectMapper) {
 		MappingJackson2MessageConverter jacksonMessageConverter = new MappingJackson2MessageConverter();

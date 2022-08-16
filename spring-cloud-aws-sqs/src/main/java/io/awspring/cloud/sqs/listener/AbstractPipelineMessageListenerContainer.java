@@ -78,6 +78,7 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 		LifecycleHandler.get().start(this.messageSink, this.messageSources);
 	}
 
+	// @formatter:off
 	private ContainerComponentFactory<T> determineComponentFactory() {
 		return getContainerComponentFactory() != null
 			? getContainerComponentFactory()
@@ -103,6 +104,7 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 				icc -> icc.setId(getId() + "-" + index));
 		return messageSource;
 	}
+	// @formatter:on
 
 	private void configureComponents(ContainerComponentFactory<T> componentFactory) {
 		this.componentsTaskExecutor = resolveComponentsTaskExecutor();
@@ -150,6 +152,7 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 						teac -> teac.setExecutor(getComponentsTaskExecutor()));
 	}
 
+	// @formatter:off
 	protected MessageProcessingPipeline<T> createMessageProcessingPipeline(
 			ContainerComponentFactory<T> componentFactory) {
 		return MessageProcessingPipelineBuilder.<T> first(BeforeProcessingContextInterceptorExecutionStage::new)
@@ -165,6 +168,7 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 					.ackHandler(componentFactory.createAcknowledgementHandler(getContainerOptions()))
 					.build());
 	}
+	// @formatter:on
 
 	private Executor resolveComponentsTaskExecutor() {
 		return getContainerOptions().getContainerComponentsTaskExecutor() != null

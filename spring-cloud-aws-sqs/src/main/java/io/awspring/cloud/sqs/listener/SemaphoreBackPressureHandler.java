@@ -84,6 +84,7 @@ public class SemaphoreBackPressureHandler implements BatchAwareBackPressureHandl
 		return tryAcquire(amount) ? amount : 0;
 	}
 
+	// @formatter:off
 	@Override
 	public int requestBatch() throws InterruptedException {
 		return ThroughputMode.LOW.equals(this.currentThroughputMode)
@@ -96,6 +97,7 @@ public class SemaphoreBackPressureHandler implements BatchAwareBackPressureHandl
 			? this.batchSize
 			: tryAcquirePartial();
 	}
+	// @formatter:on
 
 	private int tryAcquirePartial() throws InterruptedException {
 		int availablePermits = this.semaphore.availablePermits();

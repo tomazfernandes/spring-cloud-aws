@@ -41,8 +41,10 @@ public class AfterProcessingInterceptorExecutionStage<T> implements MessageProce
 		this.messageInterceptors = configuration.getMessageInterceptors();
 	}
 
+	// @formatter:off
 	@Override
-	public CompletableFuture<Message<T>> process(CompletableFuture<Message<T>> messageFuture, MessageProcessingContext<T> context) {
+	public CompletableFuture<Message<T>> process(CompletableFuture<Message<T>> messageFuture,
+			MessageProcessingContext<T> context) {
 		return CompletableFutures.handleCompose(messageFuture,
 			(v, t) -> t == null
 				? applyInterceptors(v, null, this.messageInterceptors)
@@ -50,15 +52,18 @@ public class AfterProcessingInterceptorExecutionStage<T> implements MessageProce
 				.thenCompose(msg -> CompletableFutures.failedFuture(t)));
 	}
 
-	private CompletableFuture<Message<T>> applyInterceptors(Message<T> message, Throwable t, Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
+	private CompletableFuture<Message<T>> applyInterceptors(Message<T> message, Throwable t,
+			Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
 		return messageInterceptors.stream()
-			.reduce(CompletableFuture.<Void>completedFuture(null),
-				(voidFuture, interceptor) -> voidFuture.thenCompose(theVoid -> interceptor.afterProcessing(message, t)), (a, b) -> a)
+			.reduce(CompletableFuture.<Void> completedFuture(null),
+				(voidFuture, interceptor) -> voidFuture.thenCompose(theVoid -> interceptor.afterProcessing(message, t)),
+				(a, b) -> a)
 			.thenApply(theVoid -> message);
 	}
 
 	@Override
-	public CompletableFuture<Collection<Message<T>>> processMany(CompletableFuture<Collection<Message<T>>> messagesFuture, MessageProcessingContext<T> context) {
+	public CompletableFuture<Collection<Message<T>>> processMany(
+			CompletableFuture<Collection<Message<T>>> messagesFuture, MessageProcessingContext<T> context) {
 		return CompletableFutures.handleCompose(messagesFuture,
 			(v, t) -> t == null
 				? applyInterceptors(v, null, this.messageInterceptors)
@@ -66,10 +71,12 @@ public class AfterProcessingInterceptorExecutionStage<T> implements MessageProce
 				.thenCompose(msg -> CompletableFutures.failedFuture(t)));
 	}
 
-	private CompletableFuture<Collection<Message<T>>> applyInterceptors(Collection<Message<T>> messages, Throwable t, Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
+	private CompletableFuture<Collection<Message<T>>> applyInterceptors(Collection<Message<T>> messages, Throwable t,
+			Collection<AsyncMessageInterceptor<T>> messageInterceptors) {
 		return messageInterceptors.stream()
 			.reduce(CompletableFuture.<Void>completedFuture(null),
 				(voidFuture, interceptor) -> voidFuture.thenCompose(theVoid -> interceptor.afterProcessing(messages, t)), (a, b) -> a)
 			.thenApply(theVoid -> messages);
 	}
+	// @formatter:on
 }

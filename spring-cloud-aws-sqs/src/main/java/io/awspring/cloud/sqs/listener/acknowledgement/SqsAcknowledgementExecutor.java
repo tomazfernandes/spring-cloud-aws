@@ -77,6 +77,7 @@ public class SqsAcknowledgementExecutor<T>
 				e);
 	}
 
+	// @formatter:off
 	private CompletableFuture<Void> deleteMessages(Collection<Message<T>> messagesToAck) {
 		logger.trace("Acknowledging messages for queue {}: {}", this.queueName,
 				MessageHeaderUtils.getId(messagesToAck));
@@ -104,6 +105,7 @@ public class SqsAcknowledgementExecutor<T>
 			.id(UUID.randomUUID().toString())
 			.build();
 	}
+	// @formatter:on
 
 	private void logAckResult(Collection<Message<T>> messagesToAck, Throwable t, StopWatch watch) {
 		watch.stop();

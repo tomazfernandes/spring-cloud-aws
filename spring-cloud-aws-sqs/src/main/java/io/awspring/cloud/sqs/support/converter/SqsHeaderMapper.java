@@ -62,6 +62,7 @@ public class SqsHeaderMapper implements ContextAwareHeaderMapper<Message> {
 		return messageHeaders;
 	}
 
+	// @formatter:off
 	private Map<String, String> getMessageAttributesAsHeaders(Message source) {
 		return source
 			.messageAttributes()
@@ -77,6 +78,7 @@ public class SqsHeaderMapper implements ContextAwareHeaderMapper<Message> {
 			.stream()
 			.collect(Collectors.toMap(entry -> SqsHeaders.MessageSystemAttribute.SQS_MSA_HEADER_PREFIX + entry.getKey(), Map.Entry::getValue));
 	}
+	// @formatter:on
 
 	@Override
 	public MessageHeaders createContextHeaders(Message source, MessageConversionContext context) {

@@ -64,6 +64,7 @@ public class SqsAcknowledgement implements AsyncAcknowledgement, Acknowledgement
 				t -> CompletableFutures.failedFuture(createAcknowledgementException("Error acknowledging message", t)));
 	}
 
+	// @formatter:off
 	private CompletableFuture<Void> doAcknowledgeAsync() {
 		return this.sqsAsyncClient
 			.deleteMessage(req -> req
@@ -71,6 +72,7 @@ public class SqsAcknowledgement implements AsyncAcknowledgement, Acknowledgement
 				.receiptHandle(this.receiptHandle))
 			.thenRun(() -> logger.trace("Acknowledged message {} from queue {}", this.messageId, this.queueUrl));
 	}
+	// @formatter:on
 
 	@Override
 	public void acknowledge() {

@@ -225,12 +225,14 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 			future.whenComplete((v, t) -> this.runningAcks.remove(future));
 		}
 
+		// @formatter:off
 		private List<Message<T>> pollMessagesToAck(int numberOfMessagesToPoll) {
 			return IntStream
 				.range(0, numberOfMessagesToPoll)
 				.mapToObj(index -> pollMessage())
 				.collect(Collectors.toList());
 		}
+		// @formatter:on
 
 		private Message<T> pollMessage() {
 			Message<T> polledMessage = this.acksBuffer.poll();

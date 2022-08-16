@@ -44,6 +44,7 @@ public class SqsMessageListenerContainer<T> extends AbstractPipelineMessageListe
 		this.sqsAsyncClient = sqsAsyncClient;
 	}
 
+	// @formatter:off
 	@Override
 	protected ContainerComponentFactory<T> createComponentFactory() {
 		Assert.isTrue(getQueueNames().stream().map(this::isFifoQueue).distinct().count() == 1,
@@ -52,6 +53,7 @@ public class SqsMessageListenerContainer<T> extends AbstractPipelineMessageListe
 			? new FifoSqsComponentFactory<>()
 			: new StandardSqsComponentFactory<>();
 	}
+	// @formatter:on
 
 	private boolean isFifoQueue(String name) {
 		return name.endsWith(".fifo");

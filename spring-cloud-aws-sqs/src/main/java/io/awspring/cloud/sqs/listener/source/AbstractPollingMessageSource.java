@@ -178,11 +178,13 @@ public abstract class AbstractPollingMessageSource<T>
 					this.backPressureHandler.release(acquiredPermits);
 					continue;
 				}
+				// @formatter:off
 				managePollingFuture(doPollForMessages(acquiredPermits))
 					.exceptionally(this::handlePollingException)
 					.thenApply(msgs -> releaseUnusedPermits(acquiredPermits, msgs))
 					.thenCompose(this::emitMessagesToPipeline)
 					.exceptionally(this::handleSinkException);
+				// @formatter:on
 			}
 			catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
@@ -218,11 +220,13 @@ public abstract class AbstractPollingMessageSource<T>
 		return this.messageSink.emit(messages, createContext());
 	}
 
+	// @formatter:off
 	private MessageProcessingContext<T> createContext() {
 		return MessageProcessingContext.<T> create()
 			.setBackPressureReleaseCallback(this::releaseBackPressure)
 			.setAcknowledgmentCallback(this.acknowledgmentProcessor.getAcknowledgementCallback());
 	}
+	// @formatter:on
 
 	private void releaseBackPressure() {
 		logger.debug("Releasing permit for queue {}", this.pollingEndpointName);

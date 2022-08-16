@@ -36,6 +36,7 @@ public interface ContainerComponentFactory<T> {
 
 	AcknowledgementProcessor<T> createAcknowledgementProcessor(ContainerOptions options);
 
+	// @formatter:off
 	default AcknowledgementHandler<T> createAcknowledgementHandler(ContainerOptions options) {
 		AcknowledgementMode mode = options.getAcknowledgementMode();
 		return AcknowledgementMode.ON_SUCCESS.equals(mode)
@@ -44,5 +45,6 @@ public interface ContainerComponentFactory<T> {
 				? new AlwaysAcknowledgementHandler<>()
 				: new NeverAcknowledgementHandler<>();
 	}
+	// @formatter:on
 
 }

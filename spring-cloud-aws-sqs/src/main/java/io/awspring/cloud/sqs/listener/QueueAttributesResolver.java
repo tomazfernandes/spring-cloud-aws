@@ -55,6 +55,7 @@ public class QueueAttributesResolver {
 		}
 	}
 
+	// @formatter:off
 	private static String resolveQueueUrl(String queueName, SqsAsyncClient sqsAsyncClient)
 			throws InterruptedException, ExecutionException {
 		return isValidQueueUrl(queueName)
@@ -69,6 +70,7 @@ public class QueueAttributesResolver {
 			? Collections.emptyMap()
 			: doGetAttributes(sqsAsyncClient, queueAttributeNames, queueUrl, queueName);
 	}
+	// @formatter:on
 
 	private static Map<QueueAttributeName, String> doGetAttributes(SqsAsyncClient sqsAsyncClient,
 			Collection<QueueAttributeName> queueAttributeNames, String queueUrl, String queueName)

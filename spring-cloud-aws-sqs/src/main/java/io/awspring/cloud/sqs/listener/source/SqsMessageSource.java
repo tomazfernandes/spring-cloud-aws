@@ -143,6 +143,7 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 				: null;
 	}
 
+	// @formatter:off
 	@Override
 	protected CompletableFuture<Collection<org.springframework.messaging.Message<T>>> doPollForMessages(
 			int maxNumberOfMessages) {
@@ -175,6 +176,7 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 			.map(this::convertMessage)
 			.collect(Collectors.toList());
 	}
+	// @formatter:on
 
 	@SuppressWarnings("unchecked")
 	private org.springframework.messaging.Message<T> convertMessage(Message msg) {

@@ -51,12 +51,14 @@ public class CompletableFutures {
 	 * @param <T> the future type.
 	 * @return the completable future.
 	 */
+	// @formatter:off
 	public static <T> CompletableFuture<T> exceptionallyCompose(CompletableFuture<T> future,
 			Function<Throwable, ? extends CompletableFuture<T>> composingFunction) {
 		return future.thenApply(CompletableFuture::completedFuture)
 			.exceptionally(composingFunction)
 			.thenCompose(Function.identity());
 	}
+	// @formatter:on
 
 	/**
 	 * Compose the provided future with a function to handle the result, taking a value, a throwable and providing a

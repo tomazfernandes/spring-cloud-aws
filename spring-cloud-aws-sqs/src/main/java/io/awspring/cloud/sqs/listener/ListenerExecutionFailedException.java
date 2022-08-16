@@ -52,6 +52,7 @@ public class ListenerExecutionFailedException extends RuntimeException {
 		return this.failedMessages;
 	}
 
+	// @formatter:off
 	@SuppressWarnings("unchecked")
 	@Nullable
 	public static <T> Message<T> unwrapMessage(Throwable t) {
@@ -82,6 +83,7 @@ public class ListenerExecutionFailedException extends RuntimeException {
 				? t
 				: t.getCause();
 	}
+	// @formatter:on
 
 	private static Message<Throwable> createDefaultErrorMessage(Throwable t) {
 		return MessageBuilder.withPayload(t).build();

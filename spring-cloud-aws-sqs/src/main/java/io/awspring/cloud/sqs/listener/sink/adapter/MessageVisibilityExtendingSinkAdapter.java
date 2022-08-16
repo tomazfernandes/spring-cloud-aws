@@ -86,6 +86,7 @@ public class MessageVisibilityExtendingSinkAdapter<T> extends AbstractDelegating
 		return messages.iterator().next().getHeaders().get(SqsHeaders.SQS_QUEUE_URL_HEADER, String.class);
 	}
 
+	// @formatter:off
 	private Collection<ChangeMessageVisibilityBatchRequestEntry> getEntries(Collection<Message<T>> messages) {
 		return MessageHeaderUtils
 			.getHeader(messages, SqsHeaders.SQS_RECEIPT_HANDLE_HEADER, String.class)
@@ -95,6 +96,7 @@ public class MessageVisibilityExtendingSinkAdapter<T> extends AbstractDelegating
 				.visibilityTimeout(this.messageVisibility).build())
 			.collect(Collectors.toList());
 	}
+	// @formatter:on
 
 	private void logResult(Collection<Message<T>> messages, Throwable t) {
 		if (t == null) {
@@ -116,6 +118,7 @@ public class MessageVisibilityExtendingSinkAdapter<T> extends AbstractDelegating
 			this.initialBatchSize = originalMessageBatch.size();
 		}
 
+		// @formatter:off
 		@Override
 		public CompletableFuture<Message<T>> intercept(Message<T> message) {
 			return originalMessageBatchCopy.size() == initialBatchSize
@@ -129,6 +132,7 @@ public class MessageVisibilityExtendingSinkAdapter<T> extends AbstractDelegating
 				? CompletableFuture.completedFuture(messages)
 				: changeVisibility(this.originalMessageBatchCopy).thenApply(response -> messages);
 		}
+		// @formatter:on
 
 		@Override
 		public CompletableFuture<Void> afterProcessing(Collection<Message<T>> messages, Throwable t) {

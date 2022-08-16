@@ -38,6 +38,7 @@ public class MessageGroupingSinkAdapter<T> extends AbstractDelegatingMessageList
 		this.groupingFunction = groupingFunction;
 	}
 
+	// @formatter:off
 	@Override
 	public CompletableFuture<Void> emit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
 		return CompletableFuture.allOf(messages.stream().collect(Collectors.groupingBy(this.groupingFunction))
@@ -45,5 +46,6 @@ public class MessageGroupingSinkAdapter<T> extends AbstractDelegatingMessageList
 			.map(messageBatch -> getDelegate().emit(messageBatch, context))
 			.toArray(CompletableFuture[]::new));
 	}
+	// @formatter:on
 
 }
