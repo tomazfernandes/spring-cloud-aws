@@ -19,9 +19,9 @@ import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.listener.BackPressureHandler;
 import io.awspring.cloud.sqs.listener.BatchAwareBackPressureHandler;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
-import io.awspring.cloud.sqs.listener.TaskExecutorAware;
 import io.awspring.cloud.sqs.listener.IdentifiableContainerComponent;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
+import io.awspring.cloud.sqs.listener.TaskExecutorAware;
 import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementProcessor;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import java.time.Duration;
@@ -30,7 +30,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.task.TaskExecutor;

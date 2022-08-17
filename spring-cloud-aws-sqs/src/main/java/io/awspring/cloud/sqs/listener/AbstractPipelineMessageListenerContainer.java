@@ -36,7 +36,6 @@ import io.awspring.cloud.sqs.listener.source.PollingMessageSource;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.stream.Collectors;
@@ -126,7 +125,8 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 				.acceptManyIfInstance(this.messageSources, AcknowledgementProcessingMessageSource.class,
 						ams -> ams.setAcknowledgementProcessor(
 								componentFactory.createAcknowledgementProcessor(getContainerOptions())))
-				.acceptManyIfInstance(this.messageSources, TaskExecutorAware.class, teac -> teac.setTaskExecutor(taskExecutor));
+				.acceptManyIfInstance(this.messageSources, TaskExecutorAware.class,
+						teac -> teac.setTaskExecutor(taskExecutor));
 		doConfigureMessageSources(this.messageSources);
 	}
 

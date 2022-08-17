@@ -15,9 +15,8 @@
  */
 package io.awspring.cloud.sqs.listener;
 
-import org.springframework.core.task.TaskExecutor;
-
 import java.util.concurrent.Executor;
+import org.springframework.core.task.TaskExecutor;
 
 /**
  * Enables a class to receive a container managed {@link Executor}. Note that this is not automatic - changes to the

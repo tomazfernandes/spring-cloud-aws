@@ -160,8 +160,8 @@ public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSin
 
 	private MessageListenerContainer<?> createContainerFor(Endpoint endpoint) {
 		String factoryBeanName = getListenerContainerFactoryName(endpoint);
-		Assert.isTrue(this.beanFactory.containsBean(factoryBeanName),
-				() -> "No factory bean with name " + factoryBeanName + " found for endpoint " + endpoint.getId());
+		Assert.isTrue(this.beanFactory.containsBean(factoryBeanName), () -> "No factory bean with name "
+				+ factoryBeanName + " found for endpoint names " + endpoint.getLogicalNames());
 		return this.beanFactory.getBean(factoryBeanName, MessageListenerContainerFactory.class)
 				.createContainer(endpoint);
 	}

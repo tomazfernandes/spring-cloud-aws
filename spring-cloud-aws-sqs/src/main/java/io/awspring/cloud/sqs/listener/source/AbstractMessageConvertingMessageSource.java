@@ -1,16 +1,30 @@
+/*
+ * Copyright 2013-2022 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.awspring.cloud.sqs.listener.source;
 
 import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.support.converter.MessagingMessageConverter;
 import io.awspring.cloud.sqs.support.converter.context.ContextAwareMessagingMessageConverter;
 import io.awspring.cloud.sqs.support.converter.context.MessageConversionContext;
-import org.springframework.lang.Nullable;
-import org.springframework.messaging.Message;
-import org.springframework.util.Assert;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.lang.Nullable;
+import org.springframework.messaging.Message;
+import org.springframework.util.Assert;
 
 /**
  * @author Tomaz Fernandes
@@ -32,24 +46,20 @@ public abstract class AbstractMessageConvertingMessageSource<T, S> implements Me
 	@Nullable
 	private MessageConversionContext maybeCreateConversionContext() {
 		return this.messagingMessageConverter instanceof ContextAwareMessagingMessageConverter
-			? ((ContextAwareMessagingMessageConverter<?>) this.messagingMessageConverter)
-			.createMessageConversionContext()
-			: null;
+				? ((ContextAwareMessagingMessageConverter<?>) this.messagingMessageConverter)
+						.createMessageConversionContext()
+				: null;
 	}
 
 	protected Collection<Message<T>> convert(List<S> messages) {
-		return messages.stream()
-			.map(this::convert)
-			.collect(Collectors.toList());
+		return messages.stream().map(this::convert).collect(Collectors.toList());
 	}
-	// @formatter:on
 
 	@SuppressWarnings("unchecked")
 	private Message<T> convert(S msg) {
 		return this.messagingMessageConverter instanceof ContextAwareMessagingMessageConverter
-			? (Message<T>) getContextAwareConverter().toMessagingMessage(msg,
-			this.messageConversionContext)
-			: (Message<T>) this.messagingMessageConverter.toMessagingMessage(msg);
+				? (Message<T>) getContextAwareConverter().toMessagingMessage(msg, this.messageConversionContext)
+				: (Message<T>) this.messagingMessageConverter.toMessagingMessage(msg);
 	}
 
 	private ContextAwareMessagingMessageConverter<S> getContextAwareConverter() {
@@ -59,8 +69,8 @@ public abstract class AbstractMessageConvertingMessageSource<T, S> implements Me
 	@SuppressWarnings("unchecked")
 	private MessagingMessageConverter<S> getOrCreateMessageConverter(ContainerOptions containerOptions) {
 		return containerOptions.getMessageConverter() != null
-			? (MessagingMessageConverter<S>) containerOptions.getMessageConverter()
-			: createMessageConverter();
+				? (MessagingMessageConverter<S>) containerOptions.getMessageConverter()
+				: createMessageConverter();
 	}
 
 	protected abstract MessagingMessageConverter<S> createMessageConverter();

@@ -31,7 +31,6 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
-
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
@@ -51,14 +50,11 @@ class MessageGroupingSinkTests {
 		String secondMessageGroupId = UUID.randomUUID().toString();
 		String thirdMessageGroupId = UUID.randomUUID().toString();
 		List<Message<Integer>> firstMessageGroupMessages = IntStream.range(0, 10)
-				.mapToObj(index -> createMessage(index, header, firstMessageGroupId))
-				.collect(toList());
+				.mapToObj(index -> createMessage(index, header, firstMessageGroupId)).collect(toList());
 		List<Message<Integer>> secondMessageGroupMessages = IntStream.range(0, 10)
-				.mapToObj(index -> createMessage(index, header, secondMessageGroupId))
-				.collect(toList());
+				.mapToObj(index -> createMessage(index, header, secondMessageGroupId)).collect(toList());
 		List<Message<Integer>> thirdMessageGroupMessages = IntStream.range(0, 10)
-				.mapToObj(index -> createMessage(index, header, thirdMessageGroupId))
-				.collect(toList());
+				.mapToObj(index -> createMessage(index, header, thirdMessageGroupId)).collect(toList());
 		List<Message<Integer>> messagesToEmit = new ArrayList<>();
 		messagesToEmit.addAll(firstMessageGroupMessages);
 		messagesToEmit.addAll(secondMessageGroupMessages);
@@ -95,9 +91,8 @@ class MessageGroupingSinkTests {
 
 	@NotNull
 	private Message<Integer> createMessage(int index, String header, String thirdMessageGroupId) {
-		return MessageBuilder.withPayload(index)
-			.setHeader(SqsHeaders.SQS_MESSAGE_ID_HEADER, UUID.randomUUID())
-			.setHeader(header, thirdMessageGroupId).build();
+		return MessageBuilder.withPayload(index).setHeader(SqsHeaders.SQS_MESSAGE_ID_HEADER, UUID.randomUUID())
+				.setHeader(header, thirdMessageGroupId).build();
 	}
 
 }

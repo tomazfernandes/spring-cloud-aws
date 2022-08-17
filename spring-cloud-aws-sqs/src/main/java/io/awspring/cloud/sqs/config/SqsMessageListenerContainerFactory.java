@@ -26,7 +26,6 @@ import io.awspring.cloud.sqs.listener.errorhandler.ErrorHandler;
 import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -105,8 +104,6 @@ public class SqsMessageListenerContainerFactory<T>
 
 	public static class Builder<T> {
 
-		private final Collection<String> queueNames = new ArrayList<>();
-
 		private final Collection<AsyncMessageInterceptor<T>> asyncMessageInterceptors = new ArrayList<>();
 
 		private final Collection<MessageInterceptor<T>> messageInterceptors = new ArrayList<>();
@@ -121,36 +118,20 @@ public class SqsMessageListenerContainerFactory<T>
 
 		private MessageListener<T> messageListener;
 
-		private String id;
-
 		private AsyncErrorHandler<T> asyncErrorHandler;
 
 		private ErrorHandler<T> errorHandler;
 
-		private Consumer<ContainerOptions.Builder> options;
-
-		public Builder<T> id(String id) {
-			this.id = id;
-			return this;
-		}
+		private Consumer<ContainerOptions.Builder> options = options -> {
+		};
 
 		public Builder<T> sqsAsyncClient(SqsAsyncClient sqsAsyncClient) {
-			this.sqsAsyncClientSupplier = () -> sqsAsyncClient;
+			this.sqsAsyncClient = sqsAsyncClient;
 			return this;
 		}
 
 		public Builder<T> sqsAsyncClientSupplier(Supplier<SqsAsyncClient> sqsAsyncClientSupplier) {
 			this.sqsAsyncClientSupplier = sqsAsyncClientSupplier;
-			return this;
-		}
-
-		public Builder<T> queueNames(String... queueNames) {
-			this.queueNames.addAll(Arrays.asList(queueNames));
-			return this;
-		}
-
-		public Builder<T> queueNames(Collection<String> queueNames) {
-			this.queueNames.addAll(queueNames);
 			return this;
 		}
 

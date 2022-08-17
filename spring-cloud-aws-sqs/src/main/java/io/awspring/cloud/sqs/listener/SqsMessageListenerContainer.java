@@ -109,7 +109,8 @@ public class SqsMessageListenerContainer<T> extends AbstractPipelineMessageListe
 
 		private ErrorHandler<T> errorHandler;
 
-		private Consumer<ContainerOptions.Builder> options;
+		private Consumer<ContainerOptions.Builder> options = options -> {
+		};
 
 		public Builder<T> id(String id) {
 			this.id = id;

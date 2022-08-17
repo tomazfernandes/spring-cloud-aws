@@ -27,7 +27,6 @@ import io.awspring.cloud.sqs.listener.acknowledgement.ExecutingAcknowledgementPr
 import io.awspring.cloud.sqs.listener.acknowledgement.SqsAcknowledgementExecutor;
 import io.awspring.cloud.sqs.support.converter.MessagingMessageConverter;
 import io.awspring.cloud.sqs.support.converter.SqsMessagingMessageConverter;
-
 import java.util.Collection;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;

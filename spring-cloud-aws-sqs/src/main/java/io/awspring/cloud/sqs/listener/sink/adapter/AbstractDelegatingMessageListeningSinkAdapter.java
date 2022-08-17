@@ -18,13 +18,11 @@ package io.awspring.cloud.sqs.listener.sink.adapter;
 import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.LifecycleHandler;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
-import io.awspring.cloud.sqs.listener.TaskExecutorAware;
 import io.awspring.cloud.sqs.listener.SqsAsyncClientAware;
+import io.awspring.cloud.sqs.listener.TaskExecutorAware;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import io.awspring.cloud.sqs.listener.sink.MessageProcessingPipelineSink;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
-import java.util.concurrent.Executor;
-
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
@@ -52,7 +50,8 @@ public abstract class AbstractDelegatingMessageListeningSinkAdapter<T>
 
 	@Override
 	public void setTaskExecutor(TaskExecutor taskExecutor) {
-		ConfigUtils.INSTANCE.acceptIfInstance(this.delegate, TaskExecutorAware.class, ea -> ea.setTaskExecutor(taskExecutor));
+		ConfigUtils.INSTANCE.acceptIfInstance(this.delegate, TaskExecutorAware.class,
+				ea -> ea.setTaskExecutor(taskExecutor));
 	}
 
 	@Override

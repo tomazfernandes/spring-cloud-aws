@@ -16,8 +16,8 @@
 package io.awspring.cloud.sqs.listener.sink;
 
 import io.awspring.cloud.sqs.MessageHeaderUtils;
-import io.awspring.cloud.sqs.listener.TaskExecutorAware;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
+import io.awspring.cloud.sqs.listener.TaskExecutorAware;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import java.util.Collection;
 import java.util.Collections;

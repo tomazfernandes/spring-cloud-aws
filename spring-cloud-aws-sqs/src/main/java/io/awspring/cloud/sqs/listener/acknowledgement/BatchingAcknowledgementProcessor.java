@@ -44,7 +44,8 @@ import org.springframework.util.Assert;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgementProcessor<T> implements TaskExecutorAware {
+public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgementProcessor<T>
+		implements TaskExecutorAware {
 
 	private static final Logger logger = LoggerFactory.getLogger(BatchingAcknowledgementProcessor.class);
 
