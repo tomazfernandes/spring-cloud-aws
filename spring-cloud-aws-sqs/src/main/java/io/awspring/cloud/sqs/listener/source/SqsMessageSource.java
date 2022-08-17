@@ -27,16 +27,13 @@ import io.awspring.cloud.sqs.listener.acknowledgement.ExecutingAcknowledgementPr
 import io.awspring.cloud.sqs.listener.acknowledgement.SqsAcknowledgementExecutor;
 import io.awspring.cloud.sqs.support.converter.MessagingMessageConverter;
 import io.awspring.cloud.sqs.support.converter.SqsMessagingMessageConverter;
-import io.awspring.cloud.sqs.support.converter.context.ContextAwareMessagingMessageConverter;
-import io.awspring.cloud.sqs.support.converter.context.MessageConversionContext;
+
 import java.util.Collection;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.Message;
@@ -64,7 +61,7 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> implements SqsAsyncClientAware {
+public class SqsMessageSource<T> extends AbstractPollingMessageSource<T, Message> implements SqsAsyncClientAware {
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsMessageSource.class);
 
@@ -77,10 +74,6 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 	private QueueAttributes queueAttributes;
 
 	private QueueNotFoundStrategy queueNotFoundStrategy;
-
-	private MessagingMessageConverter<Message> messagingMessageConverter;
-
-	private MessageConversionContext messageConversionContext;
 
 	private Collection<QueueAttributeName> queueAttributeNames;
 
@@ -105,7 +98,6 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 		this.queueAttributeNames = containerOptions.getQueueAttributeNames();
 		this.messageAttributeNames = containerOptions.getMessageAttributeNames();
 		this.messageSystemAttributeNames = containerOptions.getMessageSystemAttributeNames();
-		this.messagingMessageConverter = getOrCreateMessageConverter(containerOptions);
 		this.queueNotFoundStrategy = containerOptions.getQueueNotFoundStrategy();
 		this.messageVisibility = containerOptions.getMessageVisibility() != null
 				? (int) containerOptions.getMessageVisibility().getSeconds()
@@ -116,19 +108,17 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 	protected void doStart() {
 		Assert.notNull(this.sqsAsyncClient, "sqsAsyncClient not set.");
 		Assert.notNull(this.queueAttributeNames, "queueAttributeNames not set.");
-		Assert.notNull(this.messagingMessageConverter, "messagingMessageConverter not set.");
 		this.queueAttributes = resolveQueueAttributes();
 		this.queueUrl = this.queueAttributes.getQueueUrl();
-		this.messageConversionContext = maybeCreateConversionContext();
 		configureConversionContextAndAcknowledgement();
 	}
 
 	@SuppressWarnings("unchecked")
 	private void configureConversionContextAndAcknowledgement() {
 		ConfigUtils.INSTANCE
-				.acceptIfInstance(this.messageConversionContext, SqsAsyncClientAware.class,
+				.acceptIfInstance(getMessageConversionContext(), SqsAsyncClientAware.class,
 						saca -> saca.setSqsAsyncClient(this.sqsAsyncClient))
-				.acceptIfInstance(this.messageConversionContext, QueueAttributesAware.class,
+				.acceptIfInstance(getMessageConversionContext(), QueueAttributesAware.class,
 						qaa -> qaa.setQueueAttributes(this.queueAttributes))
 				.acceptIfInstance(getAcknowledgmentProcessor(), ExecutingAcknowledgementProcessor.class, eap -> eap
 						.setAcknowledgementExecutor(createAndConfigureAcknowledgementExecutor(this.queueAttributes)));
@@ -157,12 +147,9 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 		return new SqsAcknowledgementExecutor<>();
 	}
 
-	@Nullable
-	private MessageConversionContext maybeCreateConversionContext() {
-		return this.messagingMessageConverter instanceof ContextAwareMessagingMessageConverter
-				? ((ContextAwareMessagingMessageConverter<?>) this.messagingMessageConverter)
-						.createMessageConversionContext()
-				: null;
+	@Override
+	protected MessagingMessageConverter<Message> createMessageConverter() {
+		return new SqsMessagingMessageConverter();
 	}
 
 	// @formatter:off
@@ -174,7 +161,7 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 			.receiveMessage(createRequest(maxNumberOfMessages))
 			.thenApply(ReceiveMessageResponse::messages)
 			.whenComplete(this::logMessagesReceived)
-			.thenApply(this::convertMessages);
+			.thenApply(this::convert);
 	}
 
 	private ReceiveMessageRequest createRequest(int maxNumberOfMessages) {
@@ -192,32 +179,7 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T> impleme
 		}
 		return builder.build();
 	}
-
-	private Collection<org.springframework.messaging.Message<T>> convertMessages(List<Message> msgs) {
-		return msgs.stream()
-			.map(this::convertMessage)
-			.collect(Collectors.toList());
-	}
 	// @formatter:on
-
-	@SuppressWarnings("unchecked")
-	private org.springframework.messaging.Message<T> convertMessage(Message msg) {
-		return this.messagingMessageConverter instanceof ContextAwareMessagingMessageConverter
-				? (org.springframework.messaging.Message<T>) getContextAwareConverter().toMessagingMessage(msg,
-						this.messageConversionContext)
-				: (org.springframework.messaging.Message<T>) this.messagingMessageConverter.toMessagingMessage(msg);
-	}
-
-	private ContextAwareMessagingMessageConverter<Message> getContextAwareConverter() {
-		return (ContextAwareMessagingMessageConverter<Message>) this.messagingMessageConverter;
-	}
-
-	@SuppressWarnings("unchecked")
-	private MessagingMessageConverter<Message> getOrCreateMessageConverter(ContainerOptions containerOptions) {
-		return containerOptions.getMessageConverter() != null
-				? (MessagingMessageConverter<Message>) containerOptions.getMessageConverter()
-				: new SqsMessagingMessageConverter();
-	}
 
 	private void logMessagesReceived(Collection<Message> v, Throwable t) {
 		if (v != null) {

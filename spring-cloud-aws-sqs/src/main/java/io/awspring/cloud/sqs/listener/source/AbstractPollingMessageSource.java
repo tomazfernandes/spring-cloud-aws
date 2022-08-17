@@ -30,7 +30,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.Executor;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.task.TaskExecutor;
@@ -48,7 +48,7 @@ import org.springframework.util.StringUtils;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public abstract class AbstractPollingMessageSource<T>
+public abstract class AbstractPollingMessageSource<T, S> extends AbstractMessageConvertingMessageSource<T, S>
 		implements PollingMessageSource<T>, IdentifiableContainerComponent {
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractPollingMessageSource.class);
@@ -76,7 +76,8 @@ public abstract class AbstractPollingMessageSource<T>
 
 	@Override
 	public void configure(ContainerOptions containerOptions) {
-		this.shutdownTimeout = containerOptions.getSourceShutdownTimeout();
+		super.configure(containerOptions);
+		this.shutdownTimeout = containerOptions.getShutdownTimeout();
 	}
 
 	@Override
