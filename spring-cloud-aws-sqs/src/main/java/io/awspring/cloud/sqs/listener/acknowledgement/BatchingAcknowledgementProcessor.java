@@ -17,7 +17,7 @@ package io.awspring.cloud.sqs.listener.acknowledgement;
 
 import io.awspring.cloud.sqs.LifecycleHandler;
 import io.awspring.cloud.sqs.MessageHeaderUtils;
-import io.awspring.cloud.sqs.listener.ExecutorAware;
+import io.awspring.cloud.sqs.listener.TaskExecutorAware;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
@@ -26,7 +26,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
@@ -35,6 +34,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.messaging.Message;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -44,7 +44,7 @@ import org.springframework.util.Assert;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgementProcessor<T> implements ExecutorAware {
+public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgementProcessor<T> implements TaskExecutorAware {
 
 	private static final Logger logger = LoggerFactory.getLogger(BatchingAcknowledgementProcessor.class);
 
@@ -56,7 +56,7 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 
 	private Duration ackInterval;
 
-	private Executor executor;
+	private TaskExecutor taskExecutor;
 
 	private TaskScheduler taskScheduler;
 
@@ -71,9 +71,9 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 	}
 
 	@Override
-	public void setExecutor(Executor executor) {
-		Assert.notNull(executor, "taskExecutor cannot be null");
-		this.executor = executor;
+	public void setTaskExecutor(TaskExecutor taskExecutor) {
+		Assert.notNull(taskExecutor, "taskExecutor cannot be null");
+		this.taskExecutor = taskExecutor;
 	}
 
 	@Override
@@ -97,14 +97,14 @@ public class BatchingAcknowledgementProcessor<T> extends AbstractAcknowledgement
 	public void doStart() {
 		Assert.notNull(this.ackInterval, "ackInterval not set");
 		Assert.notNull(this.ackThreshold, "ackThreshold not set");
-		Assert.notNull(this.executor, "executor not set");
+		Assert.notNull(this.taskExecutor, "executor not set");
 		Assert.state(this.ackInterval != Duration.ZERO || this.ackThreshold > 0,
 				() -> getClass().getSimpleName() + " cannot be used with Duration.ZERO and acknowledgement threshold 0."
 						+ "Consider using a " + ImmediateAcknowledgementProcessor.class + "instead");
 		this.acks = new LinkedBlockingQueue<>();
 		this.taskScheduler = createTaskScheduler();
 		this.acknowledgementProcessor = createAcknowledgementProcessor();
-		this.executor.execute(this.acknowledgementProcessor);
+		this.taskExecutor.execute(this.acknowledgementProcessor);
 	}
 
 	protected TaskScheduler createTaskScheduler() {

@@ -19,7 +19,7 @@ import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.listener.BackPressureHandler;
 import io.awspring.cloud.sqs.listener.BatchAwareBackPressureHandler;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
-import io.awspring.cloud.sqs.listener.ExecutorAware;
+import io.awspring.cloud.sqs.listener.TaskExecutorAware;
 import io.awspring.cloud.sqs.listener.IdentifiableContainerComponent;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementProcessor;
@@ -33,6 +33,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -56,7 +57,7 @@ public abstract class AbstractPollingMessageSource<T>
 
 	private Duration shutdownTimeout;
 
-	private Executor executor;
+	private TaskExecutor taskExecutor;
 
 	private BatchAwareBackPressureHandler backPressureHandler;
 
@@ -105,9 +106,9 @@ public abstract class AbstractPollingMessageSource<T>
 	}
 
 	@Override
-	public void setExecutor(Executor executor) {
-		Assert.notNull(executor, "executor cannot be null");
-		this.executor = executor;
+	public void setTaskExecutor(TaskExecutor taskExecutor) {
+		Assert.notNull(taskExecutor, "taskExecutor cannot be null");
+		this.taskExecutor = taskExecutor;
 	}
 
 	@Override
@@ -144,8 +145,8 @@ public abstract class AbstractPollingMessageSource<T>
 							icc -> icc.setId(this.id))
 					.acceptIfInstance(this.acknowledgmentProcessor, IdentifiableContainerComponent.class,
 							icc -> icc.setId(this.id))
-					.acceptIfInstance(this.acknowledgmentProcessor, ExecutorAware.class,
-							ea -> ea.setExecutor(this.executor));
+					.acceptIfInstance(this.acknowledgmentProcessor, TaskExecutorAware.class,
+							ea -> ea.setTaskExecutor(this.taskExecutor));
 			doStart();
 			this.acknowledgmentProcessor.start();
 			startPollingThread();
@@ -156,7 +157,7 @@ public abstract class AbstractPollingMessageSource<T>
 	}
 
 	private void startPollingThread() {
-		this.executor.execute(this::pollAndEmitMessages);
+		this.taskExecutor.execute(this::pollAndEmitMessages);
 	}
 
 	private void pollAndEmitMessages() {

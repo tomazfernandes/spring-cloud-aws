@@ -22,10 +22,10 @@ import io.awspring.cloud.sqs.listener.interceptor.AsyncMessageInterceptor;
 import io.awspring.cloud.sqs.listener.interceptor.MessageInterceptor;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.messaging.Message;
 
 /**
@@ -71,13 +71,13 @@ public class AsyncComponentAdapters {
 		return new BlockingMessageListenerAdapter<>(messageListener);
 	}
 
-	public static abstract class AbstractThreadingComponentAdapter implements ExecutorAware {
+	public static abstract class AbstractThreadingComponentAdapter implements TaskExecutorAware {
 
-		private Executor executor;
+		private TaskExecutor taskExecutor;
 
 		@Override
-		public void setExecutor(Executor executor) {
-			this.executor = executor;
+		public void setTaskExecutor(TaskExecutor taskExecutor) {
+			this.taskExecutor = taskExecutor;
 		}
 
 		protected <T> CompletableFuture<T> execute(Supplier<T> executable) {
@@ -86,7 +86,7 @@ public class AsyncComponentAdapters {
 				return AsyncExecutionAdapters.adaptFromBlocking(executable);
 			}
 			logger.trace("Not in a {}, submitting to executor", MessageExecutionThread.class.getSimpleName());
-			return CompletableFuture.supplyAsync(executable, this.executor);
+			return CompletableFuture.supplyAsync(executable, this.taskExecutor);
 		}
 
 		protected CompletableFuture<Void> execute(Runnable executable) {
@@ -95,7 +95,7 @@ public class AsyncComponentAdapters {
 				return AsyncExecutionAdapters.adaptFromBlocking(executable);
 			}
 			logger.trace("Not in a {}, submitting to executor", MessageExecutionThread.class.getSimpleName());
-			return CompletableFuture.runAsync(executable, this.executor);
+			return CompletableFuture.runAsync(executable, this.taskExecutor);
 		}
 
 	}

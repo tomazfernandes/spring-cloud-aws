@@ -39,9 +39,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
  * @author Tomaz Fernandes
@@ -77,7 +80,7 @@ class BatchingAcknowledgementProcessorTests {
 	void shouldAckAfterBatch() throws Exception {
 		given(message.getHeaders()).willReturn(messageHeaders);
 		given(messageHeaders.get(SqsHeaders.SQS_MESSAGE_ID_HEADER, UUID.class)).willReturn(MESSAGE_ID);
-		ExecutorService executor = Executors.newSingleThreadExecutor();
+		TaskExecutor executor = new SimpleAsyncTaskExecutor();
 		List<Message<String>> messages = IntStream.range(0, ACK_THRESHOLD_TEN).mapToObj(index -> message)
 				.collect(Collectors.toList());
 		given(ackExecutor.execute(messages)).willReturn(CompletableFuture.completedFuture(null));
@@ -90,7 +93,7 @@ class BatchingAcknowledgementProcessorTests {
 		};
 		processor.setAcknowledgementInterval(ACK_INTERVAL_ZERO);
 		processor.setAcknowledgementThreshold(ACK_THRESHOLD_TEN);
-		processor.setExecutor(executor);
+		processor.setTaskExecutor(executor);
 		processor.setAcknowledgementOrdering(AcknowledgementOrdering.PARALLEL);
 		processor.setAcknowledgementExecutor(ackExecutor);
 		processor.setMaxAcknowledgementsPerBatch(MAX_ACKNOWLEDGEMENTS_PER_BATCH_TEN);
@@ -108,7 +111,7 @@ class BatchingAcknowledgementProcessorTests {
 	void shouldAckAfterTime() throws Exception {
 		given(message.getHeaders()).willReturn(messageHeaders);
 		given(messageHeaders.get(SqsHeaders.SQS_MESSAGE_ID_HEADER, UUID.class)).willReturn(MESSAGE_ID);
-		ExecutorService executor = Executors.newSingleThreadExecutor();
+		TaskExecutor executor = new SimpleAsyncTaskExecutor();
 		List<Message<String>> messages = IntStream.range(0, 5).mapToObj(index -> message).collect(Collectors.toList());
 		given(ackExecutor.execute(messages)).willReturn(CompletableFuture.completedFuture(null));
 		CountDownLatch ackLatch = new CountDownLatch(1);
@@ -121,7 +124,7 @@ class BatchingAcknowledgementProcessorTests {
 		};
 		processor.setAcknowledgementInterval(ACK_INTERVAL_HUNDRED_MILLIS);
 		processor.setAcknowledgementThreshold(ACK_THRESHOLD_ZERO);
-		processor.setExecutor(executor);
+		processor.setTaskExecutor(executor);
 		processor.setAcknowledgementOrdering(AcknowledgementOrdering.PARALLEL);
 		processor.setAcknowledgementExecutor(ackExecutor);
 		processor.setMaxAcknowledgementsPerBatch(MAX_ACKNOWLEDGEMENTS_PER_BATCH_TEN);
@@ -139,7 +142,7 @@ class BatchingAcknowledgementProcessorTests {
 	void shouldPartitionMessages() throws Exception {
 		given(message.getHeaders()).willReturn(messageHeaders);
 		given(messageHeaders.get(SqsHeaders.SQS_MESSAGE_ID_HEADER, UUID.class)).willReturn(MESSAGE_ID);
-		ExecutorService executor = Executors.newSingleThreadExecutor();
+		TaskExecutor executor = new SimpleAsyncTaskExecutor();
 		List<Message<String>> messages = IntStream.range(0, 15).mapToObj(index -> message).collect(Collectors.toList());
 		given(ackExecutor.execute(any())).willReturn(CompletableFuture.completedFuture(null));
 		CountDownLatch ackLatch = new CountDownLatch(1);
@@ -152,7 +155,7 @@ class BatchingAcknowledgementProcessorTests {
 		};
 		processor.setAcknowledgementInterval(ACK_INTERVAL_HUNDRED_MILLIS);
 		processor.setAcknowledgementThreshold(ACK_THRESHOLD_ZERO);
-		processor.setExecutor(executor);
+		processor.setTaskExecutor(executor);
 		processor.setAcknowledgementOrdering(AcknowledgementOrdering.PARALLEL);
 		processor.setAcknowledgementExecutor(ackExecutor);
 		processor.setMaxAcknowledgementsPerBatch(MAX_ACKNOWLEDGEMENTS_PER_BATCH_TEN);
@@ -169,7 +172,7 @@ class BatchingAcknowledgementProcessorTests {
 
 	@Test
 	void shouldAcknowledgeInOrder() throws Exception {
-		ExecutorService executor = Executors.newSingleThreadExecutor();
+		TaskExecutor executor = new SimpleAsyncTaskExecutor();
 		int nummberOfMessages = 100;
 		List<Message<String>> messages = IntStream.range(0, nummberOfMessages).mapToObj(this::createMessage)
 				.collect(Collectors.toList());
@@ -184,7 +187,7 @@ class BatchingAcknowledgementProcessorTests {
 		};
 		processor.setAcknowledgementInterval(ACK_INTERVAL_HUNDRED_MILLIS);
 		processor.setAcknowledgementThreshold(ACK_THRESHOLD_ZERO);
-		processor.setExecutor(executor);
+		processor.setTaskExecutor(executor);
 		processor.setAcknowledgementOrdering(AcknowledgementOrdering.ORDERED);
 		processor.setAcknowledgementExecutor(ackExecutor);
 		processor.setMaxAcknowledgementsPerBatch(MAX_ACKNOWLEDGEMENTS_PER_BATCH_TEN);

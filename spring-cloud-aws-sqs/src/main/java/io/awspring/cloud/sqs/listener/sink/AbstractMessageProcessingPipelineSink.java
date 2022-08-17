@@ -16,7 +16,7 @@
 package io.awspring.cloud.sqs.listener.sink;
 
 import io.awspring.cloud.sqs.MessageHeaderUtils;
-import io.awspring.cloud.sqs.listener.ExecutorAware;
+import io.awspring.cloud.sqs.listener.TaskExecutorAware;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import java.util.Collection;
@@ -44,7 +44,7 @@ import org.springframework.util.StopWatch;
  * @since 3.0
  */
 public abstract class AbstractMessageProcessingPipelineSink<T>
-		implements MessageProcessingPipelineSink<T>, ExecutorAware {
+		implements MessageProcessingPipelineSink<T>, TaskExecutorAware {
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractMessageProcessingPipelineSink.class);
 
@@ -65,7 +65,7 @@ public abstract class AbstractMessageProcessingPipelineSink<T>
 	}
 
 	@Override
-	public void setExecutor(Executor executor) {
+	public void setTaskExecutor(TaskExecutor taskExecutor) {
 		Assert.notNull(executor, "executor cannot be null");
 		this.executor = executor;
 	}

@@ -25,14 +25,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
+
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
 import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
 
 /**
- * Contains the options to be used by the {@link MessageListenerContainer} at runtime. If changes are made after the
- * container has started, those changes will be reflected upon container restart.
+ * Contains the options to be used by the {@link MessageListenerContainer} at runtime.
  *
  * @author Tomaz Fernandes
  * @since 3.0
@@ -73,7 +74,7 @@ public class ContainerOptions {
 
 	private final Integer acknowledgementThreshold;
 
-	private final Executor containerComponentsTaskExecutor;
+	private final TaskExecutor containerComponentsTaskExecutor;
 
 	private final Duration messageVisibility;
 
@@ -139,7 +140,7 @@ public class ContainerOptions {
 		return this.permitAcquiringStrategy;
 	}
 
-	public Executor getContainerComponentsTaskExecutor() {
+	public TaskExecutor getContainerComponentsTaskExecutor() {
 		return this.containerComponentsTaskExecutor;
 	}
 
@@ -285,7 +286,7 @@ public class ContainerOptions {
 
 		private Integer acknowledgementThreshold;
 
-		private Executor componentsTaskExecutor;
+		private TaskExecutor componentsTaskExecutor;
 
 		private Duration messageVisibility;
 
@@ -369,9 +370,9 @@ public class ContainerOptions {
 			return this;
 		}
 
-		public Builder componentsTaskExecutor(Executor executor) {
-			Assert.notNull(executor, "executor cannot be null");
-			this.componentsTaskExecutor = executor;
+		public Builder componentsTaskExecutor(TaskExecutor taskExecutor) {
+			Assert.notNull(taskExecutor, "executor cannot be null");
+			this.componentsTaskExecutor = taskExecutor;
 			return this;
 		}
 

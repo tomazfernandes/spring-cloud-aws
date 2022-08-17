@@ -45,7 +45,7 @@ class OrderedMessageListeningSinkTests {
 				.collect(toList());
 		List<Message<Integer>> received = new ArrayList<>(numberOfMessagesToEmit);
 		AbstractMessageProcessingPipelineSink<Integer> sink = new OrderedMessageSink<>();
-		sink.setExecutor(Runnable::run);
+		sink.setTaskExecutor(Runnable::run);
 		sink.setMessagePipeline(getMessageProcessingPipeline(received));
 		sink.start();
 		sink.emit(messagesToEmit, MessageProcessingContext.create()).join();

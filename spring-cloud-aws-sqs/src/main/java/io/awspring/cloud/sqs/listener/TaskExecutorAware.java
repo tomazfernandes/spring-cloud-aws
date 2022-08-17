@@ -15,6 +15,8 @@
  */
 package io.awspring.cloud.sqs.listener;
 
+import org.springframework.core.task.TaskExecutor;
+
 import java.util.concurrent.Executor;
 
 /**
@@ -24,12 +26,12 @@ import java.util.concurrent.Executor;
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public interface ExecutorAware {
+public interface TaskExecutorAware {
 
 	/**
 	 * Set the task executor.
 	 * @param taskExecutor the task e.xecutor
 	 */
-	void setExecutor(Executor taskExecutor);
+	void setTaskExecutor(TaskExecutor taskExecutor);
 
 }

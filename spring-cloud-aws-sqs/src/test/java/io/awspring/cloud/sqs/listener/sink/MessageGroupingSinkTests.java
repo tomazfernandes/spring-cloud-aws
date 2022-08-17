@@ -71,7 +71,7 @@ class MessageGroupingSinkTests {
 
 		MessageGroupingSinkAdapter<Integer> sinkAdapter = new MessageGroupingSinkAdapter<>(new OrderedMessageSink<>(),
 				message -> message.getHeaders().get(header, String.class));
-		sinkAdapter.setExecutor(new SimpleAsyncTaskExecutor());
+		sinkAdapter.setTaskExecutor(new SimpleAsyncTaskExecutor());
 		sinkAdapter.setMessagePipeline(new MessageProcessingPipeline<Integer>() {
 			@Override
 			public CompletableFuture<Message<Integer>> process(Message<Integer> message,

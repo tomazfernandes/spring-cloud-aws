@@ -44,6 +44,7 @@ import java.util.stream.IntStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
@@ -63,7 +64,7 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 
 	private MessageSink<T> messageSink;
 
-	private Executor componentsTaskExecutor;
+	private TaskExecutor componentsTaskExecutor;
 
 	protected AbstractPipelineMessageListenerContainer(ContainerOptions options) {
 		super(options);
@@ -116,14 +117,14 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 
 	@SuppressWarnings("unchecked")
 	protected void configureMessageSources(ContainerComponentFactory<T> componentFactory) {
-		Executor executor = createSourcesTaskExecutor();
+		TaskExecutor taskExecutor = createSourcesTaskExecutor();
 		ConfigUtils.INSTANCE.acceptMany(this.messageSources, source -> source.setMessageSink(this.messageSink))
 				.acceptManyIfInstance(this.messageSources, PollingMessageSource.class,
 						pms -> pms.setBackPressureHandler(createBackPressureHandler()))
 				.acceptManyIfInstance(this.messageSources, AcknowledgementProcessingMessageSource.class,
 						ams -> ams.setAcknowledgementProcessor(
 								componentFactory.createAcknowledgementProcessor(getContainerOptions())))
-				.acceptManyIfInstance(this.messageSources, ExecutorAware.class, teac -> teac.setExecutor(executor));
+				.acceptManyIfInstance(this.messageSources, TaskExecutorAware.class, teac -> teac.setTaskExecutor(taskExecutor));
 		doConfigureMessageSources(this.messageSources);
 	}
 
@@ -133,8 +134,8 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 	protected void configureMessageSink(MessageProcessingPipeline<T> messageProcessingPipeline) {
 		ConfigUtils.INSTANCE
 				.acceptIfInstance(this.messageSink, IdentifiableContainerComponent.class, icc -> icc.setId(getId()))
-				.acceptIfInstance(this.messageSink, ExecutorAware.class,
-						teac -> teac.setExecutor(getComponentsTaskExecutor()))
+				.acceptIfInstance(this.messageSink, TaskExecutorAware.class,
+						teac -> teac.setTaskExecutor(getComponentsTaskExecutor()))
 				.acceptIfInstance(this.messageSink, MessageProcessingPipelineSink.class,
 						mls -> mls.setMessagePipeline(messageProcessingPipeline));
 		doConfigureMessageSink(this.messageSink);
@@ -144,12 +145,12 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 
 	protected void configurePipelineComponents() {
 		ConfigUtils.INSTANCE
-				.acceptManyIfInstance(getMessageInterceptors(), ExecutorAware.class,
-						teac -> teac.setExecutor(getComponentsTaskExecutor()))
-				.acceptIfInstance(getMessageListener(), ExecutorAware.class,
-						teac -> teac.setExecutor(getComponentsTaskExecutor()))
-				.acceptIfInstance(getErrorHandler(), ExecutorAware.class,
-						teac -> teac.setExecutor(getComponentsTaskExecutor()));
+				.acceptManyIfInstance(getMessageInterceptors(), TaskExecutorAware.class,
+						teac -> teac.setTaskExecutor(getComponentsTaskExecutor()))
+				.acceptIfInstance(getMessageListener(), TaskExecutorAware.class,
+						teac -> teac.setTaskExecutor(getComponentsTaskExecutor()))
+				.acceptIfInstance(getErrorHandler(), TaskExecutorAware.class,
+						teac -> teac.setTaskExecutor(getComponentsTaskExecutor()));
 	}
 
 	// @formatter:off
@@ -170,7 +171,7 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 	}
 	// @formatter:on
 
-	private Executor resolveComponentsTaskExecutor() {
+	private TaskExecutor resolveComponentsTaskExecutor() {
 		return getContainerOptions().getContainerComponentsTaskExecutor() != null
 				? getContainerOptions().getContainerComponentsTaskExecutor()
 				: createComponentsTaskExecutor();
@@ -184,13 +185,13 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 				.throughputConfiguration(getContainerOptions().getBackPressureMode()).build();
 	}
 
-	protected Executor createSourcesTaskExecutor() {
+	protected TaskExecutor createSourcesTaskExecutor() {
 		SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor();
 		executor.setThreadNamePrefix(getId() + "#message_source-");
 		return executor;
 	}
 
-	protected Executor createComponentsTaskExecutor() {
+	protected TaskExecutor createComponentsTaskExecutor() {
 		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 		int poolSize = getContainerOptions().getMaxInFlightMessagesPerQueue() * this.messageSources.size();
 		executor.setMaxPoolSize(poolSize);
@@ -215,7 +216,7 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 		logger.debug("Container {} stopped", getId());
 	}
 
-	protected Executor getComponentsTaskExecutor() {
+	protected TaskExecutor getComponentsTaskExecutor() {
 		return this.componentsTaskExecutor;
 	}
 
