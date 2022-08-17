@@ -23,7 +23,6 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 import org.springframework.core.task.TaskExecutor;
@@ -144,7 +143,7 @@ public class ContainerOptions {
 		return this.containerComponentsTaskExecutor;
 	}
 
-	public Duration getSourceShutdownTimeout() {
+	public Duration getShutdownTimeout() {
 		return this.sourceShutdownTimeout;
 	}
 

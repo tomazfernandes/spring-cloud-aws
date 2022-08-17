@@ -52,7 +52,7 @@ public abstract class AbstractMessageProcessingPipelineSink<T>
 
 	private volatile boolean running;
 
-	private Executor executor;
+	private Executor taskExecutor;
 
 	private MessageProcessingPipeline<T> messageProcessingPipeline;
 
@@ -66,8 +66,8 @@ public abstract class AbstractMessageProcessingPipelineSink<T>
 
 	@Override
 	public void setTaskExecutor(TaskExecutor taskExecutor) {
-		Assert.notNull(executor, "executor cannot be null");
-		this.executor = executor;
+		Assert.notNull(taskExecutor, "executor cannot be null");
+		this.taskExecutor = taskExecutor;
 	}
 
 	@Override
@@ -94,6 +94,7 @@ public abstract class AbstractMessageProcessingPipelineSink<T>
 	 * @return the processing result.
 	 */
 	protected CompletableFuture<Void> execute(Message<T> message, MessageProcessingContext<T> context) {
+		logger.trace("Executing message {}", MessageHeaderUtils.getId(message));
 		StopWatch watch = getStartedWatch();
 		return doExecute(() -> this.messageProcessingPipeline.process(message, context))
 				.whenComplete((v, t) -> context.runBackPressureReleaseCallback())
@@ -128,7 +129,7 @@ public abstract class AbstractMessageProcessingPipelineSink<T>
 	}
 
 	private CompletableFuture<Void> doExecute(Supplier<CompletableFuture<?>> supplier) {
-		return CompletableFuture.supplyAsync(supplier, this.executor).thenCompose(x -> x).thenRun(() -> {
+		return CompletableFuture.supplyAsync(supplier, this.taskExecutor).thenCompose(x -> x).thenRun(() -> {
 		});
 	}
 
@@ -140,7 +141,7 @@ public abstract class AbstractMessageProcessingPipelineSink<T>
 		}
 		synchronized (this.lifecycleMonitor) {
 			Assert.notNull(this.messageProcessingPipeline, "messageListener not set");
-			Assert.notNull(this.executor, "taskExecutor not set");
+			Assert.notNull(this.taskExecutor, "taskExecutor not set");
 			this.id = getOrCreateId();
 			logger.debug("Starting {} {}", getClass().getSimpleName(), this.id);
 			this.running = true;
@@ -148,8 +149,8 @@ public abstract class AbstractMessageProcessingPipelineSink<T>
 	}
 
 	private String getOrCreateId() {
-		return this.executor instanceof ThreadPoolTaskExecutor
-				? ((ThreadPoolTaskExecutor) this.executor).getThreadNamePrefix()
+		return this.taskExecutor instanceof ThreadPoolTaskExecutor
+				? ((ThreadPoolTaskExecutor) this.taskExecutor).getThreadNamePrefix()
 				: UUID.randomUUID().toString();
 	}
 

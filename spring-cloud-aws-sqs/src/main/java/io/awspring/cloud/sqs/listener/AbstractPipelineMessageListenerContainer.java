@@ -105,15 +105,17 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 				icc -> icc.setId(getId() + "-" + index));
 		return messageSource;
 	}
-	// @formatter:on
 
 	private void configureComponents(ContainerComponentFactory<T> componentFactory) {
+		getContainerOptions()
+			.configure(this.messageSources)
+			.configure(this.messageSink);
 		this.componentsTaskExecutor = resolveComponentsTaskExecutor();
-		getContainerOptions().configure(this.messageSources).configure(this.messageSink);
 		configureMessageSources(componentFactory);
 		configureMessageSink(createMessageProcessingPipeline(componentFactory));
 		configurePipelineComponents();
 	}
+	// @formatter:on
 
 	@SuppressWarnings("unchecked")
 	protected void configureMessageSources(ContainerComponentFactory<T> componentFactory) {

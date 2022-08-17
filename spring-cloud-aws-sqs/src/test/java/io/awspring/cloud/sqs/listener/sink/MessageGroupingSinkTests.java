@@ -24,12 +24,15 @@ import io.awspring.cloud.sqs.listener.SqsHeaders;
 import io.awspring.cloud.sqs.listener.pipeline.MessageProcessingPipeline;
 import io.awspring.cloud.sqs.listener.sink.adapter.MessageGroupingSinkAdapter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
+
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.messaging.Message;
@@ -48,26 +51,20 @@ class MessageGroupingSinkTests {
 		String secondMessageGroupId = UUID.randomUUID().toString();
 		String thirdMessageGroupId = UUID.randomUUID().toString();
 		List<Message<Integer>> firstMessageGroupMessages = IntStream.range(0, 10)
-				.mapToObj(index -> MessageBuilder.withPayload(index)
-						.setHeader(SqsHeaders.SQS_MESSAGE_ID_HEADER, UUID.randomUUID())
-						.setHeader(header, firstMessageGroupId).build())
+				.mapToObj(index -> createMessage(index, header, firstMessageGroupId))
 				.collect(toList());
 		List<Message<Integer>> secondMessageGroupMessages = IntStream.range(0, 10)
-				.mapToObj(index -> MessageBuilder.withPayload(index)
-						.setHeader(SqsHeaders.SQS_MESSAGE_ID_HEADER, UUID.randomUUID())
-						.setHeader(header, secondMessageGroupId).build())
+				.mapToObj(index -> createMessage(index, header, secondMessageGroupId))
 				.collect(toList());
 		List<Message<Integer>> thirdMessageGroupMessages = IntStream.range(0, 10)
-				.mapToObj(index -> MessageBuilder.withPayload(index)
-						.setHeader(SqsHeaders.SQS_MESSAGE_ID_HEADER, UUID.randomUUID())
-						.setHeader(header, thirdMessageGroupId).build())
+				.mapToObj(index -> createMessage(index, header, thirdMessageGroupId))
 				.collect(toList());
 		List<Message<Integer>> messagesToEmit = new ArrayList<>();
 		messagesToEmit.addAll(firstMessageGroupMessages);
 		messagesToEmit.addAll(secondMessageGroupMessages);
 		messagesToEmit.addAll(thirdMessageGroupMessages);
 
-		List<Message<Integer>> received = new ArrayList<>();
+		List<Message<Integer>> received = Collections.synchronizedList(new ArrayList<>());
 
 		MessageGroupingSinkAdapter<Integer> sinkAdapter = new MessageGroupingSinkAdapter<>(new OrderedMessageSink<>(),
 				message -> message.getHeaders().get(header, String.class));
@@ -84,16 +81,23 @@ class MessageGroupingSinkTests {
 				}
 				received.add(message);
 				return CompletableFuture.completedFuture(message);
-			};
+			}
 		});
 		sinkAdapter.start();
 		sinkAdapter.emit(messagesToEmit, MessageProcessingContext.create()).join();
 		Map<String, List<Message<Integer>>> receivedMessages = received.stream()
 				.collect(groupingBy(message -> (String) message.getHeaders().get(header)));
 
-		assertThat(receivedMessages.get(firstMessageGroupId)).containsSequence(firstMessageGroupMessages);
-		assertThat(receivedMessages.get(secondMessageGroupId)).containsSequence(secondMessageGroupMessages);
-		assertThat(receivedMessages.get(thirdMessageGroupId)).containsSequence(thirdMessageGroupMessages);
+		assertThat(receivedMessages.get(firstMessageGroupId)).containsExactlyElementsOf(firstMessageGroupMessages);
+		assertThat(receivedMessages.get(secondMessageGroupId)).containsExactlyElementsOf(secondMessageGroupMessages);
+		assertThat(receivedMessages.get(thirdMessageGroupId)).containsExactlyElementsOf(thirdMessageGroupMessages);
+	}
+
+	@NotNull
+	private Message<Integer> createMessage(int index, String header, String thirdMessageGroupId) {
+		return MessageBuilder.withPayload(index)
+			.setHeader(SqsHeaders.SQS_MESSAGE_ID_HEADER, UUID.randomUUID())
+			.setHeader(header, thirdMessageGroupId).build();
 	}
 
 }

@@ -15,12 +15,16 @@
  */
 package io.awspring.cloud.sqs.listener.sink.adapter;
 
+import io.awspring.cloud.sqs.MessageHeaderUtils;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
@@ -29,6 +33,8 @@ import org.springframework.util.Assert;
  * @since 3.0
  */
 public class MessageGroupingSinkAdapter<T> extends AbstractDelegatingMessageListeningSinkAdapter<T> {
+
+	private static final Logger logger = LoggerFactory.getLogger(MessageGroupingSinkAdapter.class);
 
 	private final Function<Message<T>, String> groupingFunction;
 
@@ -41,6 +47,7 @@ public class MessageGroupingSinkAdapter<T> extends AbstractDelegatingMessageList
 	// @formatter:off
 	@Override
 	public CompletableFuture<Void> emit(Collection<Message<T>> messages, MessageProcessingContext<T> context) {
+		logger.trace("Emitting messages {}", MessageHeaderUtils.getId(messages));
 		return CompletableFuture.allOf(messages.stream().collect(Collectors.groupingBy(this.groupingFunction))
 			.values().stream()
 			.map(messageBatch -> getDelegate().emit(messageBatch, context))
