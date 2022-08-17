@@ -15,7 +15,9 @@
  */
 package io.awspring.cloud.sqs.config;
 
+import io.awspring.cloud.sqs.listener.MessageDeliveryStrategy;
 import java.lang.reflect.Method;
+import java.util.function.Consumer;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 
 /**
@@ -37,5 +39,7 @@ public interface HandlerMethodEndpoint extends Endpoint {
 	 * @param handlerMethodFactory the factory.
 	 */
 	void setHandlerMethodFactory(MessageHandlerMethodFactory handlerMethodFactory);
+
+	void configureMessageDeliveryStrategy(Consumer<MessageDeliveryStrategy> consumer);
 
 }

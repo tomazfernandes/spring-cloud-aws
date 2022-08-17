@@ -39,197 +39,68 @@ import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
  */
 public class ContainerOptions {
 
-	private static final int DEFAULT_MAX_INFLIGHT_MSG_PER_QUEUE = 10;
+	private final int maxInflightMessagesPerQueue;
 
-	private static final int DEFAULT_MESSAGES_PER_POLL = 10;
+	private final int messagesPerPoll;
 
-	private static final Duration DEFAULT_POLL_TIMEOUT = Duration.ofSeconds(10);
+	private final Duration pollTimeout;
 
-	private static final Duration DEFAULT_SEMAPHORE_TIMEOUT = Duration.ofSeconds(10);
+	private final Duration permitAcquireTimeout;
 
-	private static final Duration DEFAULT_SHUTDOWN_TIMEOUT = Duration.ofSeconds(20);
+	private final PermitAcquiringStrategy permitAcquiringStrategy;
 
-	private static final BackPressureMode DEFAULT_THROUGHPUT_CONFIGURATION = BackPressureMode.AUTO;
+	private final Duration sourceShutdownTimeout;
 
-	private static final MessageDeliveryStrategy DEFAULT_MESSAGE_DELIVERY_STRATEGY = MessageDeliveryStrategy.SINGLE_MESSAGE;
+	private final BackPressureMode backPressureMode;
 
-	private static final List<QueueAttributeName> DEFAULT_QUEUE_ATTRIBUTES_NAMES = Collections.emptyList();
+	private final MessageDeliveryStrategy messageDeliveryStrategy;
 
-	private static final List<String> DEFAULT_MESSAGE_ATTRIBUTES_NAMES = Collections
-			.singletonList(QueueAttributeName.ALL.toString());
+	private final Collection<QueueAttributeName> queueAttributeNames;
 
-	private static final List<String> DEFAULT_MESSAGE_SYSTEM_ATTRIBUTES = Collections
-			.singletonList(QueueAttributeName.ALL.toString());
+	private final Collection<String> messageAttributeNames;
 
-	private static final MessagingMessageConverter<?> DEFAULT_MESSAGE_CONVERTER = new SqsMessagingMessageConverter();
+	private final Collection<String> messageSystemAttributeNames;
 
-	private static final AcknowledgementMode DEFAULT_ACKNOWLEDGEMENT_MODE = AcknowledgementMode.ON_SUCCESS;
+	private final MessagingMessageConverter<?> messageConverter;
 
-	private static final PermitAcquiringStrategy DEFAULT_PERMIT_ACQUIRING_STRATEGY = PermitAcquiringStrategy.PARTIAL_BATCHES_ENABLED;
+	private final AcknowledgementMode acknowledgementMode;
 
-	private static final QueueNotFoundStrategy DEFAULT_QUEUE_NOT_FOUND_STRATEGY = QueueNotFoundStrategy.CREATE;
+	private final QueueNotFoundStrategy queueNotFoundStrategy;
 
-	private int maxInflightMessagesPerQueue = DEFAULT_MAX_INFLIGHT_MSG_PER_QUEUE;
+	private final AcknowledgementOrdering acknowledgementOrdering;
 
-	private int messagesPerPoll = DEFAULT_MESSAGES_PER_POLL;
+	private final Duration acknowledgementInterval;
 
-	private Duration pollTimeout = DEFAULT_POLL_TIMEOUT;
+	private final Integer acknowledgementThreshold;
 
-	private Duration permitAcquireTimeout = DEFAULT_SEMAPHORE_TIMEOUT;
+	private final Executor containerComponentsTaskExecutor;
 
-	private PermitAcquiringStrategy permitAcquiringStrategy = DEFAULT_PERMIT_ACQUIRING_STRATEGY;
+	private final Duration messageVisibility;
 
-	private Duration sourceShutdownTimeout = DEFAULT_SHUTDOWN_TIMEOUT;
-
-	private BackPressureMode backPressureMode = DEFAULT_THROUGHPUT_CONFIGURATION;
-
-	private MessageDeliveryStrategy messageDeliveryStrategy = DEFAULT_MESSAGE_DELIVERY_STRATEGY;
-
-	private Collection<QueueAttributeName> queueAttributeNames = DEFAULT_QUEUE_ATTRIBUTES_NAMES;
-
-	private Collection<String> messageAttributeNames = DEFAULT_MESSAGE_ATTRIBUTES_NAMES;
-
-	private Collection<String> messageSystemAttributeNames = DEFAULT_MESSAGE_SYSTEM_ATTRIBUTES;
-
-	private MessagingMessageConverter<?> messageConverter = DEFAULT_MESSAGE_CONVERTER;
-
-	private AcknowledgementMode acknowledgementMode = DEFAULT_ACKNOWLEDGEMENT_MODE;
-
-	private QueueNotFoundStrategy queueNotFoundStrategy = DEFAULT_QUEUE_NOT_FOUND_STRATEGY;
-
-	private AcknowledgementOrdering acknowledgementOrdering;
-
-	private Duration acknowledgementInterval;
-
-	private Integer acknowledgementThreshold;
-
-	private Executor containerComponentsTaskExecutor;
-
-	private Duration messageVisibility;
-
-	public static ContainerOptions create() {
-		return new ContainerOptions();
+	private ContainerOptions(Builder builder) {
+		this.maxInflightMessagesPerQueue = builder.maxInflightMessagesPerQueue;
+		this.messagesPerPoll = builder.messagesPerPoll;
+		this.pollTimeout = builder.pollTimeout;
+		this.permitAcquireTimeout = builder.permitAcquireTimeout;
+		this.permitAcquiringStrategy = builder.permitAcquiringStrategy;
+		this.sourceShutdownTimeout = builder.shutdownTimeout;
+		this.backPressureMode = builder.backPressureMode;
+		this.messageDeliveryStrategy = builder.messageDeliveryStrategy;
+		this.queueAttributeNames = builder.queueAttributeNames;
+		this.messageAttributeNames = builder.messageAttributeNames;
+		this.messageSystemAttributeNames = builder.messageSystemAttributeNames;
+		this.messageConverter = builder.messageConverter;
+		this.acknowledgementMode = builder.acknowledgementMode;
+		this.queueNotFoundStrategy = builder.queueNotFoundStrategy;
+		this.acknowledgementOrdering = builder.acknowledgementOrdering;
+		this.acknowledgementInterval = builder.acknowledgementInterval;
+		this.acknowledgementThreshold = builder.acknowledgementThreshold;
+		this.containerComponentsTaskExecutor = builder.componentsTaskExecutor;
+		this.messageVisibility = builder.messageVisibility;
 	}
 
-	/**
-	 * Set the maximum allowed number of inflight messages for each queue.
-	 * @return this instance.
-	 */
-	public ContainerOptions setMaxInflightMessagesPerQueue(int maxInflightMessagesPerQueue) {
-		this.maxInflightMessagesPerQueue = maxInflightMessagesPerQueue;
-		return this;
-	}
-
-	/**
-	 * Set the maximum time the polling thread should wait for permits.
-	 * @param permitAcquireTimeout the timeout.
-	 * @return this instance.
-	 */
-	public ContainerOptions setPermitAcquireTimeout(Duration permitAcquireTimeout) {
-		Assert.notNull(permitAcquireTimeout, "semaphoreAcquireTimeout cannot be null");
-		this.permitAcquireTimeout = permitAcquireTimeout;
-		return this;
-	}
-
-	public ContainerOptions setPermitAcquiringStrategy(PermitAcquiringStrategy permitAcquiringStrategy) {
-		Assert.notNull(permitAcquiringStrategy, "permitAcquiringStrategy cannot be null");
-		this.permitAcquiringStrategy = permitAcquiringStrategy;
-		return this;
-	}
-
-	/**
-	 * Set the number of messages that should be returned per poll.
-	 * @param messagesPerPoll the number of messages.
-	 * @return this instance.
-	 */
-	public ContainerOptions setMessagesPerPoll(int messagesPerPoll) {
-		this.messagesPerPoll = messagesPerPoll;
-		return this;
-	}
-
-	/**
-	 * Set the timeout for polling messages for this endpoint.
-	 * @param pollTimeout the poll timeout.
-	 * @return this instance.
-	 */
-	public ContainerOptions setPollTimeout(Duration pollTimeout) {
-		Assert.notNull(pollTimeout, "pollTimeout cannot be null");
-		this.pollTimeout = pollTimeout;
-		return this;
-	}
-
-	public ContainerOptions setMessageDeliveryStrategy(MessageDeliveryStrategy messageDeliveryStrategy) {
-		Assert.notNull(messageDeliveryStrategy, "messageDeliveryStrategy cannot be null");
-		this.messageDeliveryStrategy = messageDeliveryStrategy;
-		return this;
-	}
-
-	public ContainerOptions setContainerComponentsTaskExecutor(Executor executor) {
-		Assert.notNull(executor, "executor cannot be null");
-		this.containerComponentsTaskExecutor = executor;
-		return this;
-	}
-
-	public ContainerOptions setSourceShutdownTimeout(Duration sourceShutdownTimeout) {
-		this.sourceShutdownTimeout = sourceShutdownTimeout;
-		return this;
-	}
-
-	public ContainerOptions setBackPressureMode(BackPressureMode backPressureMode) {
-		this.backPressureMode = backPressureMode;
-		return this;
-	}
-
-	public ContainerOptions setQueueAttributeNames(Collection<QueueAttributeName> queueAttributeNames) {
-		this.queueAttributeNames = queueAttributeNames;
-		return this;
-	}
-
-	public ContainerOptions setMessageAttributeNames(Collection<String> messageAttributeNames) {
-		this.messageAttributeNames = messageAttributeNames;
-		return this;
-	}
-
-	public ContainerOptions setMessageSystemAttributeNames(
-			Collection<MessageSystemAttributeName> messageSystemAttributeNames) {
-		this.messageSystemAttributeNames = messageSystemAttributeNames.stream()
-				.map(MessageSystemAttributeName::toString).collect(Collectors.toList());
-		return this;
-	}
-
-	public ContainerOptions setMessageVisibility(Duration messageVisibility) {
-		this.messageVisibility = messageVisibility;
-		return this;
-	}
-
-	public ContainerOptions setAcknowledgementInterval(Duration acknowledgementInterval) {
-		this.acknowledgementInterval = acknowledgementInterval;
-		return this;
-	}
-
-	public ContainerOptions setAcknowledgementThreshold(Integer acknowledgementThreshold) {
-		this.acknowledgementThreshold = acknowledgementThreshold;
-		return this;
-	}
-
-	public ContainerOptions setAcknowledgementMode(AcknowledgementMode acknowledgementMode) {
-		this.acknowledgementMode = acknowledgementMode;
-		return this;
-	}
-
-	public ContainerOptions setAcknowledgementOrdering(AcknowledgementOrdering acknowledgementOrdering) {
-		this.acknowledgementOrdering = acknowledgementOrdering;
-		return this;
-	}
-
-	public ContainerOptions setMessageConverter(MessagingMessageConverter<?> messageConverter) {
-		this.messageConverter = messageConverter;
-		return this;
-	}
-
-	public ContainerOptions setQueueNotFoundStrategy(QueueNotFoundStrategy queueNotFoundStrategy) {
-		this.queueNotFoundStrategy = queueNotFoundStrategy;
-		return this;
+	public static ContainerOptions.Builder builder() {
+		return new ContainerOptions.Builder();
 	}
 
 	/**
@@ -324,18 +195,8 @@ public class ContainerOptions {
 		return this.queueNotFoundStrategy;
 	}
 
-	/**
-	 * Create a shallow copy of these options.
-	 * @return the copy.
-	 */
-	public ContainerOptions createCopy() {
-		ContainerOptions newCopy = new ContainerOptions();
-		ReflectionUtils.shallowCopyFieldState(this, newCopy);
-		return newCopy;
-	}
-
 	public ContainerOptions configure(ConfigurableContainerComponent configurable) {
-		configurable.configure(createCopy());
+		configurable.configure(this);
 		return this;
 	}
 
@@ -352,6 +213,256 @@ public class ContainerOptions {
 				"messagesPerPoll should be less than or equal to maxInflightMessagesPerQueue. Values provided: %s and %s respectively",
 				this.messagesPerPoll, this.maxInflightMessagesPerQueue));
 		Assert.isTrue(this.messagesPerPoll <= 10, "messagesPerPoll must be less than or equal to 10.");
+	}
+
+	public Builder toBuilder() {
+		return new Builder(this);
+	}
+
+	public static class Builder {
+
+		private static final int DEFAULT_MAX_INFLIGHT_MSG_PER_QUEUE = 10;
+
+		private static final int DEFAULT_MESSAGES_PER_POLL = 10;
+
+		private static final Duration DEFAULT_POLL_TIMEOUT = Duration.ofSeconds(10);
+
+		private static final Duration DEFAULT_SEMAPHORE_TIMEOUT = Duration.ofSeconds(10);
+
+		private static final Duration DEFAULT_SHUTDOWN_TIMEOUT = Duration.ofSeconds(20);
+
+		private static final BackPressureMode DEFAULT_THROUGHPUT_CONFIGURATION = BackPressureMode.AUTO;
+
+		private static final MessageDeliveryStrategy DEFAULT_MESSAGE_DELIVERY_STRATEGY = MessageDeliveryStrategy.SINGLE_MESSAGE;
+
+		private static final List<QueueAttributeName> DEFAULT_QUEUE_ATTRIBUTES_NAMES = Collections.emptyList();
+
+		private static final List<String> DEFAULT_MESSAGE_ATTRIBUTES_NAMES = Collections
+				.singletonList(QueueAttributeName.ALL.toString());
+
+		private static final List<String> DEFAULT_MESSAGE_SYSTEM_ATTRIBUTES = Collections
+				.singletonList(QueueAttributeName.ALL.toString());
+
+		private static final MessagingMessageConverter<?> DEFAULT_MESSAGE_CONVERTER = new SqsMessagingMessageConverter();
+
+		private static final AcknowledgementMode DEFAULT_ACKNOWLEDGEMENT_MODE = AcknowledgementMode.ON_SUCCESS;
+
+		private static final PermitAcquiringStrategy DEFAULT_PERMIT_ACQUIRING_STRATEGY = PermitAcquiringStrategy.PARTIAL_BATCHES_ENABLED;
+
+		private static final QueueNotFoundStrategy DEFAULT_QUEUE_NOT_FOUND_STRATEGY = QueueNotFoundStrategy.CREATE;
+
+		private int maxInflightMessagesPerQueue = DEFAULT_MAX_INFLIGHT_MSG_PER_QUEUE;
+
+		private int messagesPerPoll = DEFAULT_MESSAGES_PER_POLL;
+
+		private Duration pollTimeout = DEFAULT_POLL_TIMEOUT;
+
+		private Duration permitAcquireTimeout = DEFAULT_SEMAPHORE_TIMEOUT;
+
+		private PermitAcquiringStrategy permitAcquiringStrategy = DEFAULT_PERMIT_ACQUIRING_STRATEGY;
+
+		private Duration shutdownTimeout = DEFAULT_SHUTDOWN_TIMEOUT;
+
+		private BackPressureMode backPressureMode = DEFAULT_THROUGHPUT_CONFIGURATION;
+
+		private MessageDeliveryStrategy messageDeliveryStrategy = DEFAULT_MESSAGE_DELIVERY_STRATEGY;
+
+		private Collection<QueueAttributeName> queueAttributeNames = DEFAULT_QUEUE_ATTRIBUTES_NAMES;
+
+		private Collection<String> messageAttributeNames = DEFAULT_MESSAGE_ATTRIBUTES_NAMES;
+
+		private Collection<String> messageSystemAttributeNames = DEFAULT_MESSAGE_SYSTEM_ATTRIBUTES;
+
+		private MessagingMessageConverter<?> messageConverter = DEFAULT_MESSAGE_CONVERTER;
+
+		private AcknowledgementMode acknowledgementMode = DEFAULT_ACKNOWLEDGEMENT_MODE;
+
+		private QueueNotFoundStrategy queueNotFoundStrategy = DEFAULT_QUEUE_NOT_FOUND_STRATEGY;
+
+		private AcknowledgementOrdering acknowledgementOrdering;
+
+		private Duration acknowledgementInterval;
+
+		private Integer acknowledgementThreshold;
+
+		private Executor componentsTaskExecutor;
+
+		private Duration messageVisibility;
+
+		private Builder() {
+		}
+
+		private Builder(ContainerOptions options) {
+			this.maxInflightMessagesPerQueue = options.maxInflightMessagesPerQueue;
+			this.messagesPerPoll = options.messagesPerPoll;
+			this.pollTimeout = options.pollTimeout;
+			this.permitAcquireTimeout = options.permitAcquireTimeout;
+			this.permitAcquiringStrategy = options.permitAcquiringStrategy;
+			this.shutdownTimeout = options.sourceShutdownTimeout;
+			this.backPressureMode = options.backPressureMode;
+			this.messageDeliveryStrategy = options.messageDeliveryStrategy;
+			this.queueAttributeNames = options.queueAttributeNames;
+			this.messageAttributeNames = options.messageAttributeNames;
+			this.messageSystemAttributeNames = options.messageSystemAttributeNames;
+			this.messageConverter = options.messageConverter;
+			this.acknowledgementMode = options.acknowledgementMode;
+			this.queueNotFoundStrategy = options.queueNotFoundStrategy;
+			this.acknowledgementOrdering = options.acknowledgementOrdering;
+			this.acknowledgementInterval = options.acknowledgementInterval;
+			this.acknowledgementThreshold = options.acknowledgementThreshold;
+			this.componentsTaskExecutor = options.containerComponentsTaskExecutor;
+			this.messageVisibility = options.messageVisibility;
+		}
+
+		/**
+		 * Set the maximum allowed number of inflight messages for each queue.
+		 * @return this instance.
+		 */
+		public Builder maxInflightMessagesPerQueue(int maxInflightMessagesPerQueue) {
+			Assert.isTrue(maxInflightMessagesPerQueue > 0, "maxInflightMessagesPerQueue must be greater than zero");
+			this.maxInflightMessagesPerQueue = maxInflightMessagesPerQueue;
+			return this;
+		}
+
+		/**
+		 * Set the number of messages that should be returned per poll.
+		 * @param messagesPerPoll the number of messages.
+		 * @return this instance.
+		 */
+		public Builder messagesPerPoll(int messagesPerPoll) {
+			Assert.isTrue(messagesPerPoll > 0 && messagesPerPoll <= 10, "messagesPerPoll must be between 1 and 10");
+			this.messagesPerPoll = messagesPerPoll;
+			return this;
+		}
+
+		/**
+		 * Set the timeout for polling messages for this endpoint.
+		 * @param pollTimeout the poll timeout.
+		 * @return this instance.
+		 */
+		public Builder pollTimeout(Duration pollTimeout) {
+			Assert.notNull(pollTimeout, "pollTimeout cannot be null");
+			this.pollTimeout = pollTimeout;
+			return this;
+		}
+
+		/**
+		 * Set the maximum time the polling thread should wait for permits.
+		 * @param permitAcquireTimeout the timeout.
+		 * @return this instance.
+		 */
+		public Builder permitAcquireTimeout(Duration permitAcquireTimeout) {
+			Assert.notNull(permitAcquireTimeout, "semaphoreAcquireTimeout cannot be null");
+			this.permitAcquireTimeout = permitAcquireTimeout;
+			return this;
+		}
+
+		public Builder permitAcquiringStrategy(PermitAcquiringStrategy permitAcquiringStrategy) {
+			Assert.notNull(permitAcquiringStrategy, "permitAcquiringStrategy cannot be null");
+			this.permitAcquiringStrategy = permitAcquiringStrategy;
+			return this;
+		}
+
+		public Builder messageDeliveryStrategy(MessageDeliveryStrategy messageDeliveryStrategy) {
+			Assert.notNull(messageDeliveryStrategy, "messageDeliveryStrategy cannot be null");
+			this.messageDeliveryStrategy = messageDeliveryStrategy;
+			return this;
+		}
+
+		public Builder componentsTaskExecutor(Executor executor) {
+			Assert.notNull(executor, "executor cannot be null");
+			this.componentsTaskExecutor = executor;
+			return this;
+		}
+
+		public Builder shutdownTimeout(Duration shutdownTimeout) {
+			Assert.notNull(shutdownTimeout, "shutdownTimeout cannot be null");
+			this.shutdownTimeout = shutdownTimeout;
+			return this;
+		}
+
+		public Builder backPressureMode(BackPressureMode backPressureMode) {
+			Assert.notNull(backPressureMode, "backPressureMode cannot be null");
+			this.backPressureMode = backPressureMode;
+			return this;
+		}
+
+		public Builder queueAttributeNames(Collection<QueueAttributeName> queueAttributeNames) {
+			Assert.notEmpty(queueAttributeNames, "queueAttributeNames cannot be empty");
+			this.queueAttributeNames = queueAttributeNames;
+			return this;
+		}
+
+		public Builder messageAttributeNames(Collection<String> messageAttributeNames) {
+			Assert.notEmpty(messageAttributeNames, "messageAttributeNames cannot be empty");
+			this.messageAttributeNames = messageAttributeNames;
+			return this;
+		}
+
+		public Builder messageSystemAttributeNames(Collection<MessageSystemAttributeName> messageSystemAttributeNames) {
+			Assert.notEmpty(messageSystemAttributeNames, "messageSystemAttributeNames cannot be empty");
+			this.messageSystemAttributeNames = messageSystemAttributeNames.stream()
+					.map(MessageSystemAttributeName::toString).collect(Collectors.toList());
+			return this;
+		}
+
+		public Builder messageVisibility(Duration messageVisibility) {
+			Assert.notNull(messageVisibility, "messageVisibility cannot be null");
+			this.messageVisibility = messageVisibility;
+			return this;
+		}
+
+		public Builder acknowledgementInterval(Duration acknowledgementInterval) {
+			Assert.notNull(acknowledgementInterval, "acknowledgementInterval cannot be null");
+			this.acknowledgementInterval = acknowledgementInterval;
+			return this;
+		}
+
+		public Builder acknowledgementThreshold(int acknowledgementThreshold) {
+			Assert.isTrue(acknowledgementThreshold >= 0,
+					"acknowledgementThreshold must be greater than or equal to zero");
+			this.acknowledgementThreshold = acknowledgementThreshold;
+			return this;
+		}
+
+		public Builder acknowledgementMode(AcknowledgementMode acknowledgementMode) {
+			Assert.notNull(acknowledgementMode, "acknowledgementMode cannot be null");
+			this.acknowledgementMode = acknowledgementMode;
+			return this;
+		}
+
+		public Builder acknowledgementOrdering(AcknowledgementOrdering acknowledgementOrdering) {
+			Assert.notNull(acknowledgementOrdering, "acknowledgementOrdering cannot be null");
+			this.acknowledgementOrdering = acknowledgementOrdering;
+			return this;
+		}
+
+		public Builder messageConverter(MessagingMessageConverter<?> messageConverter) {
+			Assert.notNull(messageConverter, "messageConverter cannot be null");
+			this.messageConverter = messageConverter;
+			return this;
+		}
+
+		public Builder queueNotFoundStrategy(QueueNotFoundStrategy queueNotFoundStrategy) {
+			Assert.notNull(queueNotFoundStrategy, "queueNotFoundStrategy cannot be null");
+			this.queueNotFoundStrategy = queueNotFoundStrategy;
+			return this;
+		}
+
+		public ContainerOptions build() {
+			return new ContainerOptions(this);
+		}
+
+		public ContainerOptions.Builder createCopy() {
+			ContainerOptions.Builder newCopy = ContainerOptions.builder();
+			ReflectionUtils.shallowCopyFieldState(this, newCopy);
+			return newCopy;
+		}
+
+		public void fromBuilder(Builder builder) {
+			ReflectionUtils.shallowCopyFieldState(builder, this);
+		}
+
 	}
 
 }

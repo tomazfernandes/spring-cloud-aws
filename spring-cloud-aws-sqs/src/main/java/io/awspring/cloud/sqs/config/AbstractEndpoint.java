@@ -106,6 +106,28 @@ public abstract class AbstractEndpoint implements HandlerMethodEndpoint {
 		this.handlerMethodFactory = handlerMethodFactory;
 	}
 
+	@Override
+	public void configureMessageDeliveryStrategy(Consumer<MessageDeliveryStrategy> consumer) {
+		List<MethodParameter> parameters = getMethodParameters();
+		boolean batch = hasParameterOfType(parameters, List.class);
+		if ((batch && parameters.size() > 1)) {
+			throw new IllegalArgumentException(String.format(
+					"Method %s from class %s in endpoint %s has invalid parameters for batch processing. "
+							+ "Batch methods can have a single List parameter, either of Message<T> or T types.",
+					this.method.getName(), this.method.getDeclaringClass(), this.id));
+		}
+		consumer.accept(batch ? MessageDeliveryStrategy.BATCH : MessageDeliveryStrategy.SINGLE_MESSAGE);
+	}
+
+	private boolean hasParameterOfType(List<MethodParameter> parameters, Class<?> clazz) {
+		return parameters.stream().anyMatch(param -> clazz.isAssignableFrom(param.getParameterType()));
+	}
+
+	private List<MethodParameter> getMethodParameters() {
+		return IntStream.range(0, BridgeMethodResolver.findBridgedMethod(this.method).getParameterCount())
+				.mapToObj(index -> new MethodParameter(this.method, index)).collect(Collectors.toList());
+	}
+
 	/**
 	 * Configure the provided container for this endpoint.
 	 * @param container the container to be configured.
@@ -129,27 +151,6 @@ public abstract class AbstractEndpoint implements HandlerMethodEndpoint {
 
 	protected AsyncMessageListener<?> createAsyncMessageListenerInstance(InvocableHandlerMethod handlerMethod) {
 		return new AsyncMessagingMessageListenerAdapter<>(handlerMethod);
-	}
-
-	public void configureMessageDeliveryStrategy(Consumer<MessageDeliveryStrategy> consumer) {
-		List<MethodParameter> parameters = getMethodParameters();
-		boolean batch = hasParameterOfType(parameters, List.class);
-		if ((batch && parameters.size() > 1)) {
-			throw new IllegalArgumentException(String.format(
-					"Method %s from class %s in endpoint %s has invalid parameters for batch processing. "
-							+ "Batch methods can have a single List parameter, either of Message<T> or T types.",
-					this.method.getName(), this.method.getDeclaringClass(), this.id));
-		}
-		consumer.accept(batch ? MessageDeliveryStrategy.BATCH : MessageDeliveryStrategy.SINGLE_MESSAGE);
-	}
-
-	private boolean hasParameterOfType(List<MethodParameter> parameters, Class<?> clazz) {
-		return parameters.stream().anyMatch(param -> clazz.isAssignableFrom(param.getParameterType()));
-	}
-
-	protected List<MethodParameter> getMethodParameters() {
-		return IntStream.range(0, BridgeMethodResolver.findBridgedMethod(this.method).getParameterCount())
-				.mapToObj(index -> new MethodParameter(this.method, index)).collect(Collectors.toList());
 	}
 
 }

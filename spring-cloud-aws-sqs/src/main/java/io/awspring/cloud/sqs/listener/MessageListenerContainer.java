@@ -44,6 +44,4 @@ public interface MessageListenerContainer<T> extends SmartLifecycle {
 	 */
 	void setAsyncMessageListener(AsyncMessageListener<T> asyncMessageListener);
 
-	ContainerOptions getContainerOptions();
-
 }

@@ -65,7 +65,7 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 
 	private Executor componentsTaskExecutor;
 
-	public AbstractPipelineMessageListenerContainer(ContainerOptions options) {
+	protected AbstractPipelineMessageListenerContainer(ContainerOptions options) {
 		super(options);
 	}
 

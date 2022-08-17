@@ -137,7 +137,7 @@ class SqsAutoConfigurationTest {
 
 		@Bean
 		ContainerOptions containerOptions() {
-			return ContainerOptions.create().setMaxInflightMessagesPerQueue(19);
+			return ContainerOptions.builder().maxInflightMessagesPerQueue(19).build();
 		}
 
 	}

@@ -222,11 +222,13 @@ class SqsMessageConversionIntegrationTests extends BaseSqsIntegrationTest {
 	@Configuration
 	static class SQSConfiguration {
 
+		// @formatter:off
 		@Bean
 		public SqsMessageListenerContainerFactory<String> defaultSqsListenerContainerFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
-			factory.getContainerOptions().setPermitAcquireTimeout(Duration.ofSeconds(1))
-					.setPollTimeout(Duration.ofSeconds(3));
+			factory.configure(options -> options
+				.permitAcquireTimeout(Duration.ofSeconds(1))
+				.pollTimeout(Duration.ofSeconds(3)));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			return factory;
 		}
@@ -234,9 +236,10 @@ class SqsMessageConversionIntegrationTests extends BaseSqsIntegrationTest {
 		@Bean
 		public SqsMessageListenerContainerFactory<MyInterface> myPojoListenerContainerFactory() {
 			SqsMessageListenerContainerFactory<MyInterface> factory = new SqsMessageListenerContainerFactory<>();
-			factory.getContainerOptions()
-					.setQueueAttributeNames(Collections.singletonList(QueueAttributeName.VISIBILITY_TIMEOUT))
-					.setPermitAcquireTimeout(Duration.ofSeconds(1)).setPollTimeout(Duration.ofSeconds(1));
+			factory.configure(options -> options
+					.queueAttributeNames(Collections.singletonList(QueueAttributeName.VISIBILITY_TIMEOUT))
+					.permitAcquireTimeout(Duration.ofSeconds(1))
+					.pollTimeout(Duration.ofSeconds(1)));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			factory.addMessageInterceptor(new AsyncMessageInterceptor<MyInterface>() {
 				@Override
@@ -256,6 +259,7 @@ class SqsMessageConversionIntegrationTests extends BaseSqsIntegrationTest {
 			});
 			return factory;
 		}
+		// @formatter:on
 
 		LatchContainer latchContainer = new LatchContainer();
 

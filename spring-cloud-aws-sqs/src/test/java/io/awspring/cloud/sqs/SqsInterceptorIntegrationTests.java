@@ -162,18 +162,22 @@ class SqsInterceptorIntegrationTests extends BaseSqsIntegrationTest {
 	@Configuration
 	static class SQSConfiguration {
 
+		// @formatter:off
 		@Bean
 		public SqsMessageListenerContainerFactory<String> defaultSqsListenerContainerFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
-			factory.getContainerOptions().setPermitAcquireTimeout(Duration.ofSeconds(1))
-					.setQueueAttributeNames(Collections.singletonList(QueueAttributeName.QUEUE_ARN))
-					.setAcknowledgementMode(AcknowledgementMode.ALWAYS).setPollTimeout(Duration.ofSeconds(3));
+			factory.configure(options -> options
+				.permitAcquireTimeout(Duration.ofSeconds(1))
+				.queueAttributeNames(Collections.singletonList(QueueAttributeName.QUEUE_ARN))
+				.acknowledgementMode(AcknowledgementMode.ALWAYS)
+				.pollTimeout(Duration.ofSeconds(3)));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			factory.addMessageInterceptor(getMessageInterceptor());
 			factory.setErrorHandler(getErrorHandler());
-			factory.setContainerComponentFactory(getContainerComponentFactory());
+			factory.setComponentFactory(getContainerComponentFactory());
 			return factory;
 		}
+		// @formatter:on
 
 		@Bean
 		ReceivesChangedPayloadListener receivesChangedPayloadListener() {

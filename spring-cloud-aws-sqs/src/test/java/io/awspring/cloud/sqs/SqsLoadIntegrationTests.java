@@ -345,19 +345,24 @@ class SqsLoadIntegrationTests extends BaseSqsIntegrationTest {
 	@Configuration
 	static class SQSConfiguration {
 
+		// @formatter:off
 		@Bean
 		public SqsMessageListenerContainerFactory<String> highThroughputFactory() {
 			// For load tests, set maxInflightMessagesPerQueue to a higher value - e.g. 600
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
-			factory.getContainerOptions().setMaxInflightMessagesPerQueue(settings.maxInflight)
-					.setPollTimeout(Duration.ofSeconds(3)).setMessagesPerPoll(settings.messagesPerPoll)
-					.setPermitAcquireTimeout(Duration.ofSeconds(1)).setAcknowledgementInterval(Duration.ofMillis(500))
-					.setBackPressureMode(BackPressureMode.HIGH_THROUGHPUT)
-					.setSourceShutdownTimeout(Duration.ofSeconds(40));
+			factory.configure(options ->
+				options.maxInflightMessagesPerQueue(settings.maxInflight)
+					.pollTimeout(Duration.ofSeconds(3))
+					.messagesPerPoll(settings.messagesPerPoll)
+					.permitAcquireTimeout(Duration.ofSeconds(1))
+					.acknowledgementInterval(Duration.ofMillis(500))
+					.backPressureMode(BackPressureMode.HIGH_THROUGHPUT)
+					.shutdownTimeout(Duration.ofSeconds(40)));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createHighThroughputAsyncClient);
-			factory.setContainerComponentFactory(getTestAckHandlerComponentFactory());
+			factory.setComponentFactory(getTestAckHandlerComponentFactory());
 			return factory;
 		}
+		// @formatter:on
 
 		LatchContainer latchContainer = new LatchContainer();
 

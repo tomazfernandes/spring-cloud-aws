@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
@@ -60,7 +61,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 
 	private final Collection<AsyncMessageInterceptor<T>> messageInterceptors = new ArrayList<>();
 
-	private final ContainerOptions containerOptions;
+	private ContainerOptions containerOptions;
 
 	protected AbstractMessageListenerContainer(ContainerOptions containerOptions) {
 		Assert.notNull(containerOptions, "containerOptions cannot be null");
@@ -91,7 +92,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	 * Set the {@link AsyncErrorHandler} instance to be used by this container.
 	 * @param errorHandler the instance.
 	 */
-	public void setAsyncErrorHandler(AsyncErrorHandler<T> errorHandler) {
+	public void setErrorHandler(AsyncErrorHandler<T> errorHandler) {
 		Assert.notNull(errorHandler, "errorHandler cannot be null");
 		this.errorHandler = errorHandler;
 	}
@@ -111,7 +112,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	 * in order.
 	 * @param messageInterceptor the interceptor instances.
 	 */
-	public void addAsyncMessageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
+	public void addMessageInterceptor(AsyncMessageInterceptor<T> messageInterceptor) {
 		Assert.notNull(messageInterceptor, "messageInterceptor cannot be null");
 		this.messageInterceptors.add(messageInterceptor);
 	}
@@ -126,7 +127,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 		this.messageListener = asyncMessageListener;
 	}
 
-	public void setContainerComponentFactory(ContainerComponentFactory<T> containerComponentFactory) {
+	public void setComponentFactory(ContainerComponentFactory<T> containerComponentFactory) {
 		this.containerComponentFactory = containerComponentFactory;
 	}
 
@@ -135,6 +136,13 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 	 * restart.
 	 * @return the container options.
 	 */
+	public void configure(Consumer<ContainerOptions.Builder> options) {
+		Assert.state(!isRunning(), "Stop the container before making changes to the options");
+		ContainerOptions.Builder builder = this.containerOptions.toBuilder();
+		options.accept(builder);
+		this.containerOptions = builder.build();
+	}
+
 	public ContainerOptions getContainerOptions() {
 		return this.containerOptions;
 	}
@@ -246,7 +254,7 @@ public abstract class AbstractMessageListenerContainer<T> implements MessageList
 			this.isRunning = false;
 			doStop();
 		}
-		logger.debug("Container stopped {}", this.id);
+		logger.info("Container {} stopped", this.id);
 	}
 
 	protected void doStop() {
