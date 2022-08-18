@@ -48,7 +48,7 @@ public class SqsHeaders {
 
 	public static final String SQS_RECEIVED_AT_HEADER = SQS_HEADER_PREFIX + "ReceivedAt";
 
-	public static final String SQS_ACKNOWLEDGMENT_HEADER = SQS_HEADER_PREFIX + "Acknowledgement";
+	public static final String SQS_ACKNOWLEDGMENT_CALLBACK_HEADER = SQS_HEADER_PREFIX + "Acknowledgement";
 
 	public static final String SQS_QUEUE_ATTRIBUTES_HEADER = SQS_HEADER_PREFIX + "QueueAttributes";
 

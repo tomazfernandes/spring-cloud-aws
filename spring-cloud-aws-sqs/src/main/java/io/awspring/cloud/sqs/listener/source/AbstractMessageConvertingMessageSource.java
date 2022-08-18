@@ -15,16 +15,18 @@
  */
 package io.awspring.cloud.sqs.listener.source;
 
+import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.listener.ContainerOptions;
+import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementCallback;
+import io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementMode;
 import io.awspring.cloud.sqs.support.converter.MessagingMessageConverter;
+import io.awspring.cloud.sqs.support.converter.context.AcknowledgementAwareMessageConversionContext;
 import io.awspring.cloud.sqs.support.converter.context.ContextAwareMessagingMessageConverter;
 import io.awspring.cloud.sqs.support.converter.context.MessageConversionContext;
 import java.util.Collection;
-import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
-import org.springframework.util.Assert;
 
 /**
  * @author Tomaz Fernandes
@@ -36,11 +38,20 @@ public abstract class AbstractMessageConvertingMessageSource<T, S> implements Me
 
 	private MessageConversionContext messageConversionContext;
 
+	private AcknowledgementMode acknowledgementMode;
+
 	@Override
 	public void configure(ContainerOptions containerOptions) {
 		this.messagingMessageConverter = getOrCreateMessageConverter(containerOptions);
 		this.messageConversionContext = maybeCreateConversionContext();
-		Assert.notNull(this.messagingMessageConverter, "messagingMessageConverter not set.");
+		this.acknowledgementMode = containerOptions.getAcknowledgementMode();
+	}
+
+	protected void setupAcknowledgementConversion(AcknowledgementCallback<T> callback) {
+		if (this.acknowledgementMode.equals(AcknowledgementMode.MANUAL)) {
+			ConfigUtils.INSTANCE.acceptIfInstance(this.messageConversionContext, AcknowledgementAwareMessageConversionContext.class,
+				aamcc -> aamcc.setAcknowledgementCallback(callback));
+		}
 	}
 
 	@Nullable
@@ -51,12 +62,12 @@ public abstract class AbstractMessageConvertingMessageSource<T, S> implements Me
 				: null;
 	}
 
-	protected Collection<Message<T>> convert(List<S> messages) {
-		return messages.stream().map(this::convert).collect(Collectors.toList());
+	protected Collection<Message<T>> convertMessages(Collection<S> messages) {
+		return messages.stream().map(this::convertMessages).collect(Collectors.toList());
 	}
 
 	@SuppressWarnings("unchecked")
-	private Message<T> convert(S msg) {
+	private Message<T> convertMessages(S msg) {
 		return this.messagingMessageConverter instanceof ContextAwareMessagingMessageConverter
 				? (Message<T>) getContextAwareConverter().toMessagingMessage(msg, this.messageConversionContext)
 				: (Message<T>) this.messagingMessageConverter.toMessagingMessage(msg);

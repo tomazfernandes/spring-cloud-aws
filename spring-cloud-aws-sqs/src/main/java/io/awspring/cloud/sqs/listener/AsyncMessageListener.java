@@ -42,7 +42,7 @@ public interface AsyncMessageListener<T> {
 
 	default CompletableFuture<Void> onMessage(Collection<Message<T>> messages) {
 		return CompletableFutures
-				.failedFuture(new UnsupportedOperationException("Batch not implemented for this ErrorHandler"));
+				.failedFuture(new UnsupportedOperationException("Batch not implemented by this AsyncMessageListener"));
 	}
 
 }

@@ -22,6 +22,7 @@ import io.awspring.cloud.sqs.listener.ContainerOptions;
 import io.awspring.cloud.sqs.listener.IdentifiableContainerComponent;
 import io.awspring.cloud.sqs.listener.MessageProcessingContext;
 import io.awspring.cloud.sqs.listener.TaskExecutorAware;
+import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementCallback;
 import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementProcessor;
 import io.awspring.cloud.sqs.listener.sink.MessageSink;
 import java.time.Duration;
@@ -148,6 +149,7 @@ public abstract class AbstractPollingMessageSource<T, S> extends AbstractMessage
 					.acceptIfInstance(this.acknowledgmentProcessor, TaskExecutorAware.class,
 							ea -> ea.setTaskExecutor(this.taskExecutor));
 			doStart();
+			setupAcknowledgementConversion(this.acknowledgmentProcessor.getAcknowledgementCallback());
 			this.acknowledgmentProcessor.start();
 			startPollingThread();
 		}
@@ -183,6 +185,7 @@ public abstract class AbstractPollingMessageSource<T, S> extends AbstractMessage
 				managePollingFuture(doPollForMessages(acquiredPermits))
 					.exceptionally(this::handlePollingException)
 					.thenApply(msgs -> releaseUnusedPermits(acquiredPermits, msgs))
+					.thenApply(this::convertMessages)
 					.thenCompose(this::emitMessagesToPipeline)
 					.exceptionally(this::handleSinkException);
 				// @formatter:on
@@ -199,9 +202,9 @@ public abstract class AbstractPollingMessageSource<T, S> extends AbstractMessage
 		logger.debug("Execution thread stopped for queue {}", this.pollingEndpointName);
 	}
 
-	protected abstract CompletableFuture<Collection<Message<T>>> doPollForMessages(int messagesToRequest);
+	protected abstract CompletableFuture<Collection<S>> doPollForMessages(int messagesToRequest);
 
-	public Collection<Message<T>> releaseUnusedPermits(int permits, Collection<Message<T>> msgs) {
+	public Collection<S> releaseUnusedPermits(int permits, Collection<S> msgs) {
 		if (msgs.isEmpty()) {
 			this.backPressureHandler.releaseBatch();
 			logger.trace("Released batch of unused permits for queue {}", this.pollingEndpointName);
@@ -225,9 +228,13 @@ public abstract class AbstractPollingMessageSource<T, S> extends AbstractMessage
 	private MessageProcessingContext<T> createContext() {
 		return MessageProcessingContext.<T> create()
 			.setBackPressureReleaseCallback(this::releaseBackPressure)
-			.setAcknowledgmentCallback(this.acknowledgmentProcessor.getAcknowledgementCallback());
+			.setAcknowledgmentCallback(getAcknowledgementCallback());
 	}
 	// @formatter:on
+
+	private AcknowledgementCallback<T> getAcknowledgementCallback() {
+		return this.acknowledgmentProcessor.getAcknowledgementCallback();
+	}
 
 	private void releaseBackPressure() {
 		logger.debug("Releasing permit for queue {}", this.pollingEndpointName);
@@ -239,7 +246,7 @@ public abstract class AbstractPollingMessageSource<T, S> extends AbstractMessage
 		return null;
 	}
 
-	private Collection<Message<T>> handlePollingException(Throwable t) {
+	private Collection<S> handlePollingException(Throwable t) {
 		logger.error("Error polling for messages in queue {}", this.pollingEndpointName, t);
 		return Collections.emptyList();
 	}

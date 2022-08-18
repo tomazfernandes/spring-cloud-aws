@@ -204,6 +204,12 @@ public class ContainerOptions {
 		return this;
 	}
 
+	public ContainerOptions createCopy() {
+		ContainerOptions newCopy = ContainerOptions.builder().build();
+		ReflectionUtils.shallowCopyFieldState(this, newCopy);
+		return newCopy;
+	}
+
 	/**
 	 * Validate these options.
 	 */
@@ -274,9 +280,9 @@ public class ContainerOptions {
 
 		private MessagingMessageConverter<?> messageConverter = DEFAULT_MESSAGE_CONVERTER;
 
-		private AcknowledgementMode acknowledgementMode = DEFAULT_ACKNOWLEDGEMENT_MODE;
-
 		private QueueNotFoundStrategy queueNotFoundStrategy = DEFAULT_QUEUE_NOT_FOUND_STRATEGY;
+
+		private AcknowledgementMode acknowledgementMode = DEFAULT_ACKNOWLEDGEMENT_MODE;
 
 		private AcknowledgementOrdering acknowledgementOrdering;
 

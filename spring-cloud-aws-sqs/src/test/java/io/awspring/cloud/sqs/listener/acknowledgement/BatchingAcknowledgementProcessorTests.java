@@ -129,7 +129,7 @@ class BatchingAcknowledgementProcessorTests {
 
 		processor.start();
 		processor.doOnAcknowledge(messages);
-		assertThat(ackLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(ackLatch.await(20, TimeUnit.SECONDS)).isTrue();
 		processor.stop();
 
 		verify(ackExecutor).execute(messages);

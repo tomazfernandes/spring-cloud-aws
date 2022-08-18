@@ -153,14 +153,14 @@ public class SqsMessageSource<T> extends AbstractPollingMessageSource<T, Message
 
 	// @formatter:off
 	@Override
-	protected CompletableFuture<Collection<org.springframework.messaging.Message<T>>> doPollForMessages(
+	protected CompletableFuture<Collection<Message>> doPollForMessages(
 			int maxNumberOfMessages) {
 		logger.debug("Polling queue {} for {} messages.", this.queueUrl, maxNumberOfMessages);
 		return sqsAsyncClient
 			.receiveMessage(createRequest(maxNumberOfMessages))
 			.thenApply(ReceiveMessageResponse::messages)
-			.whenComplete(this::logMessagesReceived)
-			.thenApply(this::convert);
+			.thenApply(collectionList -> (Collection<Message>) collectionList)
+			.whenComplete(this::logMessagesReceived);
 	}
 
 	private ReceiveMessageRequest createRequest(int maxNumberOfMessages) {

@@ -31,6 +31,7 @@ import io.awspring.cloud.sqs.listener.SqsMessageListenerContainer;
 import io.awspring.cloud.sqs.listener.StandardSqsComponentFactory;
 import io.awspring.cloud.sqs.listener.Visibility;
 import io.awspring.cloud.sqs.listener.acknowledgement.Acknowledgement;
+import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementCallback;
 import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAcknowledgement;
 import io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementMode;
 import io.awspring.cloud.sqs.listener.errorhandler.AsyncErrorHandler;
@@ -243,7 +244,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Autowired
 		LatchContainer latchContainer;
 
-		@SqsListener(queueNames = RESOLVES_PARAMETER_TYPES_QUEUE_NAME, messageVisibilitySeconds = "1", id = "resolves-parameter")
+		@SqsListener(queueNames = RESOLVES_PARAMETER_TYPES_QUEUE_NAME, factory = "manualAcknowledgingFactory", messageVisibilitySeconds = "1", id = "resolves-parameter")
 		void listen(Message<String> message, MessageHeaders headers, Acknowledgement ack, Visibility visibility,
 				QueueAttributes queueAttributes, AsyncAcknowledgement asyncAck,
 				software.amazon.awssdk.services.sqs.model.Message originalMessage) throws Exception {
@@ -257,6 +258,8 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			logger.debug("Received message in Listener Method: " + message);
 			Assert.notNull(queueAttributes.getQueueAttribute(QueueAttributeName.QUEUE_ARN),
 					"QueueArn attribute not found");
+
+			ack.acknowledge();
 
 			// Verify VisibilityTimeout extension
 			Thread.sleep(1000);
@@ -295,6 +298,19 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 				.builder()
 				.sqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient)
 				.configure(options -> options
+					.permitAcquireTimeout(Duration.ofSeconds(1))
+					.queueAttributeNames(Collections.singletonList(QueueAttributeName.QUEUE_ARN))
+					.pollTimeout(Duration.ofSeconds(3)))
+				.build();
+		}
+
+		@Bean
+		public SqsMessageListenerContainerFactory<Object> manualAcknowledgingFactory() {
+			return SqsMessageListenerContainerFactory
+				.builder()
+				.sqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient)
+				.configure(options -> options
+					.acknowledgementMode(AcknowledgementMode.MANUAL)
 					.permitAcquireTimeout(Duration.ofSeconds(1))
 					.queueAttributeNames(Collections.singletonList(QueueAttributeName.QUEUE_ARN))
 					.pollTimeout(Duration.ofSeconds(3)))
@@ -417,6 +433,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			};
 		}
 
+		@SuppressWarnings("unchecked")
 		private AsyncErrorHandler<String> testErrorHandler() {
 			return new AsyncErrorHandler<String>() {
 				@Override
@@ -424,7 +441,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 					latchContainer.errorHandlerLatch.countDown();
 					// Eventually ack to not interfere with other tests.
 					if (latchContainer.errorHandlerLatch.getCount() == 0) {
-						return MessageHeaderUtils.getAsyncAcknowledgement(message).acknowledgeAsync();
+						return MessageHeaderUtils.getHeader(message, SqsHeaders.SQS_ACKNOWLEDGMENT_CALLBACK_HEADER, AcknowledgementCallback.class).onAcknowledge(message);
 					}
 					return CompletableFutures.failedFuture(t);
 				}

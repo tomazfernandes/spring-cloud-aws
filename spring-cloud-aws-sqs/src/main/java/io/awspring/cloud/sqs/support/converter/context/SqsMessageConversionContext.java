@@ -18,6 +18,7 @@ package io.awspring.cloud.sqs.support.converter.context;
 import io.awspring.cloud.sqs.listener.QueueAttributes;
 import io.awspring.cloud.sqs.listener.QueueAttributesAware;
 import io.awspring.cloud.sqs.listener.SqsAsyncClientAware;
+import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementCallback;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 /**
@@ -25,11 +26,13 @@ import software.amazon.awssdk.services.sqs.SqsAsyncClient;
  * @since 3.0
  */
 public class SqsMessageConversionContext
-		implements MessageConversionContext, SqsAsyncClientAware, QueueAttributesAware {
+		implements AcknowledgementAwareMessageConversionContext, SqsAsyncClientAware, QueueAttributesAware {
 
 	private QueueAttributes queueAttributes;
 
 	private SqsAsyncClient sqsAsyncClient;
+
+	private AcknowledgementCallback<?> acknowledgementCallback;
 
 	@Override
 	public void setQueueAttributes(QueueAttributes queueAttributes) {
@@ -41,6 +44,11 @@ public class SqsMessageConversionContext
 		this.sqsAsyncClient = sqsAsyncClient;
 	}
 
+	@Override
+	public void setAcknowledgementCallback(AcknowledgementCallback<?> acknowledgementCallback) {
+		this.acknowledgementCallback = acknowledgementCallback;
+	}
+
 	public SqsAsyncClient getSqsAsyncClient() {
 		return this.sqsAsyncClient;
 	}
@@ -48,4 +56,9 @@ public class SqsMessageConversionContext
 	public QueueAttributes getQueueAttributes() {
 		return this.queueAttributes;
 	}
+
+	public AcknowledgementCallback<?> getAcknowledgementCallback() {
+		return this.acknowledgementCallback;
+	}
+
 }

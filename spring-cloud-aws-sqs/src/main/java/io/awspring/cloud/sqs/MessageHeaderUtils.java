@@ -16,8 +16,6 @@
 package io.awspring.cloud.sqs;
 
 import io.awspring.cloud.sqs.listener.SqsHeaders;
-import io.awspring.cloud.sqs.listener.acknowledgement.Acknowledgement;
-import io.awspring.cloud.sqs.listener.acknowledgement.AsyncAcknowledgement;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.UUID;
@@ -47,19 +45,6 @@ public class MessageHeaderUtils {
 
 	public static <T> String getId(Collection<Message<T>> messages) {
 		return messages.stream().map(MessageHeaderUtils::getId).collect(Collectors.joining("; "));
-	}
-
-	/**
-	 * Return the message's {@link Acknowledgement}
-	 * @param message the message.
-	 * @return the acknowledgement.
-	 */
-	public static AsyncAcknowledgement getAsyncAcknowledgement(Message<?> message) {
-		return getHeader(message, SqsHeaders.SQS_ACKNOWLEDGMENT_HEADER, AsyncAcknowledgement.class);
-	}
-
-	public static Acknowledgement getAcknowledgement(Message<?> message) {
-		return getHeader(message, SqsHeaders.SQS_ACKNOWLEDGMENT_HEADER, Acknowledgement.class);
 	}
 
 	public static <T, U> Collection<T> getHeader(Collection<Message<U>> messages, String headerName,
