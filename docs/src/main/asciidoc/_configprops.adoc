@@ -53,5 +53,7 @@
 |spring.cloud.aws.sns.enabled | `true` | Enables SNS integration.
 |spring.cloud.aws.sns.endpoint |  | Overrides the default endpoint.
 |spring.cloud.aws.sns.region |  | Overrides the default region.
+|spring.cloud.aws.sqs.endpoint |  | Overrides the default endpoint.
+|spring.cloud.aws.sqs.region |  | Overrides the default region.
 
 |===
