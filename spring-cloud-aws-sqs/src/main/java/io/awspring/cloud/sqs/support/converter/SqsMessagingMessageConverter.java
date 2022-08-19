@@ -16,10 +16,7 @@
 package io.awspring.cloud.sqs.support.converter;
 
 import io.awspring.cloud.sqs.listener.SqsHeaders;
-import io.awspring.cloud.sqs.support.converter.context.ContextAwareHeaderMapper;
-import io.awspring.cloud.sqs.support.converter.context.ContextAwareMessagingMessageConverter;
-import io.awspring.cloud.sqs.support.converter.context.MessageConversionContext;
-import io.awspring.cloud.sqs.support.converter.context.SqsMessageConversionContext;
+
 import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
