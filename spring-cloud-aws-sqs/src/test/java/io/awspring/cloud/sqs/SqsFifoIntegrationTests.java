@@ -571,7 +571,7 @@ class SqsFifoIntegrationTests extends BaseSqsIntegrationTest {
 			factory.configure(options ->
 				options.maxInflightMessagesPerQueue(10)
 					.pollTimeout(Duration.ofSeconds(1))
-					.messagesPerPoll(10)
+					.maxMessagesPerPoll(10)
 					.permitAcquireTimeout(Duration.ofSeconds(1)));
 			factory.setSqsAsyncClient(BaseSqsIntegrationTest.createAsyncClient());
 			factory.setMessageListener(msg -> {
@@ -588,7 +588,7 @@ class SqsFifoIntegrationTests extends BaseSqsIntegrationTest {
 			factory.configure(options -> options
 				.maxInflightMessagesPerQueue(10)
 				.pollTimeout(Duration.ofSeconds(1))
-				.messagesPerPoll(10)
+				.maxMessagesPerPoll(10)
 				.permitAcquireTimeout(Duration.ofSeconds(1))
 				.messageDeliveryStrategy(MessageDeliveryStrategy.BATCH));
 			factory.setSqsAsyncClient(BaseSqsIntegrationTest.createAsyncClient());

@@ -24,15 +24,29 @@ package io.awspring.cloud.sqs.listener;
 public enum BackPressureMode {
 
 	/**
-	 * Enable automatic throughput switching.
+	 * Enable automatic throughput switching and partial batch polling.
 	 * <p>
 	 * Starts in a low throughput mode where only one poll is made at a time. When a message is received, switches to
 	 * HIGH throughput mode. If a poll returns empty and there are no inflight messages, switches back to low throughput
 	 * mode, and so forth.
 	 * <p>
+	 * If the current number of inflight messages is close to {@link ContainerOptions#getMaxInFlightMessagesPerQueue()},
+	 * the framework will try to acquire a partial batch with the remaining value.
+	 * <p>
 	 * This is the default setting and should be ideal for most applications.
 	 */
 	AUTO,
+
+	/**
+	 * Enable automatic throughput switching and disable partial batch polling.
+	 * <p>
+	 * If the current number of inflight messages is close to {@link ContainerOptions#getMaxInFlightMessagesPerQueue()},
+	 * the framework will wait until a full batch can be polled.
+	 * <p>
+	 * Useful for scenarios where the cost of retrieving less messages in a poll, and consequentially making more polls,
+	 * is higher than the cost of waiting for more messages to be processed.
+	 */
+	ALWAYS_POLL_MAX_MESSAGES,
 
 	/**
 	 * Enable fixed high throughput mode. In this mode up to (maxInflightMessages / messagesPerPoll) simultaneous polls
@@ -41,6 +55,6 @@ public enum BackPressureMode {
 	 * Useful for really high-throughput scenarios where the occasional automatic switch to a lower throughput would be
 	 * costly.
 	 */
-	HIGH_THROUGHPUT
+	FIXED_HIGH_THROUGHPUT
 
 }

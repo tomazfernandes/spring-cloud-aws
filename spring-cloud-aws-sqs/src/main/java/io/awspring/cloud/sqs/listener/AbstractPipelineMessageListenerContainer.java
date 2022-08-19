@@ -158,8 +158,10 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 	// @formatter:off
 	protected MessageProcessingPipeline<T> createMessageProcessingPipeline(
 			ContainerComponentFactory<T> componentFactory) {
-		return MessageProcessingPipelineBuilder.<T> first(BeforeProcessingContextInterceptorExecutionStage::new)
-				.then(BeforeProcessingInterceptorExecutionStage::new).then(MessageListenerExecutionStage::new)
+		return MessageProcessingPipelineBuilder.
+			<T> first(BeforeProcessingContextInterceptorExecutionStage::new)
+				.then(BeforeProcessingInterceptorExecutionStage::new)
+				.then(MessageListenerExecutionStage::new)
 				.thenInTheFuture(ErrorHandlerExecutionStage::new)
 				.thenInTheFuture(AfterProcessingInterceptorExecutionStage::new)
 				.thenInTheFuture(AfterProcessingContextInterceptorExecutionStage::new)
@@ -180,10 +182,9 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 	}
 
 	protected BackPressureHandler createBackPressureHandler() {
-		return SemaphoreBackPressureHandler.builder().batchSize(getContainerOptions().getMessagesPerPoll())
+		return SemaphoreBackPressureHandler.builder().batchSize(getContainerOptions().getMaxMessagesPerPoll())
 				.totalPermits(getContainerOptions().getMaxInFlightMessagesPerQueue())
 				.acquireTimeout(getContainerOptions().getPermitAcquireTimeout())
-				.permitAcquiringStrategy(getContainerOptions().getPermitAcquiringStrategy())
 				.throughputConfiguration(getContainerOptions().getBackPressureMode()).build();
 	}
 
@@ -197,7 +198,7 @@ public abstract class AbstractPipelineMessageListenerContainer<T> extends Abstra
 		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 		int poolSize = getContainerOptions().getMaxInFlightMessagesPerQueue() * this.messageSources.size();
 		executor.setMaxPoolSize(poolSize);
-		executor.setCorePoolSize(getContainerOptions().getMessagesPerPoll());
+		executor.setCorePoolSize(getContainerOptions().getMaxMessagesPerPoll());
 		executor.setQueueCapacity(0);
 		executor.setAllowCoreThreadTimeOut(true);
 		executor.setThreadFactory(createThreadFactory());

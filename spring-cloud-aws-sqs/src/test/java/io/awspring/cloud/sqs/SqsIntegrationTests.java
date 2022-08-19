@@ -324,7 +324,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 				.configure(options -> options
 					.maxInflightMessagesPerQueue(1)
 					.pollTimeout(Duration.ofSeconds(3))
-					.messagesPerPoll(1)
+					.maxMessagesPerPoll(1)
 					.permitAcquireTimeout(Duration.ofSeconds(1)))
 				.errorHandler(testErrorHandler())
 				.messageInterceptor(testInterceptor())
@@ -354,7 +354,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			factory.configure(options -> options
 				.maxInflightMessagesPerQueue(1)
 				.pollTimeout(Duration.ofSeconds(3))
-				.messagesPerPoll(1)
+				.maxMessagesPerPoll(1)
 				.permitAcquireTimeout(Duration.ofSeconds(1)));
 			factory.setComponentFactory(new StandardSqsComponentFactory<String>() {
 				@Override

@@ -41,11 +41,9 @@ public class SemaphoreBackPressureHandler implements BatchAwareBackPressureHandl
 
 	private final Duration acquireTimeout;
 
-	private final PermitAcquiringStrategy permitAcquiringStrategy;
-
 	private final BackPressureMode backPressureConfiguration;
 
-	private volatile ThroughputMode currentThroughputMode;
+	private volatile CurrentThroughputMode currentThroughputMode;
 
 	private final AtomicBoolean hasAcquiredFullPermits = new AtomicBoolean(false);
 
@@ -56,11 +54,10 @@ public class SemaphoreBackPressureHandler implements BatchAwareBackPressureHandl
 		this.totalPermits = builder.totalPermits;
 		this.acquireTimeout = builder.acquireTimeout;
 		this.backPressureConfiguration = builder.backPressureMode;
-		this.permitAcquiringStrategy = builder.permitAcquiringStrategy;
 		this.semaphore = new Semaphore(totalPermits);
-		this.currentThroughputMode = BackPressureMode.HIGH_THROUGHPUT.equals(backPressureConfiguration)
-				? ThroughputMode.HIGH
-				: ThroughputMode.LOW;
+		this.currentThroughputMode = BackPressureMode.FIXED_HIGH_THROUGHPUT.equals(backPressureConfiguration)
+				? CurrentThroughputMode.HIGH
+				: CurrentThroughputMode.LOW;
 		logger.debug("SemaphoreBackPressureHandler created with configuration {} and {} total permits",
 				backPressureConfiguration, totalPermits);
 	}
@@ -87,7 +84,7 @@ public class SemaphoreBackPressureHandler implements BatchAwareBackPressureHandl
 	// @formatter:off
 	@Override
 	public int requestBatch() throws InterruptedException {
-		return ThroughputMode.LOW.equals(this.currentThroughputMode)
+		return CurrentThroughputMode.LOW.equals(this.currentThroughputMode)
 			? requestInLowThroughputMode()
 			: requestInHighThroughputMode();
 	}
@@ -101,7 +98,7 @@ public class SemaphoreBackPressureHandler implements BatchAwareBackPressureHandl
 
 	private int tryAcquirePartial() throws InterruptedException {
 		int availablePermits = this.semaphore.availablePermits();
-		if (availablePermits == 0 || PermitAcquiringStrategy.WHOLE_BATCHES_ONLY.equals(this.permitAcquiringStrategy)) {
+		if (availablePermits == 0 || BackPressureMode.ALWAYS_POLL_MAX_MESSAGES.equals(this.backPressureConfiguration)) {
 			return 0;
 		}
 		int permitsToRequest = Math.min(availablePermits, this.batchSize);
@@ -155,11 +152,11 @@ public class SemaphoreBackPressureHandler implements BatchAwareBackPressureHandl
 	}
 
 	private void maybeSwitchToLowThroughputMode() {
-		if (BackPressureMode.AUTO.equals(this.backPressureConfiguration)
-				&& ThroughputMode.HIGH.equals(this.currentThroughputMode)) {
+		if (!BackPressureMode.FIXED_HIGH_THROUGHPUT.equals(this.backPressureConfiguration)
+				&& CurrentThroughputMode.HIGH.equals(this.currentThroughputMode)) {
 			logger.debug("Entire batch of permits released for {}, setting low throughput mode. Permits left: {}",
 					this.id, this.semaphore.availablePermits());
-			this.currentThroughputMode = ThroughputMode.LOW;
+			this.currentThroughputMode = CurrentThroughputMode.LOW;
 		}
 	}
 
@@ -181,11 +178,10 @@ public class SemaphoreBackPressureHandler implements BatchAwareBackPressureHandl
 	}
 
 	private void maybeSwitchToHighThroughputMode(int amount) {
-		if (BackPressureMode.AUTO.equals(this.backPressureConfiguration)
-				&& ThroughputMode.LOW.equals(this.currentThroughputMode)) {
+		if (CurrentThroughputMode.LOW.equals(this.currentThroughputMode)) {
 			logger.debug("{} permit(s) returned, setting high throughput mode for {}. Permits left: {}", amount,
 					this.id, this.semaphore.availablePermits());
-			this.currentThroughputMode = ThroughputMode.HIGH;
+			this.currentThroughputMode = CurrentThroughputMode.HIGH;
 		}
 	}
 
@@ -202,7 +198,7 @@ public class SemaphoreBackPressureHandler implements BatchAwareBackPressureHandl
 		}
 	}
 
-	private enum ThroughputMode {
+	private enum CurrentThroughputMode {
 
 		HIGH,
 
@@ -219,8 +215,6 @@ public class SemaphoreBackPressureHandler implements BatchAwareBackPressureHandl
 		private Duration acquireTimeout;
 
 		private BackPressureMode backPressureMode;
-
-		private PermitAcquiringStrategy permitAcquiringStrategy;
 
 		public Builder batchSize(int batchSize) {
 			this.batchSize = batchSize;
@@ -242,14 +236,9 @@ public class SemaphoreBackPressureHandler implements BatchAwareBackPressureHandl
 			return this;
 		}
 
-		public Builder permitAcquiringStrategy(PermitAcquiringStrategy permitAcquiringStrategy) {
-			this.permitAcquiringStrategy = permitAcquiringStrategy;
-			return this;
-		}
-
 		public SemaphoreBackPressureHandler build() {
 			Assert.noNullElements(Arrays.asList(this.batchSize, this.totalPermits, this.acquireTimeout,
-					this.backPressureMode, this.permitAcquiringStrategy), "Missing configuration");
+					this.backPressureMode), "Missing configuration");
 			return new SemaphoreBackPressureHandler(this);
 		}
 

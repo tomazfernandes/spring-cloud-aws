@@ -40,13 +40,11 @@ public class ContainerOptions {
 
 	private final int maxInflightMessagesPerQueue;
 
-	private final int messagesPerPoll;
+	private final int maxMessagesPerPoll;
 
 	private final Duration pollTimeout;
 
 	private final Duration permitAcquireTimeout;
-
-	private final PermitAcquiringStrategy permitAcquiringStrategy;
 
 	private final Duration sourceShutdownTimeout;
 
@@ -78,10 +76,9 @@ public class ContainerOptions {
 
 	private ContainerOptions(Builder builder) {
 		this.maxInflightMessagesPerQueue = builder.maxInflightMessagesPerQueue;
-		this.messagesPerPoll = builder.messagesPerPoll;
+		this.maxMessagesPerPoll = builder.maxMessagesPerPoll;
 		this.pollTimeout = builder.pollTimeout;
 		this.permitAcquireTimeout = builder.permitAcquireTimeout;
-		this.permitAcquiringStrategy = builder.permitAcquiringStrategy;
 		this.sourceShutdownTimeout = builder.shutdownTimeout;
 		this.backPressureMode = builder.backPressureMode;
 		this.messageDeliveryStrategy = builder.messageDeliveryStrategy;
@@ -114,8 +111,8 @@ public class ContainerOptions {
 	 * Return the number of messages that should be returned per poll.
 	 * @return the number.
 	 */
-	public int getMessagesPerPoll() {
-		return this.messagesPerPoll;
+	public int getMaxMessagesPerPoll() {
+		return this.maxMessagesPerPoll;
 	}
 
 	/**
@@ -132,10 +129,6 @@ public class ContainerOptions {
 	 */
 	public Duration getPermitAcquireTimeout() {
 		return this.permitAcquireTimeout;
-	}
-
-	public PermitAcquiringStrategy getPermitAcquiringStrategy() {
-		return this.permitAcquiringStrategy;
 	}
 
 	public TaskExecutor getContainerComponentsTaskExecutor() {
@@ -214,10 +207,10 @@ public class ContainerOptions {
 	 * Validate these options.
 	 */
 	public void validate() {
-		Assert.isTrue(this.messagesPerPoll <= maxInflightMessagesPerQueue, String.format(
+		Assert.isTrue(this.maxMessagesPerPoll <= maxInflightMessagesPerQueue, String.format(
 				"messagesPerPoll should be less than or equal to maxInflightMessagesPerQueue. Values provided: %s and %s respectively",
-				this.messagesPerPoll, this.maxInflightMessagesPerQueue));
-		Assert.isTrue(this.messagesPerPoll <= 10, "messagesPerPoll must be less than or equal to 10.");
+				this.maxMessagesPerPoll, this.maxInflightMessagesPerQueue));
+		Assert.isTrue(this.maxMessagesPerPoll <= 10, "messagesPerPoll must be less than or equal to 10.");
 	}
 
 	public Builder toBuilder() {
@@ -228,7 +221,7 @@ public class ContainerOptions {
 
 		private static final int DEFAULT_MAX_INFLIGHT_MSG_PER_QUEUE = 10;
 
-		private static final int DEFAULT_MESSAGES_PER_POLL = 10;
+		private static final int DEFAULT_MAX_MESSAGES_PER_POLL = 10;
 
 		private static final Duration DEFAULT_POLL_TIMEOUT = Duration.ofSeconds(10);
 
@@ -252,23 +245,19 @@ public class ContainerOptions {
 
 		private static final AcknowledgementMode DEFAULT_ACKNOWLEDGEMENT_MODE = AcknowledgementMode.ON_SUCCESS;
 
-		private static final PermitAcquiringStrategy DEFAULT_PERMIT_ACQUIRING_STRATEGY = PermitAcquiringStrategy.PARTIAL_BATCHES_ENABLED;
-
 		private static final QueueNotFoundStrategy DEFAULT_QUEUE_NOT_FOUND_STRATEGY = QueueNotFoundStrategy.CREATE;
 
 		private int maxInflightMessagesPerQueue = DEFAULT_MAX_INFLIGHT_MSG_PER_QUEUE;
 
-		private int messagesPerPoll = DEFAULT_MESSAGES_PER_POLL;
+		private int maxMessagesPerPoll = DEFAULT_MAX_MESSAGES_PER_POLL;
 
 		private Duration pollTimeout = DEFAULT_POLL_TIMEOUT;
 
 		private Duration permitAcquireTimeout = DEFAULT_SEMAPHORE_TIMEOUT;
 
-		private PermitAcquiringStrategy permitAcquiringStrategy = DEFAULT_PERMIT_ACQUIRING_STRATEGY;
+		private BackPressureMode backPressureMode = DEFAULT_THROUGHPUT_CONFIGURATION;
 
 		private Duration shutdownTimeout = DEFAULT_SHUTDOWN_TIMEOUT;
-
-		private BackPressureMode backPressureMode = DEFAULT_THROUGHPUT_CONFIGURATION;
 
 		private MessageDeliveryStrategy messageDeliveryStrategy = DEFAULT_MESSAGE_DELIVERY_STRATEGY;
 
@@ -299,10 +288,9 @@ public class ContainerOptions {
 
 		private Builder(ContainerOptions options) {
 			this.maxInflightMessagesPerQueue = options.maxInflightMessagesPerQueue;
-			this.messagesPerPoll = options.messagesPerPoll;
+			this.maxMessagesPerPoll = options.maxMessagesPerPoll;
 			this.pollTimeout = options.pollTimeout;
 			this.permitAcquireTimeout = options.permitAcquireTimeout;
-			this.permitAcquiringStrategy = options.permitAcquiringStrategy;
 			this.shutdownTimeout = options.sourceShutdownTimeout;
 			this.backPressureMode = options.backPressureMode;
 			this.messageDeliveryStrategy = options.messageDeliveryStrategy;
@@ -331,12 +319,12 @@ public class ContainerOptions {
 
 		/**
 		 * Set the number of messages that should be returned per poll.
-		 * @param messagesPerPoll the number of messages.
+		 * @param maxMessagesPerPoll the number of messages.
 		 * @return this instance.
 		 */
-		public Builder messagesPerPoll(int messagesPerPoll) {
-			Assert.isTrue(messagesPerPoll > 0 && messagesPerPoll <= 10, "messagesPerPoll must be between 1 and 10");
-			this.messagesPerPoll = messagesPerPoll;
+		public Builder maxMessagesPerPoll(int maxMessagesPerPoll) {
+			Assert.isTrue(maxMessagesPerPoll > 0 && maxMessagesPerPoll <= 10, "maxMessagesPerPoll must be between 1 and 10");
+			this.maxMessagesPerPoll = maxMessagesPerPoll;
 			return this;
 		}
 
@@ -359,12 +347,6 @@ public class ContainerOptions {
 		public Builder permitAcquireTimeout(Duration permitAcquireTimeout) {
 			Assert.notNull(permitAcquireTimeout, "semaphoreAcquireTimeout cannot be null");
 			this.permitAcquireTimeout = permitAcquireTimeout;
-			return this;
-		}
-
-		public Builder permitAcquiringStrategy(PermitAcquiringStrategy permitAcquiringStrategy) {
-			Assert.notNull(permitAcquiringStrategy, "permitAcquiringStrategy cannot be null");
-			this.permitAcquiringStrategy = permitAcquiringStrategy;
 			return this;
 		}
 
