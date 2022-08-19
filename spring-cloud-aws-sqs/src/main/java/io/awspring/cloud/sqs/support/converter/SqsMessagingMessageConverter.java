@@ -52,9 +52,9 @@ public class SqsMessagingMessageConverter
 
 	private HeaderMapper<software.amazon.awssdk.services.sqs.model.Message> headerMapper = DEFAULT_HEADER_MAPPER;
 
-	private Function<Message<?>, Class<?>> payloadTypeMapper = this::defaultHeaderTypeMapping;
+	private Function<Message<String>, Class<?>> payloadTypeMapper = this::defaultHeaderTypeMapping;
 
-	public void setPayloadTypeMapper(Function<Message<?>, Class<?>> payloadTypeMapper) {
+	public void setPayloadTypeMapper(Function<Message<String>, Class<?>> payloadTypeMapper) {
 		Assert.notNull(payloadTypeMapper, "payloadTypeMapper cannot be null");
 		this.payloadTypeMapper = payloadTypeMapper;
 	}
@@ -130,6 +130,12 @@ public class SqsMessagingMessageConverter
 		catch (ClassNotFoundException e) {
 			throw new IllegalArgumentException("No class found with name " + header);
 		}
+	}
+
+	@Override
+	public software.amazon.awssdk.services.sqs.model.Message fromMessagingMessage(Message<?> message) {
+		// To be implemented for `SqsTemplate`
+		throw new UnsupportedOperationException("fromMessagingMessage not implemented");
 	}
 
 }

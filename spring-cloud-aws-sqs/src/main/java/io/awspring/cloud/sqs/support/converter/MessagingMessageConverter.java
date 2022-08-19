@@ -25,4 +25,6 @@ public interface MessagingMessageConverter<S> {
 
 	Message<?> toMessagingMessage(S source);
 
+	S fromMessagingMessage(Message<?> message);
+
 }

@@ -25,11 +25,13 @@ import io.awspring.cloud.sqs.support.converter.context.SqsMessageConversionConte
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.MessageHeaderAccessor;
+import org.springframework.util.Assert;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.Message;
 
@@ -40,6 +42,13 @@ import software.amazon.awssdk.services.sqs.model.Message;
 public class SqsHeaderMapper implements ContextAwareHeaderMapper<Message> {
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsHeaderMapper.class);
+
+	private BiFunction<Message, MessageHeaderAccessor, MessageHeaders> headerFunction = ((message, accessor) -> accessor.toMessageHeaders());
+
+	public void setAdditionalHeadersFunction(BiFunction<Message, MessageHeaderAccessor, MessageHeaders> headerFunction) {
+		Assert.notNull(headerFunction, "headerFunction cannot be null");
+		this.headerFunction = headerFunction;
+	}
 
 	@Override
 	public void fromHeaders(MessageHeaders headers, Message target) {
@@ -52,13 +61,24 @@ public class SqsHeaderMapper implements ContextAwareHeaderMapper<Message> {
 		MessageHeaderAccessor accessor = new MessageHeaderAccessor();
 		accessor.copyHeadersIfAbsent(getMessageSystemAttributesAsHeaders(source));
 		accessor.copyHeadersIfAbsent(getMessageAttributesAsHeaders(source));
+		accessor.copyHeadersIfAbsent(createDefaultHeaders(source));
+		accessor.copyHeadersIfAbsent(createAdditionalHeaders(source, new MessageHeaderAccessor()));
+		MessageHeaders messageHeaders = accessor.toMessageHeaders();
+		logger.trace("Mapped headers {} for message {}", messageHeaders, source.messageId());
+		return messageHeaders;
+	}
+
+	protected MessageHeaders createAdditionalHeaders(Message source, MessageHeaderAccessor accessor) {
+		return accessor.toMessageHeaders();
+	}
+
+	private MessageHeaders createDefaultHeaders(Message source) {
+		MessageHeaderAccessor accessor = new MessageHeaderAccessor();
 		accessor.setHeader(SqsHeaders.SQS_MESSAGE_ID_HEADER, UUID.fromString(source.messageId()));
 		accessor.setHeader(SqsHeaders.SQS_RECEIPT_HANDLE_HEADER, source.receiptHandle());
 		accessor.setHeader(SqsHeaders.SQS_SOURCE_DATA_HEADER, source);
 		accessor.setHeader(SqsHeaders.SQS_RECEIVED_AT_HEADER, Instant.now());
-		MessageHeaders messageHeaders = accessor.toMessageHeaders();
-		logger.trace("Mapped headers {} for message {}", messageHeaders, source.messageId());
-		return messageHeaders;
+		return accessor.toMessageHeaders();
 	}
 
 	// @formatter:off
