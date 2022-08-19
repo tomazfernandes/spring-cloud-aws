@@ -1,4 +1,4 @@
-package io.awspring.cloud.sqs.support.converter.context;
+package io.awspring.cloud.sqs.support.converter;
 
 import io.awspring.cloud.sqs.listener.acknowledgement.AcknowledgementCallback;
 

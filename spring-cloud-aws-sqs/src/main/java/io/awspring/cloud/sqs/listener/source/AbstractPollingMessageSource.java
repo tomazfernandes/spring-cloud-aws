@@ -225,14 +225,14 @@ public abstract class AbstractPollingMessageSource<T, S> extends AbstractMessage
 	}
 
 	// @formatter:off
-	private MessageProcessingContext<T> createContext() {
+	protected MessageProcessingContext<T> createContext() {
 		return MessageProcessingContext.<T> create()
 			.setBackPressureReleaseCallback(this::releaseBackPressure)
 			.setAcknowledgmentCallback(getAcknowledgementCallback());
 	}
 	// @formatter:on
 
-	private AcknowledgementCallback<T> getAcknowledgementCallback() {
+	protected AcknowledgementCallback<T> getAcknowledgementCallback() {
 		return this.acknowledgmentProcessor.getAcknowledgementCallback();
 	}
 

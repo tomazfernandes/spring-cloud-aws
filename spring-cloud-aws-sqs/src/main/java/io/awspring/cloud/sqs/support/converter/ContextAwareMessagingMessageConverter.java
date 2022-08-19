@@ -13,12 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.awspring.cloud.sqs.support.converter.context;
+package io.awspring.cloud.sqs.support.converter;
+
+import org.springframework.lang.Nullable;
+import org.springframework.messaging.Message;
 
 /**
  * @author Tomaz Fernandes
  * @since 3.0
  */
-public interface MessageConversionContext {
+public interface ContextAwareMessagingMessageConverter<S> extends MessagingMessageConverter<S> {
+
+	@Override
+	default Message<?> toMessagingMessage(S source) {
+		return toMessagingMessage(source, null);
+	}
+
+	Message<?> toMessagingMessage(S source, @Nullable MessageConversionContext context);
+
+	MessageConversionContext createMessageConversionContext();
 
 }

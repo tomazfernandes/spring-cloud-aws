@@ -19,9 +19,7 @@ import io.awspring.cloud.sqs.ConfigUtils;
 import io.awspring.cloud.sqs.listener.QueueAttributes;
 import io.awspring.cloud.sqs.listener.QueueMessageVisibility;
 import io.awspring.cloud.sqs.listener.SqsHeaders;
-import io.awspring.cloud.sqs.support.converter.context.ContextAwareHeaderMapper;
-import io.awspring.cloud.sqs.support.converter.context.MessageConversionContext;
-import io.awspring.cloud.sqs.support.converter.context.SqsMessageConversionContext;
+
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
