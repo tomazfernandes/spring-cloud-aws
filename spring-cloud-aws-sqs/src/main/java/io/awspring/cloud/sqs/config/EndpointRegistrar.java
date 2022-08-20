@@ -37,12 +37,13 @@ import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
- * Processes the registered {@link Endpoint} instances using the appropriate {@link MessageListenerContainerFactory} to
- * create {@link MessageListenerContainer} instances, which will then be registered in the
- * {@link MessageListenerContainerRegistry}.
+ * Processes the registered {@link Endpoint} instances using the appropriate {@link MessageListenerContainerFactory}.
+ * Contains configurations that will be applied to all {@link io.awspring.cloud.sqs.annotation.SqsListener @SqsListener}
+ * containers. Such configurations can be set by declaring {@link SqsListenerCustomizer} beans.
  *
  * @author Tomaz Fernandes
  * @since 3.0
+ * @see SqsListenerCustomizer
  */
 public class EndpointRegistrar implements BeanFactoryAware, SmartInitializingSingleton {
 

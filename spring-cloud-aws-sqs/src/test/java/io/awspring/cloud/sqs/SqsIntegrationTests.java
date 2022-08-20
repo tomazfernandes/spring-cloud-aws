@@ -231,7 +231,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Autowired
 		LatchContainer latchContainer;
 
-		@SqsListener(queueNames = DOES_NOT_ACK_ON_ERROR_QUEUE_NAME, factory = LOW_RESOURCE_FACTORY_NAME, id = "does-not-ack")
+		@SqsListener(queueNames = DOES_NOT_ACK_ON_ERROR_QUEUE_NAME, factory = "manualAcknowledgementFactory", id = "does-not-ack")
 		void listen(String message, @Header(SqsHeaders.SQS_QUEUE_NAME_HEADER) String queueName) {
 			logger.debug("Received message {} from queue {}", message, queueName);
 			latchContainer.doesNotAckLatch.countDown();
@@ -326,9 +326,23 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 					.pollTimeout(Duration.ofSeconds(3))
 					.maxMessagesPerPoll(1)
 					.permitAcquireTimeout(Duration.ofSeconds(1)))
+				.messageInterceptor(testInterceptor())
+				.messageInterceptor(testInterceptor())
+				.sqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient)
+				.build();
+		}
+
+		@Bean
+		public SqsMessageListenerContainerFactory<Object> manualAcknowledgementFactory() {
+			return SqsMessageListenerContainerFactory
+				.builder()
+				.configure(options -> options
+					.acknowledgementMode(AcknowledgementMode.MANUAL)
+					.maxInflightMessagesPerQueue(1)
+					.pollTimeout(Duration.ofSeconds(3))
+					.maxMessagesPerPoll(1)
+					.permitAcquireTimeout(Duration.ofSeconds(1)))
 				.errorHandler(testErrorHandler())
-				.messageInterceptor(testInterceptor())
-				.messageInterceptor(testInterceptor())
 				.sqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient)
 				.build();
 		}
@@ -434,14 +448,15 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		}
 
 		@SuppressWarnings("unchecked")
-		private AsyncErrorHandler<String> testErrorHandler() {
-			return new AsyncErrorHandler<String>() {
+		private AsyncErrorHandler<Object> testErrorHandler() {
+			return new AsyncErrorHandler<Object>() {
 				@Override
-				public CompletableFuture<Void> handle(Message<String> message, Throwable t) {
+				public CompletableFuture<Void> handle(Message<Object> message, Throwable t) {
 					latchContainer.errorHandlerLatch.countDown();
 					// Eventually ack to not interfere with other tests.
 					if (latchContainer.errorHandlerLatch.getCount() == 0) {
-						return MessageHeaderUtils.getHeader(message, SqsHeaders.SQS_ACKNOWLEDGMENT_CALLBACK_HEADER, AcknowledgementCallback.class).onAcknowledge(message);
+						return MessageHeaderUtils.getHeader(message, SqsHeaders.SQS_ACKNOWLEDGMENT_CALLBACK_HEADER,
+								AcknowledgementCallback.class).onAcknowledge(message);
 					}
 					return CompletableFutures.failedFuture(t);
 				}
