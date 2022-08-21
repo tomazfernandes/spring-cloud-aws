@@ -101,7 +101,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 				createQueue(client, RESOLVES_PARAMETER_TYPES_QUEUE_NAME,
 						singletonMap(QueueAttributeName.VISIBILITY_TIMEOUT, "20")),
 				createQueue(client, MANUALLY_CREATE_CONTAINER_QUEUE_NAME),
-				createQueue(client, MANUALLY_START_CONTAINER), createQueue(client, MANUALLY_CREATE_FACTORY_QUEUE_NAME))
+				createQueue(client, MANUALLY_CREATE_FACTORY_QUEUE_NAME))
 				.join();
 	}
 
@@ -244,7 +244,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 		@Autowired
 		LatchContainer latchContainer;
 
-		@SqsListener(queueNames = RESOLVES_PARAMETER_TYPES_QUEUE_NAME, factory = "manualAcknowledgingFactory", messageVisibilitySeconds = "1", id = "resolves-parameter")
+		@SqsListener(queueNames = RESOLVES_PARAMETER_TYPES_QUEUE_NAME, factory = "manualAcknowledgingFactory", id = "resolves-parameter")
 		void listen(Message<String> message, MessageHeaders headers, Acknowledgement ack, Visibility visibility,
 				QueueAttributes queueAttributes, AsyncAcknowledgement asyncAck,
 				software.amazon.awssdk.services.sqs.model.Message originalMessage) throws Exception {
@@ -259,12 +259,13 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 			Assert.notNull(queueAttributes.getQueueAttribute(QueueAttributeName.QUEUE_ARN),
 					"QueueArn attribute not found");
 
-			ack.acknowledge();
-
 			// Verify VisibilityTimeout extension
 			Thread.sleep(1000);
 			latchContainer.manyParameterTypesLatch.countDown();
 			latchContainer.manyParameterTypesSecondLatch.countDown();
+
+			ack.acknowledge();
+
 		}
 	}
 
