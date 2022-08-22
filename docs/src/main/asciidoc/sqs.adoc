@@ -479,6 +479,22 @@ void myMethod(MessageListenerContainer<Object> container) {
 
 A copy of the options can also be created with `containerOptions.createCopy()` or `containerOptionsBuilder.createCopy()`.
 
+===== Using Auto-Configuration
+
+The Spring Boot Starter for SQS provides the following auto-configuration properties:
+
+[cols="2,3,1,1"]
+|===
+| Name | Description | Required | Default value
+| `spring.cloud.aws.sqs.enabled` | Enables the SQS integration. | No | `true`
+| `spring.cloud.aws.sqs.endpoint` | Configures endpoint used by `SqsAsyncClient`. | No | `http://localhost:4566`
+| `spring.cloud.aws.sqs.region` | Configures region used by `SqsAsyncClient`. | No | `eu-west-1`
+| <<maxInflightMessagesPerQueue, `spring.cloud.aws.sqs.listener.max-inflight-messages-per-queue`>> | Maximum number of inflight messages per queue. | No | 10
+| <<maxMessagesPerPoll, `spring.cloud.aws.sqs.listener.max-messages-per-poll`>> | Maximum number of messages to be received per poll. | No | 10
+| <<pollTimeout, `spring.cloud.aws.sqs.listener.poll-timeout`>> | Maximum amount of time to wait for messages in a poll. | No | 10 seconds
+|===
+
+
 ===== ContainerOptions Descriptions
 [cols="13,9,9,16", options="header"]
 |===
@@ -488,10 +504,11 @@ A copy of the options can also be created with `containerOptions.createCopy()` o
 | Description
 
 |<<maxInflightMessagesPerQueue>>
-|1 - 10
+|1 - `Integer.MAX_VALUE`
 |10
 |The maximum number of messages from each queue that can be processed simultaneously in this container.
-Note that for batching acknowledgements a message is considered as no longer inflight when it's handed to the acknowledgement queue.
+This number will be used for defining the thread pool size for the container following (maxInflightMessagesPerQueue * number of queues).
+For batching acknowledgements a message is considered as no longer inflight when it's handed to the acknowledgement queue.
 See <<Acknowledging Messages>>.
 
 |<<maxMessagesPerPoll>>
@@ -873,6 +890,10 @@ For simply executing an action in case of errors, an `interceptor` should be use
 
 Payloads are automatically deserialized from `JSON` for `@SqsListener` annotated methods using a `MappingJackson2MessageConverter`.
 
+NOTE: When using Spring Boot's auto-configuration, if there's a single `ObjectMapper` in Spring Context, such object mapper will be used for converting messages.
+This includes the one provided by Spring Boot's auto-configuration itself.
+For configuring a different `ObjectMapper`, see <<Global Configuration for @SqsListeners>>.
+
 For manually created `MessageListeners`, `MessageInterceptor` and `ErrorHandler` components, or more fine-grained conversion such as using `interfaces` or `inheritance` in listener methods, type mapping is required for payload deserialization.
 
 By default, the framework looks for a `MessageHeader` named `Sqs_MA_JavaType` containing the fully qualified class name (`FQCN`) for which the payload should be deserialized to.
@@ -1018,6 +1039,8 @@ Acknowledgements will be executed after either the amount of time specified in t
 Setting `acknowledgementInterval` to `Duration.ZERO` will disable the periodic acknowledgement, which will be executed only when the number of messages to acknowledge reaches the specified `acknowledgementThreshold`.
 
 Setting `acknowledgementThreshold` to `0` will disable acknowledging per number of messages, and messages will be acknowledged only on the specified `acknowldgementInterval`
+
+IMPORTANT: When using acknowledgement batching messages stay inflight for SQS purposes until their respective batch is acknowledged. `MessageVisibility` should be taken into consideration when configuring this strategy.
 
 ===== Immediate Acknowledging
 
