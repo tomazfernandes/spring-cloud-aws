@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.10">
+<title>DynamoDb Integration</title>
+<link rel="stylesheet" href="css/spring.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<style>
+.hidden {
+	display: none;
+}
+
+.switch {
+	border-width: 1px 1px 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+	display: inline-block;
+}
+
+.switch--item {
+	padding: 10px;
+	background-color: #ffffff;
+	color: #7a2518;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.switch--item:not(:first-child) {
+	border-width: 0 0 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+}
+
+.switch--item.selected {
+	background-color: #7a2519;
+	color: #ffffff;
+}
+
+</style>
+<script type="text/javascript">
+function addBlockSwitches() {
+	for (var primary of document.querySelectorAll('.primary')) {
+		var switchItem = createSwitchItem(primary, createBlockSwitch(primary));
+		switchItem.item.classList.add("selected");
+		var title = primary.querySelector('.title')
+		title.remove();
+	}
+	for (var secondary of document.querySelectorAll('.secondary')) {
+		var primary = findPrimary(secondary);
+		if (primary === null) {
+			console.error("Found secondary block with no primary sibling");
+		}
+		else {
+			var switchItem = createSwitchItem(secondary, primary.querySelector('.switch'));
+			switchItem.content.classList.add("hidden");
+			primary.append(switchItem.content);
+			secondary.remove();
+		}
+	}
+}
+
+function createElementFromHtml(html) {
+	var template = document.createElement('template');
+    template.innerHTML = html;
+    return template.content.firstChild;
+}
+
+function createBlockSwitch(primary) {
+    var blockSwitch = createElementFromHtml('<div class="switch"></div>');
+    primary.prepend(blockSwitch)
+	return blockSwitch;
+}
+
+function findPrimary(secondary) {
+	var candidate = secondary.previousElementSibling;
+	while (candidate != null && !candidate.classList.contains('primary')) {
+		candidate = candidate.previousElementSibling;
+	}
+	return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+	var blockName = block.querySelector('.title').textContent;
+	var content = block.querySelectorAll('.content').item(0);
+	var colist = nextSibling(block, '.colist');
+	if (colist != null) {
+		content.append(colist);
+	}
+	var item = createElementFromHtml('<div class="switch--item">' + blockName + '</div>');
+	item.dataset.blockName = blockName;
+	content.dataset.blockName = blockName;
+	blockSwitch.append(item);
+	return {'item': item, 'content': content};
+}
+
+function nextSibling(element, selector) {
+	var sibling = element.nextElementSibling;
+	while (sibling) {
+		if (sibling.matches(selector)) {
+			return sibling;
+		}
+		sibling = sibling.nextElementSibling;
+	}
+}
+
+function globalSwitch() {
+	document.querySelectorAll(".switch--item").forEach(function(item) {
+		var blockId = blockIdForSwitchItem(item);
+		var handler = function(event) {
+			selectedText = event.target.textContent;
+			window.localStorage.setItem(blockId, selectedText);
+			for (var switchItem of document.querySelectorAll(".switch--item")) {
+				if (blockIdForSwitchItem(switchItem) === blockId && switchItem.textContent === selectedText) {
+					select(switchItem);
+				}
+			}
+		}
+		item.addEventListener("click", handler);
+		if (item.textContent === window.localStorage.getItem(blockId)) {
+			select(item);
+		}
+	});
+}
+
+function select(selected) {
+	for (var child of selected.parentNode.children) {
+		child.classList.remove("selected");
+	}
+	selected.classList.add("selected");
+	for (var child of selected.parentNode.parentNode.children) {
+		if (child.classList.contains("content")) {
+			if (selected.dataset.blockName === child.dataset.blockName) {
+				child.classList.remove("hidden");
+			}
+			else {
+				child.classList.add("hidden");
+			}
+		}
+	}	
+}
+
+function blockIdForSwitchItem(item) {
+	idComponents = []
+	for (var switchItem of item.parentNode.querySelectorAll(".switch--item")) {
+		idComponents.push(switchItem.textContent.toLowerCase());
+	}
+	return idComponents.sort().join("-")
+}
+
+window.onload = function() {
+	addBlockSwitches();
+	globalSwitch();
+};
+
+</script>
+
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#spring-cloud-aws-dynamoDb">DynamoDb Integration</a>
+<ul class="sectlevel2">
+<li><a href="#_dynamodboperations">DynamoDbOperations</a></li>
+<li><a href="#_using_dynamodb_client">Using DynamoDb Client</a></li>
+<li><a href="#_using_dynamodb_accelerator">Using DynamoDB Accelerator</a></li>
+<li><a href="#_configuration">Configuration</a></li>
+<li><a href="#_iam_permissions">IAM Permissions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="spring-cloud-aws-dynamoDb"><a class="link" href="#spring-cloud-aws-dynamoDb">DynamoDb Integration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="https://aws.amazon.com/dynamodb/">DynamoDb</a> is a fully managed serverless key/value Nosql database designed for high performance.
+A Spring Boot starter is provided to auto-configure DynamoDb integration beans.</p>
+</div>
+<div class="paragraph">
+<p>Maven coordinates, using <a href="index.html#bill-of-materials">Spring Cloud AWS BOM</a>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;dependency&gt;
+    &lt;groupId&gt;io.awspring.cloud&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-cloud-aws-starter-dynamodb&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>DynamoDb integration will only provide autoconfiguration and simple <code>DynamoDbOperations</code> which can be used to communicate with DynamoDb, build repositories and so on&#8230;&#8203;</p>
+</div>
+<div class="sect2">
+<h3 id="_dynamodboperations"><a class="link" href="#_dynamodboperations">DynamoDbOperations</a></h3>
+<div class="paragraph">
+<p>The starter automatically configures and registers a <code>DynamoDbOperations</code> bean providing higher level abstractions for working with DynamoDb.
+<code>DynamoDbTemplate</code> - a default <code>DynamoDbOperations</code> implementation - being built on top of <code>DynamoDbEnhancedClient</code> uses annotations provided by AWS.
+The list of supported annotations can be found <a href="https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/enhanced/dynamodb/mapper/annotations/package-summary.html">here</a>.</p>
+</div>
+<div class="paragraph">
+<p><code>DynamoDbEnchancedClient</code> supports a programming model similar to JPA - where a class is turned into an entity through applying certain annotations:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">import java.util.UUID;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
+
+@DynamoDbBean
+public class Person {
+	private UUID id;
+	private String name;
+	private String lastName;
+
+	@DynamoDbPartitionKey
+	public UUID getId() {
+		return id;
+	}
+
+    ...
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>DynamoDbTemplate</code> provides methods to perform typical CRUD operations on such entities, plus it adds convenience methods for querying DynamoDb:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">import io.awspring.cloud.dynamodb.DynamoDbTemplate;
+
+...
+@Autowired
+DynamoDbTemplate dynamoDbTemplate;
+...
+Person person = new Person(...)
+dynamoDbTemplate.save(person);</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_resolving_table_name"><a class="link" href="#_resolving_table_name">Resolving Table Name</a></h4>
+<div class="paragraph">
+<p>To resolve a table name for an entity, <code>DynamoDbTemplate</code> uses a bean of type <code>DynamoDbTableNameResolver</code>. The default implementation turns an entity class name into its snake case representation.
+To use custom implementation, declare a bean of type <code>DynamoDbTableNameResolver</code> and it will get injected into <code>DynamoDbTemplate</code> automatically during auto-configuration.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_resolving_table_schema"><a class="link" href="#_resolving_table_schema">Resolving Table Schema</a></h4>
+<div class="paragraph">
+<p>To resolve a table schema for an entity, <code>DynamoDbTemplate</code> uses a bean of type <code>DynamoDbTableSchemaResolver</code>. The default implementation caches <code>TableSchema</code> objects in internal map.
+To use custom implementation, declare a bean of type <code>DynamoDbTableSchemaResolver</code> and it will get injected into <code>DynamoDbTemplate</code> automatically during auto-configuration.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_using_dynamodb_client"><a class="link" href="#_using_dynamodb_client">Using DynamoDb Client</a></h3>
+<div class="paragraph">
+<p>Autoconfiguration automatically configures <code>DynamoDbClient</code> which can be used for low level api calls and <code>DynamoDbEnhancedClient</code> if <code>DynamoDbOperations</code> are not enough.</p>
+</div>
+<div class="paragraph">
+<p>If autoconfigured <code>DynamoDbClient</code> or <code>DynamoDbEnhancedClient</code> bean configuration does not meet your needs, it can be replaced by creating your custom bean.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">import java.util.Collections;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest;
+
+public class DynamoDbService {
+	private final DynamoDbClient dynamoDbClient;
+
+	public DynamoDbService(DynamoDbClient dynamoDbClient) {
+		this.dynamoDbClient = dynamoDbClient;
+	}
+
+	void deletePerson(String uuid) {
+		dynamoDbClient.deleteItem(DeleteItemRequest.builder().key(Collections.singletonMap("uuid", AttributeValue.builder().s(uuid).build())).build());
+	}
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_using_dynamodb_accelerator"><a class="link" href="#_using_dynamodb_accelerator">Using DynamoDB Accelerator</a></h3>
+<div class="paragraph">
+<p>The starter automatically configures and registers an <code>software.amazon.dax.ClusterDaxClient</code> bean if it finds the following is added to the project:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;dependency&gt;
+	&lt;groupId&gt;software.amazon.dax&lt;/groupId&gt;
+	&lt;artifactId&gt;amazon-dax-client&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_configuration"><a class="link" href="#_configuration">Configuration</a></h3>
+<div class="paragraph">
+<p>The Spring Boot Starter for DynamoDb provides the following configuration options:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 37.5%;">
+<col style="width: 37.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Name</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Required</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Default value</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.dynamodb.enabled</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the DynamoDb integration.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.dynamodb.endpoint</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures endpoint used by <code>DynamoDbClient</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.dynamodb.region</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures region used by <code>DynamoDbClient</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.dynamodb.dax.idle-timeout-millis</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Timeout for idle connections with the DAX cluster.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>30000</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.dynamodb.dax.url</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DAX cluster endpoint.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.dynamodb.dax.connection-ttl-millis</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Connection time to live.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.dynamodb.dax.connect-timeout-millis</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Connection timeout</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1000</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.dynamodb.dax.request-timeout-millis</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Request timeout for connections with the DAX cluster.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1000</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.dynamodb.dax.write-retries</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Number of times to retry writes, initial try is not counted.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.dynamodb.dax.read-retries</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Number of times to retry reads, initial try is not counted.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.dynamodb.dax.cluster-update-interval-millis</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interval between polling of cluster members for membership changes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>4000</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.dynamodb.dax.endpoint-refresh-timeout-millis</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Timeout for endpoint refresh.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>6000</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.dynamodb.dax.max-concurrency</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum number of concurrent requests.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1000</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.dynamodb.dax.max-pending-connection-acquires</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum number of pending Connections to acquire.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10000</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.dynamodb.dax.skip-host-name-verification</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Skips hostname verification in url.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_iam_permissions"><a class="link" href="#_iam_permissions">IAM Permissions</a></h3>
+<div class="paragraph">
+<p>Since it depends on how you will use DynamoDb integration providing a list of IAM policies would be pointless since least privilege model should be used.
+To check what IAM policies DynamoDb uses and see which ones you should use please check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/using-identity-based-policies.html">IAM policies</a></p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<link rel="stylesheet" href="js/highlight/styles/github.min.css">
+<script src="js/highlight/highlight.min.js"></script>
+<script>hljs.initHighlighting()</script>
+<script type="text/javascript" src="js/tocbot/tocbot.min.js"></script>
+<script type="text/javascript" src="js/toc.js"></script>
+</body>
+</html>

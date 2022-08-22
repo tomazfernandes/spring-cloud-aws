@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.10">
+<title>Managing cloud environments</title>
+<link rel="stylesheet" href="css/spring.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<style>
+.hidden {
+	display: none;
+}
+
+.switch {
+	border-width: 1px 1px 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+	display: inline-block;
+}
+
+.switch--item {
+	padding: 10px;
+	background-color: #ffffff;
+	color: #7a2518;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.switch--item:not(:first-child) {
+	border-width: 0 0 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+}
+
+.switch--item.selected {
+	background-color: #7a2519;
+	color: #ffffff;
+}
+
+</style>
+<script type="text/javascript">
+function addBlockSwitches() {
+	for (var primary of document.querySelectorAll('.primary')) {
+		var switchItem = createSwitchItem(primary, createBlockSwitch(primary));
+		switchItem.item.classList.add("selected");
+		var title = primary.querySelector('.title')
+		title.remove();
+	}
+	for (var secondary of document.querySelectorAll('.secondary')) {
+		var primary = findPrimary(secondary);
+		if (primary === null) {
+			console.error("Found secondary block with no primary sibling");
+		}
+		else {
+			var switchItem = createSwitchItem(secondary, primary.querySelector('.switch'));
+			switchItem.content.classList.add("hidden");
+			primary.append(switchItem.content);
+			secondary.remove();
+		}
+	}
+}
+
+function createElementFromHtml(html) {
+	var template = document.createElement('template');
+    template.innerHTML = html;
+    return template.content.firstChild;
+}
+
+function createBlockSwitch(primary) {
+    var blockSwitch = createElementFromHtml('<div class="switch"></div>');
+    primary.prepend(blockSwitch)
+	return blockSwitch;
+}
+
+function findPrimary(secondary) {
+	var candidate = secondary.previousElementSibling;
+	while (candidate != null && !candidate.classList.contains('primary')) {
+		candidate = candidate.previousElementSibling;
+	}
+	return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+	var blockName = block.querySelector('.title').textContent;
+	var content = block.querySelectorAll('.content').item(0);
+	var colist = nextSibling(block, '.colist');
+	if (colist != null) {
+		content.append(colist);
+	}
+	var item = createElementFromHtml('<div class="switch--item">' + blockName + '</div>');
+	item.dataset.blockName = blockName;
+	content.dataset.blockName = blockName;
+	blockSwitch.append(item);
+	return {'item': item, 'content': content};
+}
+
+function nextSibling(element, selector) {
+	var sibling = element.nextElementSibling;
+	while (sibling) {
+		if (sibling.matches(selector)) {
+			return sibling;
+		}
+		sibling = sibling.nextElementSibling;
+	}
+}
+
+function globalSwitch() {
+	document.querySelectorAll(".switch--item").forEach(function(item) {
+		var blockId = blockIdForSwitchItem(item);
+		var handler = function(event) {
+			selectedText = event.target.textContent;
+			window.localStorage.setItem(blockId, selectedText);
+			for (var switchItem of document.querySelectorAll(".switch--item")) {
+				if (blockIdForSwitchItem(switchItem) === blockId && switchItem.textContent === selectedText) {
+					select(switchItem);
+				}
+			}
+		}
+		item.addEventListener("click", handler);
+		if (item.textContent === window.localStorage.getItem(blockId)) {
+			select(item);
+		}
+	});
+}
+
+function select(selected) {
+	for (var child of selected.parentNode.children) {
+		child.classList.remove("selected");
+	}
+	selected.classList.add("selected");
+	for (var child of selected.parentNode.parentNode.children) {
+		if (child.classList.contains("content")) {
+			if (selected.dataset.blockName === child.dataset.blockName) {
+				child.classList.remove("hidden");
+			}
+			else {
+				child.classList.add("hidden");
+			}
+		}
+	}	
+}
+
+function blockIdForSwitchItem(item) {
+	idComponents = []
+	for (var switchItem of item.parentNode.querySelectorAll(".switch--item")) {
+		idComponents.push(switchItem.textContent.toLowerCase());
+	}
+	return idComponents.sort().join("-")
+}
+
+window.onload = function() {
+	addBlockSwitches();
+	globalSwitch();
+};
+
+</script>
+
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_managing_cloud_environments">Managing cloud environments</a>
+<ul class="sectlevel2">
+<li><a href="#_dependencies">Dependencies</a></li>
+<li><a href="#_automatic_cloudformation_configuration">Automatic CloudFormation configuration</a></li>
+<li><a href="#_manual_cloudformation_configuration">Manual CloudFormation configuration</a></li>
+<li><a href="#_cloudformation_configuration_with_java_config_classes">CloudFormation configuration with Java config classes</a></li>
+<li><a href="#_cloudformation_configuration_in_spring_boot">CloudFormation configuration in Spring Boot</a></li>
+<li><a href="#_manual_name_resolution">Manual name resolution</a></li>
+<li><a href="#_stack_tags">Stack Tags</a></li>
+<li><a href="#_using_custom_cloudformation_client">Using custom CloudFormation client</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="_managing_cloud_environments"><a class="link" href="#_managing_cloud_environments">Managing cloud environments</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Managing environments manually with the management console does not scale and can become error-prone with the increasing
+complexity of the infrastructure. Amazon Web services offers a <a href="https://aws.amazon.com/cloudformation/">CloudFormation</a>
+service that allows to define stack configuration templates and bootstrap the whole infrastructure with the services.
+In order to allow multiple stacks in parallel, each resource in the stack receives a unique physical name that contains
+some arbitrary generated name. In order to interact with the stack resources in a unified way Spring Cloud AWS allows
+developers to work with logical names instead of the random physical ones.</p>
+</div>
+<div class="paragraph">
+<p>The next graphics shows a typical stack configuration.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/cloudformation-overview.png" alt="CloudFormation overview">
+</div>
+</div>
+<div class="paragraph">
+<p>The <strong>Template File</strong> describes all stack resources with their <em>logical name</em>. The <strong>CloudFormation</strong> service parses the stack
+template file and creates all resources with their <em>physical name</em>. The application can use all the stack configured resources
+with the <em>logical name</em> defined in the template. Spring Cloud AWS resolves all <em>logical names</em> into the respective
+<em>physical name</em> for the application developer.</p>
+</div>
+<div class="sect2">
+<h3 id="_dependencies"><a class="link" href="#_dependencies">Dependencies</a></h3>
+<div class="paragraph">
+<p>To enable CloudFormation support in Spring Cloud AWS you must add following dependency that will trigger <code>ContextStackAutoConfiguration</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;dependency&gt;
+    &lt;groupId&gt;com.amazonaws&lt;/groupId&gt;
+    &lt;artifactId&gt;aws-java-sdk-cloudformation&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_automatic_cloudformation_configuration"><a class="link" href="#_automatic_cloudformation_configuration">Automatic CloudFormation configuration</a></h3>
+<div class="paragraph">
+<p>If the application runs inside a stack (because the underlying EC2 instance has been bootstrapped within the stack), then
+Spring Cloud AWS will automatically detect the stack and resolve all resources from the stack. Application developers
+can use all the logical names from the stack template to interact with the services. In the example below, the database
+resource is configured using a CloudFormation template, defining a logical name for the database instance.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">"applicationDatabase": {
+  "Type": "AWS::RDS::DBInstance",
+  "Properties": {
+  	"AllocatedStorage": "5",
+  	"DBInstanceClass": "db.t1.micro",
+  	"DBName": "test"
+  	...
+  ]
+ }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The datasource is then created and will receive a physical name (e.g. ir142c39k6o5irj) as the database service name. Application
+developers can still use the logical name (in this case <code>applicationDatabase</code>) to interact with the database. The example
+below shows the stack configuration which is defined by the element <code>aws-context:stack-configuration</code> and resolves automatically
+the particular stack. The <code>data-source</code> element uses the logical name for the <code>db-instance-identifier</code> attribute to work with
+the database.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	   xmlns:aws-context="http://www.springframework.org/schema/cloud/aws/context"
+	   xmlns="http://www.springframework.org/schema/beans"
+	   xsi:schemaLocation="http://www.springframework.org/schema/cloud/aws/context
+	   http://www.springframework.org/schema/cloud/aws/context/spring-cloud-aws-context.xsd"&gt;
+
+  &lt;aws-context:context-credentials&gt;
+  	...
+  &lt;/aws-context:context-credentials&gt;
+
+  &lt;aws-context:context-region .. /&gt;
+
+  &lt;aws-context:stack-configuration/&gt;
+
+  &lt;jdbc:data-source db-instance-identifier="applicationDatabase" ... /&gt;
+&lt;/beans&gt;</code></pre>
+</div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Further detailed information on the Amazon RDS configuration and setup can be found in the respective chapter in this
+documentation.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_manual_cloudformation_configuration"><a class="link" href="#_manual_cloudformation_configuration">Manual CloudFormation configuration</a></h3>
+<div class="paragraph">
+<p>If the application is not running inside a stack configured EC2 instance, then the stack configuration must be configured
+manually. The configuration consists of an additional element attribute <code>stack-name</code> that will be used to resolve all the
+respective stack configuration information at runtime.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;beans ....&gt;
+	...
+  &lt;aws-context:stack-configuration stack-name="myStackName" /&gt;
+    ...
+&lt;/beans&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_cloudformation_configuration_with_java_config_classes"><a class="link" href="#_cloudformation_configuration_with_java_config_classes">CloudFormation configuration with Java config classes</a></h3>
+<div class="paragraph">
+<p>Spring Cloud AWS also supports the configuration of the CloudFormation support within Java classes avoiding the use of
+XML inside the application configuration. Spring Cloud AWS provides the annotation
+<code>og.springframework.cloud.aws.context.config.annotation.EnableStackConfiguration</code> that allows the automatic and manual
+stack configuration. The next example shows a configuration class that configures the CloudFormation support with an
+explicit stack name (here <code>manualStackName</code>).</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Configuration
+@EnableStackConfiguration(stackName = "manualStackName")
+class ApplicationConfiguration {
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Do not define the <code>stackName</code> attribute if an automatic stack name should be enabled.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_cloudformation_configuration_in_spring_boot"><a class="link" href="#_cloudformation_configuration_in_spring_boot">CloudFormation configuration in Spring Boot</a></h3>
+<div class="paragraph">
+<p>Spring Cloud AWS also supports the configuration of the CloudFormation support within the Spring Boot configuration. The
+manual and automatic stack configuration can be defined with properties that are described in the table below.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">property</th>
+<th class="tableblock halign-left valign-top">example</th>
+<th class="tableblock halign-left valign-top">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">cloud.aws.stack.name</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">myStackName</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The name of the manually configured stack name that will be used to retrieve the resources.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">cloud.aws.stack.auto</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the automatic stack name detection for the application.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_manual_name_resolution"><a class="link" href="#_manual_name_resolution">Manual name resolution</a></h3>
+<div class="paragraph">
+<p>Spring Cloud AWS uses the CloudFormation stack to resolve all resources internally using the logical names. In some circumstances
+it might be needed to resolve the physical name inside the application code. Spring Cloud AWS provides a pre-configured
+service to resolve the physical stack name based on the logical name. The sample shows a manual stack resource resolution.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Service
+public class ApplicationService {
+
+ private final ResourceIdResolver resourceIdResolver;
+
+ @Autowired
+ public ApplicationService(ResourceIdResolver resourceIdResolver) {
+ 	this.resourceIdResolver = resourceIdResolver;
+ }
+
+ public void handleApplicationLogic() {
+ 	String physicalBucketName =
+ 		this.resourceIdResolver.resolveToPhysicalResourceId("someLogicalName");
+ }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_stack_tags"><a class="link" href="#_stack_tags">Stack Tags</a></h3>
+<div class="paragraph">
+<p>Like for the Amazon EC2 instances, CloudFormation also provides stack specific tags that can be used to
+configure stack specific configuration information and receive them inside the application. This can for example be a
+stage specific configuration property (like DEV, INT, PRD).</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;beans ....&gt;
+	...
+	&lt;aws-context:stack-configuration user-tags-map="stackTags"/&gt;
+	...
+&lt;/beans&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The application can then access the stack tags with an expression like <code>#{stackTags.key1}</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_using_custom_cloudformation_client"><a class="link" href="#_using_custom_cloudformation_client">Using custom CloudFormation client</a></h3>
+<div class="paragraph">
+<p>Like for the EC2 configuration setup, the <code>aws-context:stack-configuration</code> element supports a custom CloudFormation client
+with a special setup. The client itself can be configured using the <code>amazon-cloud-formation</code> attribute as shown in the example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;beans&gt;
+	&lt;aws-context:stack-configuration amazon-cloud-formation=""/&gt;
+
+	&lt;bean class="com.amazonaws.services.cloudformation.AmazonCloudFormationClient"&gt;
+	&lt;/bean&gt;
+&lt;/beans&gt;</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<link rel="stylesheet" href="js/highlight/styles/github.min.css">
+<script src="js/highlight/highlight.min.js"></script>
+<script>hljs.initHighlighting()</script>
+<script type="text/javascript" src="js/tocbot/tocbot.min.js"></script>
+<script type="text/javascript" src="js/toc.js"></script>
+</body>
+</html>

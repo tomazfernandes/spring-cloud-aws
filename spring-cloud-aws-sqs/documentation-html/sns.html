@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.10">
+<title>SNS Integration</title>
+<link rel="stylesheet" href="css/spring.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<style>
+.hidden {
+	display: none;
+}
+
+.switch {
+	border-width: 1px 1px 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+	display: inline-block;
+}
+
+.switch--item {
+	padding: 10px;
+	background-color: #ffffff;
+	color: #7a2518;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.switch--item:not(:first-child) {
+	border-width: 0 0 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+}
+
+.switch--item.selected {
+	background-color: #7a2519;
+	color: #ffffff;
+}
+
+</style>
+<script type="text/javascript">
+function addBlockSwitches() {
+	for (var primary of document.querySelectorAll('.primary')) {
+		var switchItem = createSwitchItem(primary, createBlockSwitch(primary));
+		switchItem.item.classList.add("selected");
+		var title = primary.querySelector('.title')
+		title.remove();
+	}
+	for (var secondary of document.querySelectorAll('.secondary')) {
+		var primary = findPrimary(secondary);
+		if (primary === null) {
+			console.error("Found secondary block with no primary sibling");
+		}
+		else {
+			var switchItem = createSwitchItem(secondary, primary.querySelector('.switch'));
+			switchItem.content.classList.add("hidden");
+			primary.append(switchItem.content);
+			secondary.remove();
+		}
+	}
+}
+
+function createElementFromHtml(html) {
+	var template = document.createElement('template');
+    template.innerHTML = html;
+    return template.content.firstChild;
+}
+
+function createBlockSwitch(primary) {
+    var blockSwitch = createElementFromHtml('<div class="switch"></div>');
+    primary.prepend(blockSwitch)
+	return blockSwitch;
+}
+
+function findPrimary(secondary) {
+	var candidate = secondary.previousElementSibling;
+	while (candidate != null && !candidate.classList.contains('primary')) {
+		candidate = candidate.previousElementSibling;
+	}
+	return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+	var blockName = block.querySelector('.title').textContent;
+	var content = block.querySelectorAll('.content').item(0);
+	var colist = nextSibling(block, '.colist');
+	if (colist != null) {
+		content.append(colist);
+	}
+	var item = createElementFromHtml('<div class="switch--item">' + blockName + '</div>');
+	item.dataset.blockName = blockName;
+	content.dataset.blockName = blockName;
+	blockSwitch.append(item);
+	return {'item': item, 'content': content};
+}
+
+function nextSibling(element, selector) {
+	var sibling = element.nextElementSibling;
+	while (sibling) {
+		if (sibling.matches(selector)) {
+			return sibling;
+		}
+		sibling = sibling.nextElementSibling;
+	}
+}
+
+function globalSwitch() {
+	document.querySelectorAll(".switch--item").forEach(function(item) {
+		var blockId = blockIdForSwitchItem(item);
+		var handler = function(event) {
+			selectedText = event.target.textContent;
+			window.localStorage.setItem(blockId, selectedText);
+			for (var switchItem of document.querySelectorAll(".switch--item")) {
+				if (blockIdForSwitchItem(switchItem) === blockId && switchItem.textContent === selectedText) {
+					select(switchItem);
+				}
+			}
+		}
+		item.addEventListener("click", handler);
+		if (item.textContent === window.localStorage.getItem(blockId)) {
+			select(item);
+		}
+	});
+}
+
+function select(selected) {
+	for (var child of selected.parentNode.children) {
+		child.classList.remove("selected");
+	}
+	selected.classList.add("selected");
+	for (var child of selected.parentNode.parentNode.children) {
+		if (child.classList.contains("content")) {
+			if (selected.dataset.blockName === child.dataset.blockName) {
+				child.classList.remove("hidden");
+			}
+			else {
+				child.classList.add("hidden");
+			}
+		}
+	}	
+}
+
+function blockIdForSwitchItem(item) {
+	idComponents = []
+	for (var switchItem of item.parentNode.querySelectorAll(".switch--item")) {
+		idComponents.push(switchItem.textContent.toLowerCase());
+	}
+	return idComponents.sort().join("-")
+}
+
+window.onload = function() {
+	addBlockSwitches();
+	globalSwitch();
+};
+
+</script>
+
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#spring-cloud-aws-sns">SNS Integration</a>
+<ul class="sectlevel2">
+<li><a href="#_sending_notifications">Sending Notifications</a></li>
+<li><a href="#_using_sns_client">Using SNS Client</a></li>
+<li><a href="#_annotation_driven_http_notification_endpoint">Annotation-driven HTTP notification endpoint</a></li>
+<li><a href="#_configuration">Configuration</a></li>
+<li><a href="#_iam_permissions">IAM Permissions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="spring-cloud-aws-sns"><a class="link" href="#spring-cloud-aws-sns">SNS Integration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="https://aws.amazon.com/sns/">SNS</a> is a pub/sub messaging service that allows clients to publish notifications to a particuluar topic.
+A Spring Boot starter is provided to auto-configure SNS integration beans.</p>
+</div>
+<div class="paragraph">
+<p>Maven coordinates, using <a href="index.html#bill-of-materials">Spring Cloud AWS BOM</a>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;dependency&gt;
+    &lt;groupId&gt;io.awspring.cloud&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-cloud-aws-starter-sns&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_sending_notifications"><a class="link" href="#_sending_notifications">Sending Notifications</a></h3>
+<div class="sect3">
+<h4 id="_sns_template"><a class="link" href="#_sns_template">SNS Template</a></h4>
+<div class="paragraph">
+<p>The starter automatically configures and registers a <code>SnsTemplate</code> bean providing higher level abstractions for sending SNS notifications.
+<code>SnsTemplate</code> implements Spring Messaging abstractions making it easy to combine with other messaging technologies compatible with Spring Messaging.</p>
+</div>
+<div class="paragraph">
+<p>It supports sending notifications with payload of type:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>String</code> - using <code>org.springframework.messaging.converter.StringMessageConverter</code></p>
+</li>
+<li>
+<p><code>Object</code> - which gets serialized to JSON using <code>org.springframework.messaging.converter.MappingJackson2MessageConverter</code> and Jackson&#8217;s <code>com.fasterxml.jackson.databind.ObjectMapper</code> autoconfigured by Spring Boot.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Additionally, it exposes handful of methods supporting <code>org.springframework.messaging.Message</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">import io.awspring.cloud.sns.core.SnsTemplate;
+
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
+
+class NotificationService {
+	private final SnsTemplate snsTemplate;
+
+	NotificationService(SnsTemplate snsTemplate) {
+		this.snsTemplate = snsTemplate;
+	}
+
+	void sendNotification() {
+        // sends String payload
+		snsTemplate.sendNotification("topic-arn", "payload", "subject");
+        // sends object serialized to JSON
+		snsTemplate.sendNotification("topic-arn", new Person("John", "Doe"), "subject");
+        // sends a Spring Messaging Message
+		Message&lt;String&gt; message = MessageBuilder.withPayload("payload")
+			.setHeader("header-name", "header-value")
+			.build();
+		snsTemplate.send("topic-arn", message);
+	}
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If autoconfigured converters do not meet your needs, you can provide a custom <code>SnsTemplate</code> bean with a message converter of your choice.</p>
+</div>
+<div class="paragraph">
+<p>When sending SNS notification, it is required to provide a topic ARN. Spring Cloud AWS simplifies it and allows providing a topic name instead, under a condition that topic with that name has already been created.
+Otherwise, Spring Cloud AWS will make an attempt to create topic with this name with a first call.</p>
+</div>
+<div class="paragraph">
+<p>The behavior of resolving topic ARN by a topic name can be altered by providing a custom bean of type <code>io.awspring.cloud.sns.core.TopicArnResolver</code>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_sns_operations"><a class="link" href="#_sns_operations">SNS Operations</a></h4>
+<div class="paragraph">
+<p>Because of Spring Messaging compatibility, <code>SnsTemplate</code> exposes many methods that you may not need if you don&#8217;t need Spring Messaging abstractions.
+In such case, we recommend using <code>SnsOperations</code> - an interface implemented by <code>SnsTemplate</code>, that exposes a convenient method for sending SNS notification, including support for FIFO topics.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">import io.awspring.cloud.sns.core.SnsNotification;
+import io.awspring.cloud.sns.core.SnsOperations;
+import io.awspring.cloud.sns.core.SnsTemplate;
+
+class NotificationService {
+	private final SnsOperations snsOperations;
+
+	NotificationService(SnsOperations snsOperations) {
+		this.snsOperations = snsOperations;
+	}
+
+	void sendNotification() {
+		SnsNotification&lt;Person&gt; notification = SnsNotification.builder(new Person("John", "Doe"))
+			.deduplicationId("..")
+			.groupId("..")
+			.build();
+		snsOperations.sendNotification("topic-arn", notification);
+	}
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_using_sns_client"><a class="link" href="#_using_sns_client">Using SNS Client</a></h3>
+<div class="paragraph">
+<p>To have access to all lower level SNS operations, we recommend using <code>SnsClient</code> from AWS SDK. <code>SnsClient</code> bean is autoconfigured by <code>SnsAutoConfiguration</code>.</p>
+</div>
+<div class="paragraph">
+<p>If autoconfigured <code>SnsClient</code> bean configuration does not meet your needs, it can be replaced by creating a custom bean of type <code>SnsClient</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">import software.amazon.awssdk.services.sns.SnsClient;
+
+class NotificationService {
+	private final SnsClient snsClient;
+
+	public NotificationService(SnsClient snsClient) {
+		this.snsClient = snsClient;
+	}
+
+	void sendNotification() {
+		snsClient.publish(request -&gt; request.topicArn("sns-topic-arn").message("payload"));
+	}
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_annotation_driven_http_notification_endpoint"><a class="link" href="#_annotation_driven_http_notification_endpoint">Annotation-driven HTTP notification endpoint</a></h3>
+<div class="paragraph">
+<p>SNS supports multiple endpoint types (SQS, Email, HTTP, HTTPS), Spring Cloud AWS provides support for HTTP(S) endpoints.
+SNS sends three type of requests to an HTTP topic listener endpoint, for each of them annotations are provided:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Subscription request &#8594; <code>@NotificationSubscriptionMapping</code></p>
+</li>
+<li>
+<p>Notification request &#8594; <code>@NotificationMessageMapping</code></p>
+</li>
+<li>
+<p>Unsubscription request &#8594; <code>@NotificationUnsubscribeMapping</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>HTTP endpoints are based on Spring MVC controllers. Spring Cloud AWS added some custom argument resolvers to extract the message and subject out of the notification requests.</p>
+</div>
+<div class="paragraph">
+<p>Example of integration:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">import io.awspring.cloud.sns.annotation.endpoint.NotificationMessageMapping;
+import io.awspring.cloud.sns.annotation.endpoint.NotificationSubscriptionMapping;
+import io.awspring.cloud.sns.annotation.endpoint.NotificationUnsubscribeConfirmationMapping;
+import io.awspring.cloud.sns.annotation.handlers.NotificationMessage;
+import io.awspring.cloud.sns.annotation.handlers.NotificationSubject;
+import io.awspring.cloud.sns.handlers.NotificationStatus;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+@Controller
+@RequestMapping("/topicName")
+public class NotificationTestController {
+
+	@NotificationSubscriptionMapping
+	public void handleSubscriptionMessage(NotificationStatus status) {
+		//We subscribe to start receive the message
+		status.confirmSubscription();
+	}
+
+	@NotificationMessageMapping
+	public void handleNotificationMessage(@NotificationSubject String subject, @NotificationMessage String message) {
+		// ...
+	}
+
+	@NotificationUnsubscribeConfirmationMapping
+	public void handleUnsubscribeMessage(NotificationStatus status) {
+		//e.g. the client has been unsubscribed and we want to "re-subscribe"
+		status.confirmSubscription();
+	}
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_configuration"><a class="link" href="#_configuration">Configuration</a></h3>
+<div class="paragraph">
+<p>The Spring Boot Starter for SNS provides the following configuration options:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 28.5714%;">
+<col style="width: 42.8571%;">
+<col style="width: 14.2857%;">
+<col style="width: 14.2858%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Name</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Required</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Default value</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.sns.enabled</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the SNS integration.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.sns.endpoint</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures endpoint used by <code>SnsClient</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code><a href="http://localhost:4566" class="bare">http://localhost:4566</a></code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.sns.region</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures region used by <code>SnsClient</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>eu-west-1</code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_iam_permissions"><a class="link" href="#_iam_permissions">IAM Permissions</a></h3>
+<div class="paragraph">
+<p>Following IAM permissions are required by Spring Cloud AWS:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 66.6666%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">To publish notification to topic</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sns:Publish</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">To publish notification you will also need</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sns:ListTopics</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">To use Annotation-driven HTTP notification endpoint</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sns:ConfirmSubscription</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">For resolving topic name to ARN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sns:CreateTopic</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Sample IAM policy granting access to SNS:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "sns:Publish",
+                "sns:ConfirmSubscription"
+            ],
+            "Resource": "yourArn"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "sns:ListTopics",
+            "Resource": "*"
+        },
+        {
+        "Effect": "Allow",
+        "Action": "sns:CreateTopic",
+        "Resource": "*"
+        }
+    ]
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<link rel="stylesheet" href="js/highlight/styles/github.min.css">
+<script src="js/highlight/highlight.min.js"></script>
+<script>hljs.initHighlighting()</script>
+<script type="text/javascript" src="js/tocbot/tocbot.min.js"></script>
+<script type="text/javascript" src="js/toc.js"></script>
+</body>
+</html>

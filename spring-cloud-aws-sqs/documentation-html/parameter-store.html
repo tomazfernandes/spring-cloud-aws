@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.10">
+<title>Parameter Store Integration</title>
+<link rel="stylesheet" href="css/spring.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<style>
+.hidden {
+	display: none;
+}
+
+.switch {
+	border-width: 1px 1px 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+	display: inline-block;
+}
+
+.switch--item {
+	padding: 10px;
+	background-color: #ffffff;
+	color: #7a2518;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.switch--item:not(:first-child) {
+	border-width: 0 0 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+}
+
+.switch--item.selected {
+	background-color: #7a2519;
+	color: #ffffff;
+}
+
+</style>
+<script type="text/javascript">
+function addBlockSwitches() {
+	for (var primary of document.querySelectorAll('.primary')) {
+		var switchItem = createSwitchItem(primary, createBlockSwitch(primary));
+		switchItem.item.classList.add("selected");
+		var title = primary.querySelector('.title')
+		title.remove();
+	}
+	for (var secondary of document.querySelectorAll('.secondary')) {
+		var primary = findPrimary(secondary);
+		if (primary === null) {
+			console.error("Found secondary block with no primary sibling");
+		}
+		else {
+			var switchItem = createSwitchItem(secondary, primary.querySelector('.switch'));
+			switchItem.content.classList.add("hidden");
+			primary.append(switchItem.content);
+			secondary.remove();
+		}
+	}
+}
+
+function createElementFromHtml(html) {
+	var template = document.createElement('template');
+    template.innerHTML = html;
+    return template.content.firstChild;
+}
+
+function createBlockSwitch(primary) {
+    var blockSwitch = createElementFromHtml('<div class="switch"></div>');
+    primary.prepend(blockSwitch)
+	return blockSwitch;
+}
+
+function findPrimary(secondary) {
+	var candidate = secondary.previousElementSibling;
+	while (candidate != null && !candidate.classList.contains('primary')) {
+		candidate = candidate.previousElementSibling;
+	}
+	return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+	var blockName = block.querySelector('.title').textContent;
+	var content = block.querySelectorAll('.content').item(0);
+	var colist = nextSibling(block, '.colist');
+	if (colist != null) {
+		content.append(colist);
+	}
+	var item = createElementFromHtml('<div class="switch--item">' + blockName + '</div>');
+	item.dataset.blockName = blockName;
+	content.dataset.blockName = blockName;
+	blockSwitch.append(item);
+	return {'item': item, 'content': content};
+}
+
+function nextSibling(element, selector) {
+	var sibling = element.nextElementSibling;
+	while (sibling) {
+		if (sibling.matches(selector)) {
+			return sibling;
+		}
+		sibling = sibling.nextElementSibling;
+	}
+}
+
+function globalSwitch() {
+	document.querySelectorAll(".switch--item").forEach(function(item) {
+		var blockId = blockIdForSwitchItem(item);
+		var handler = function(event) {
+			selectedText = event.target.textContent;
+			window.localStorage.setItem(blockId, selectedText);
+			for (var switchItem of document.querySelectorAll(".switch--item")) {
+				if (blockIdForSwitchItem(switchItem) === blockId && switchItem.textContent === selectedText) {
+					select(switchItem);
+				}
+			}
+		}
+		item.addEventListener("click", handler);
+		if (item.textContent === window.localStorage.getItem(blockId)) {
+			select(item);
+		}
+	});
+}
+
+function select(selected) {
+	for (var child of selected.parentNode.children) {
+		child.classList.remove("selected");
+	}
+	selected.classList.add("selected");
+	for (var child of selected.parentNode.parentNode.children) {
+		if (child.classList.contains("content")) {
+			if (selected.dataset.blockName === child.dataset.blockName) {
+				child.classList.remove("hidden");
+			}
+			else {
+				child.classList.add("hidden");
+			}
+		}
+	}	
+}
+
+function blockIdForSwitchItem(item) {
+	idComponents = []
+	for (var switchItem of item.parentNode.querySelectorAll(".switch--item")) {
+		idComponents.push(switchItem.textContent.toLowerCase());
+	}
+	return idComponents.sort().join("-")
+}
+
+window.onload = function() {
+	addBlockSwitches();
+	globalSwitch();
+};
+
+</script>
+
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#spring-cloud-aws-parameter-store">Parameter Store Integration</a>
+<ul class="sectlevel2">
+<li><a href="#_loading_external_configuration">Loading External Configuration</a></li>
+<li><a href="#_using_ssmclient">Using SsmClient</a></li>
+<li><a href="#_customizing_ssmclient">Customizing SsmClient</a></li>
+<li><a href="#_configuration">Configuration</a></li>
+<li><a href="#_iam_permissions">IAM Permissions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="spring-cloud-aws-parameter-store"><a class="link" href="#spring-cloud-aws-parameter-store">Parameter Store Integration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Spring Cloud AWS adds support for loading configuration properties from Parameter Store through Spring Boot <a href="https://docs.spring.io/spring-boot/docs/current/reference/html/spring-boot-features.html#boot-features-external-config-files-importing">config import feature</a>.</p>
+</div>
+<div class="paragraph">
+<p>Maven coordinates, using <a href="index.html#bill-of-materials">Spring Cloud AWS BOM</a>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;dependency&gt;
+    &lt;groupId&gt;io.awspring.cloud&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-cloud-starter-aws-parameter-store&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_loading_external_configuration"><a class="link" href="#_loading_external_configuration">Loading External Configuration</a></h3>
+<div class="paragraph">
+<p>To fetch parameters from Parameter Store and add them to Spring&#8217;s environment properties, add <code>spring.config.import</code> property to <code>application.properties</code>:</p>
+</div>
+<div class="paragraph">
+<p>For example, assuming that the parameters in Parameter Store are stored under path <code>/config/spring</code>:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter Name</th>
+<th class="tableblock halign-left valign-top">Parameter Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/config/spring/message</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Welcome</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/config/spring/httpUrl</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code><a href="https://external-service:3030/" class="bare">https://external-service:3030/</a></code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Once <code>spring.config.import</code> statement is added:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="properties" class="language-properties hljs">spring.config.import=aws-parameterstore:/config/spring</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Two parameters are added to environment: <code>message</code> and <code>httpUrl</code>.</p>
+</div>
+<div class="paragraph">
+<p>If a given path in Parameter Store does not exist, application will fail to start. If parameters retrieved from Parameter Store are not required for the application, and it should continue to startup even when the path is missing, add <code>optional</code> before prefix:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="properties" class="language-properties hljs">spring.config.import=optional:aws-parameterstore:/config/spring</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To load parameters from multiple paths, separate their names with <code>;</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="properties" class="language-properties hljs">spring.config.import=aws-parameterstore:/config/spring;/config/app</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If some parameters are required, and other ones are optional, list them as separate entries in <code>spring.config.import</code> property:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="properties" class="language-properties hljs">spring.config.import[0]=optional:aws-parameterstore=/config/spring
+spring.config.import[1]=aws-parameterstore=/config/optional-params/</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_using_ssmclient"><a class="link" href="#_using_ssmclient">Using SsmClient</a></h3>
+<div class="paragraph">
+<p>The starter automatically configures and registers a <code>SsmClient</code> bean in the Spring application context. The <code>SsmClient</code> bean can be used to create or retrieve parameters from Parameter Store.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">import org.springframework.stereotype.Component;
+import software.amazon.awssdk.services.ssm.SsmClient;
+...
+@Autowired
+private SsmClient ssmClient;
+...
+ssmClient.getParametersByPath(request -&gt; request.path("/config/spring/")).parameters();</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_customizing_ssmclient"><a class="link" href="#_customizing_ssmclient">Customizing SsmClient</a></h3>
+<div class="paragraph">
+<p>To use custom <code>SsmClient</code> in <code>spring.config.import</code>, provide an implementation of <code>BootstrapRegistryInitializer</code>. For example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">package com.app;
+
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.ssm.SsmClient;
+
+import org.springframework.boot.BootstrapRegistry;
+import org.springframework.boot.BootstrapRegistryInitializer;
+
+class ParameterStoreBootstrapConfiguration implements BootstrapRegistryInitializer {
+
+    @Override
+    public void initialize(BootstrapRegistry registry) {
+        registry.register(SsmClient.class, context -&gt; {
+			AwsCredentialsProvider awsCredentialsProvider = StaticCredentialsProvider.create(AwsBasicCredentials.create("yourAccessKey", "yourSecretKey"));
+			return SsmClient.builder().credentialsProvider(awsCredentialsProvider).region(Region.EU_WEST_2).build();
+		});
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Note that this class must be listed under <code>org.springframework.boot.BootstrapRegistryInitializer</code> key in <code>META-INF/spring.factories</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="properties" class="language-properties hljs">org.springframework.boot.BootstrapRegistryInitializer=com.app.ParameterStoreBootstrapConfiguration</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If you want to use autoconfigured <code>SsmClient</code> but change underlying SDKClient or ClientOverrideConfiguration you will need to register bean of type <code>AwsClientConfigurerParameterStore</code>:
+Autoconfiguration will configure <code>SsmClient</code> Bean with provided values after that, for example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">package com.app;
+
+import io.awspring.cloud.autoconfigure.config.parameterstore.AwsParameterStoreClientCustomizer;
+import java.time.Duration;
+import org.springframework.boot.BootstrapRegistry;
+import org.springframework.boot.BootstrapRegistryInitializer;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.http.SdkHttpClient;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
+import software.amazon.awssdk.services.ssm.SsmClientBuilder;
+
+class ParameterStoreBootstrapConfiguration implements BootstrapRegistryInitializer {
+
+	@Override
+	public void initialize(BootstrapRegistry registry) {
+		registry.register(AwsParameterStoreClientCustomizer.class,
+            context -&gt; new AwsParameterStoreClientCustomizer() {
+
+                @Override
+                public ClientOverrideConfiguration overrideConfiguration() {
+                    return ClientOverrideConfiguration.builder().apiCallTimeout(Duration.ofMillis(500))
+                            .build();
+                }
+
+                @Override
+                public SdkHttpClient httpClient() {
+                    return ApacheHttpClient.builder().connectionTimeout(Duration.ofMillis(1000)).build();
+                }
+            });
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_configuration"><a class="link" href="#_configuration">Configuration</a></h3>
+<div class="paragraph">
+<p>The Spring Boot Starter for Parameter Store provides the following configuration options:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 44.4444%;">
+<col style="width: 33.3333%;">
+<col style="width: 11.1111%;">
+<col style="width: 11.1112%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Name</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Required</th>
+<th class="tableblock halign-left valign-top">Default value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.parameterstore.enabled</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the Parameter Store integration.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.parameterstore.endpoint</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures endpoint used by <code>SsmClient</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.parameterstore.region</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures region used by <code>SsmClient</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_iam_permissions"><a class="link" href="#_iam_permissions">IAM Permissions</a></h3>
+<div class="paragraph">
+<p>Following IAM permissions are required by Spring Cloud AWS:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Get parameter from specific path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ssm:GetParametersByPath</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Sample IAM policy granting access to Parameter Store:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "ssm:GetParametersByPath",
+            "Resource": "yourArn"
+        }
+    ]
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<link rel="stylesheet" href="js/highlight/styles/github.min.css">
+<script src="js/highlight/highlight.min.js"></script>
+<script>hljs.initHighlighting()</script>
+<script type="text/javascript" src="js/tocbot/tocbot.min.js"></script>
+<script type="text/javascript" src="js/toc.js"></script>
+</body>
+</html>

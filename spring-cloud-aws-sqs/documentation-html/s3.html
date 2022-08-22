@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.10">
+<title>S3 Integration</title>
+<link rel="stylesheet" href="css/spring.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<style>
+.hidden {
+	display: none;
+}
+
+.switch {
+	border-width: 1px 1px 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+	display: inline-block;
+}
+
+.switch--item {
+	padding: 10px;
+	background-color: #ffffff;
+	color: #7a2518;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.switch--item:not(:first-child) {
+	border-width: 0 0 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+}
+
+.switch--item.selected {
+	background-color: #7a2519;
+	color: #ffffff;
+}
+
+</style>
+<script type="text/javascript">
+function addBlockSwitches() {
+	for (var primary of document.querySelectorAll('.primary')) {
+		var switchItem = createSwitchItem(primary, createBlockSwitch(primary));
+		switchItem.item.classList.add("selected");
+		var title = primary.querySelector('.title')
+		title.remove();
+	}
+	for (var secondary of document.querySelectorAll('.secondary')) {
+		var primary = findPrimary(secondary);
+		if (primary === null) {
+			console.error("Found secondary block with no primary sibling");
+		}
+		else {
+			var switchItem = createSwitchItem(secondary, primary.querySelector('.switch'));
+			switchItem.content.classList.add("hidden");
+			primary.append(switchItem.content);
+			secondary.remove();
+		}
+	}
+}
+
+function createElementFromHtml(html) {
+	var template = document.createElement('template');
+    template.innerHTML = html;
+    return template.content.firstChild;
+}
+
+function createBlockSwitch(primary) {
+    var blockSwitch = createElementFromHtml('<div class="switch"></div>');
+    primary.prepend(blockSwitch)
+	return blockSwitch;
+}
+
+function findPrimary(secondary) {
+	var candidate = secondary.previousElementSibling;
+	while (candidate != null && !candidate.classList.contains('primary')) {
+		candidate = candidate.previousElementSibling;
+	}
+	return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+	var blockName = block.querySelector('.title').textContent;
+	var content = block.querySelectorAll('.content').item(0);
+	var colist = nextSibling(block, '.colist');
+	if (colist != null) {
+		content.append(colist);
+	}
+	var item = createElementFromHtml('<div class="switch--item">' + blockName + '</div>');
+	item.dataset.blockName = blockName;
+	content.dataset.blockName = blockName;
+	blockSwitch.append(item);
+	return {'item': item, 'content': content};
+}
+
+function nextSibling(element, selector) {
+	var sibling = element.nextElementSibling;
+	while (sibling) {
+		if (sibling.matches(selector)) {
+			return sibling;
+		}
+		sibling = sibling.nextElementSibling;
+	}
+}
+
+function globalSwitch() {
+	document.querySelectorAll(".switch--item").forEach(function(item) {
+		var blockId = blockIdForSwitchItem(item);
+		var handler = function(event) {
+			selectedText = event.target.textContent;
+			window.localStorage.setItem(blockId, selectedText);
+			for (var switchItem of document.querySelectorAll(".switch--item")) {
+				if (blockIdForSwitchItem(switchItem) === blockId && switchItem.textContent === selectedText) {
+					select(switchItem);
+				}
+			}
+		}
+		item.addEventListener("click", handler);
+		if (item.textContent === window.localStorage.getItem(blockId)) {
+			select(item);
+		}
+	});
+}
+
+function select(selected) {
+	for (var child of selected.parentNode.children) {
+		child.classList.remove("selected");
+	}
+	selected.classList.add("selected");
+	for (var child of selected.parentNode.parentNode.children) {
+		if (child.classList.contains("content")) {
+			if (selected.dataset.blockName === child.dataset.blockName) {
+				child.classList.remove("hidden");
+			}
+			else {
+				child.classList.add("hidden");
+			}
+		}
+	}	
+}
+
+function blockIdForSwitchItem(item) {
+	idComponents = []
+	for (var switchItem of item.parentNode.querySelectorAll(".switch--item")) {
+		idComponents.push(switchItem.textContent.toLowerCase());
+	}
+	return idComponents.sort().join("-")
+}
+
+window.onload = function() {
+	addBlockSwitches();
+	globalSwitch();
+};
+
+</script>
+
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#spring-cloud-aws-s3">S3 Integration</a>
+<ul class="sectlevel2">
+<li><a href="#_using_s3_client">Using S3 client</a></li>
+<li><a href="#_using_s3transfermanager">Using S3TransferManager</a></li>
+<li><a href="#_using_cross_region_s3_client">Using Cross-Region S3 client</a></li>
+<li><a href="#_s3_objects_as_spring_resources">S3 Objects as Spring Resources</a></li>
+<li><a href="#_using_s3template">Using S3Template</a></li>
+<li><a href="#_determining_s3_objects_content_type">Determining S3 Objects Content Type</a></li>
+<li><a href="#_configuration">Configuration</a></li>
+<li><a href="#_iam_permissions">IAM Permissions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="spring-cloud-aws-s3"><a class="link" href="#spring-cloud-aws-s3">S3 Integration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="https://aws.amazon.com/s3/">S3</a> allows storing files in a cloud.
+A Spring Boot starter is provided to auto-configure the various S3 integration related components.</p>
+</div>
+<div class="paragraph">
+<p>Maven coordinates, using <a href="index.html#bill-of-materials">Spring Cloud AWS BOM</a>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;dependency&gt;
+    &lt;groupId&gt;io.awspring.cloud&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-cloud-starter-aws-s3&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_using_s3_client"><a class="link" href="#_using_s3_client">Using S3 client</a></h3>
+<div class="paragraph">
+<p>The starter automatically configures and registers a <code>S3Client</code> bean in the Spring application context. The <code>S3Client</code> bean can be used to perform operations on S3 buckets and objects.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+
+import org.springframework.stereotype.Component;
+import org.springframework.util.StreamUtils;
+
+@Component
+class S3ClientSample {
+	private final S3Client s3Client;
+
+	S3ClientSample(S3Client s3Client) {
+		this.s3Client = s3Client;
+	}
+
+	void readFile() throws IOException {
+		ResponseInputStream&lt;GetObjectResponse&gt; response = s3Client.getObject(
+			request -&gt; request.bucket("bucket-name").key("file-name.txt"));
+
+		String fileContent = StreamUtils.copyToString(response, StandardCharsets.UTF_8);
+
+		System.out.println(fileContent);
+	}
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_using_s3transfermanager"><a class="link" href="#_using_s3transfermanager">Using S3TransferManager</a></h3>
+<div class="admonitionblock caution">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-caution" title="Caution"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>S3 Transfer Manager provided by AWS is in developer preview phase and should not be used in production.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>AWS launched <a href="https://aws.amazon.com/blogs/developer/introducing-amazon-s3-transfer-manager-in-the-aws-sdk-for-java-2-x/">a high level file transfer utility</a>, called Transfer Manager. The starter automatically configures and registers an <code>software.amazon.awssdk.transfer.s3.S3TransferManager</code> bean if it finds the following is added to the project:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;dependency&gt;
+  &lt;groupId&gt;software.amazon.awssdk&lt;/groupId&gt;
+  &lt;artifactId&gt;s3-transfer-manager&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_using_cross_region_s3_client"><a class="link" href="#_using_cross_region_s3_client">Using Cross-Region S3 client</a></h3>
+<div class="paragraph">
+<p><code>S3Client</code> implementation provided in AWS SDK is region specific - meaning it can be used only to operate on buckets and objects stored in region for which the client has been configured to use.</p>
+</div>
+<div class="paragraph">
+<p>For example, assuming that <code>DefaultAwsRegionProviderChain</code> resolves a region <code>us-east-1</code>, running any S3 operation that uses a bucket created in another region would result in an exception:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-none hljs">software.amazon.awssdk.services.s3.model.S3Exception: The bucket you are attempting to access must be addressed using the specified endpoint. Please send all future requests to this endpoint. (Service: S3, Status Code: 301, Request ID: ..., Extended Request ID: ...)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Spring Cloud AWS provides a <code>CrossRegionS3Client</code> that solves this problem by maintaining an internal dictionary of <code>S3Client</code> objects per region. If you need to customize these clients, you can create a custom <code>S3ClientBuilder</code> bean that acts as a template to create region-specific S3 clients in <code>CrossRegionS3Client</code>.
+There is no extra work needed to use cross-region S3 client - it is the <code>S3Client</code> auto-configured by Spring Cloud AWS.</p>
+</div>
+<div class="paragraph">
+<p>To disable <code>CrossRegionS3Client</code> creation and use instead a regular region-specific <code>S3Client</code>, you can either create a custom <code>S3Client</code> bean, or exclude <code>spring-cloud-aws-s3-cross-region-client</code> dependency:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;dependency&gt;
+    &lt;groupId&gt;io.awspring.cloud&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-cloud-starter-aws-s3&lt;/artifactId&gt;
+    &lt;exclusions&gt;
+        &lt;exclusion&gt;
+            &lt;groupId&gt;io.awspring.cloud&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-cloud-aws-s3-cross-region-client&lt;/artifactId&gt;
+        &lt;/exclusion&gt;
+    &lt;/exclusions&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_s3_objects_as_spring_resources"><a class="link" href="#_s3_objects_as_spring_resources">S3 Objects as Spring Resources</a></h3>
+<div class="paragraph">
+<p><a href="https://docs.spring.io/spring/docs/current/spring-framework-reference/html/resources.html">Spring Resources</a> are an abstraction for a number of low-level resources, such as file system files, classpath files, servlet context-relative files, etc.
+Spring Cloud AWS adds a new resource type: a <code>S3Resource</code> object.</p>
+</div>
+<div class="paragraph">
+<p>The Spring Resource Abstraction for S3 allows S3 objects to be accessed by their S3 URL using the <code>@Value</code> annotation:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Value("s3://[S3_BUCKET_NAME]/[FILE_NAME]")
+private Resource s3Resource;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>&#8230;&#8203;or the Spring application context</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">SpringApplication.run(...).getResource("s3://[S3_BUCKET_NAME]/[FILE_NAME]");</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This creates a <code>Resource</code> object that can be used to read the file, among <a href="https://docs.spring.io/spring/docs/current/spring-framework-reference/html/resources.html#resources-resource">other possible operations</a>.</p>
+</div>
+<div class="paragraph">
+<p>It is also possible to write to a <code>Resource</code>, although a <code>WriteableResource</code> is required.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Value("s3://[S3_BUCKET_NAME]/[FILE_NAME]")
+private Resource s3Resource;
+...
+try (OutputStream os = ((WritableResource) s3Resource).getOutputStream()) {
+  os.write("content".getBytes());
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To work with the <code>Resource</code> as a S3 resource, cast it to <code>io.awspring.cloud.s3.S3Resource</code>.
+Using <code>S3Resource</code> directly lets you set the <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingMetadata.html">S3 object metadata</a>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Value("s3://[S3_BUCKET_NAME]/[FILE_NAME]")
+private Resource s3Resource;
+...
+ObjectMetadata objectMetadata = ObjectMetadata.builder()
+    .contentType("application/json")
+    .serverSideEncryption(ServerSideEncryption.AES256)
+    .build();
+s3Resource.setObjectMetadata(objectMetadata);
+try (OutputStream outputStream = s3Resource.getOutputStream()) {
+    outputStream.write("content".getBytes(StandardCharsets.UTF_8));
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Under the hood by default <code>S3Resource</code> uses a <code>io.awspring.cloud.s3.InMemoryBufferingS3OutputStream</code>. When data is written to the resource, is gets sent to S3 using multipart upload.
+If a network error occurs during upload, <code>S3Client</code> has a built-in retry mechanism that will retry each failed part. If the upload fails after retries, multipart upload gets aborted and <code>S3Resource</code> throws <code>io.awspring.cloud.s3.S3Exception</code>.</p>
+</div>
+<div class="paragraph">
+<p>If <code>InMemoryBufferingS3OutputStream</code> behavior does not fit your needs, you can use <code>io.awspring.cloud.s3.DiskBufferingS3OutputStream</code> by defining a bean of type <code>DiskBufferingS3OutputStreamProvider</code> which will override the default output stream provider.
+With <code>DiskBufferingS3OutputStream</code> when data is written to the resource, first it is stored on the disk in a <code>tmp</code> directory in the OS. Once the stream gets closed, the file gets uploaded with <a href="https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/s3/S3Client.html#putObject-java.util.function.Consumer-java.nio.file.Path-">S3Client#putObject</a> method.
+If a network error occurs during upload, <code>S3Client</code> has a built-in retry mechanism. If the upload fails after retries, <code>S3Resource</code> throws <code>io.awspring.cloud.s3.UploadFailed</code> exception containing a file location in a temporary directory in a file system.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">try (OutputStream outputStream = s3Resource.getOutputStream()) {
+    outputStream.write("content".getBytes(StandardCharsets.UTF_8));
+} catch (UploadFailedException e) {
+    // e.getPath contains a file location in temporary folder
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If you are using the <code>S3TransferManager</code>, the default implementation will switch to <code>io.awspring.cloud.s3.TransferManagerS3OutputStream</code>. This OutputStream also uses a temporary file to write it on disk before uploading it to S3, but it may be faster as it uses a multi-part upload under the hood.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_using_s3template"><a class="link" href="#_using_s3template">Using S3Template</a></h3>
+<div class="paragraph">
+<p>Spring Cloud AWS provides a higher abstraction on the top of <code>S3Client</code> providing methods for the most common use cases when working with S3.</p>
+</div>
+<div class="paragraph">
+<p>On the top of self-explanatory methods for creating and deleting buckets, <code>S3Template</code> provides a simple methods for uploading and downloading files:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Autowired
+private S3Template s3Template;
+
+InputStream is = ...
+// uploading file without metadata
+s3Template.upload(BUCKET, "file.txt", is);
+
+// uploading file with metadata
+s3Template.upload(BUCKET, "file.txt", is, ObjectMetadata.builder().contentType("text/plain").build());</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>S3Template</code> also allows storing &amp; retrieving Java objects.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">Person p = new Person("John", "Doe");
+s3Template.store(BUCKET, "person.json", p);
+
+Person loadedPerson = s3Template.read(BUCKET, "person.json", Person.class);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>By default, if Jackson is on the classpath, <code>S3Template</code> uses <code>ObjectMapper</code> based <code>Jackson2JsonS3ObjectConverter</code> to convert from S3 object to Java object and vice versa.
+This behavior can be overwritten by providing custom bean of type <code>S3ObjectConverter</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_determining_s3_objects_content_type"><a class="link" href="#_determining_s3_objects_content_type">Determining S3 Objects Content Type</a></h3>
+<div class="paragraph">
+<p>All S3 objects stored in S3 through <code>S3Template</code>, <code>S3Resource</code> or <code>S3OutputStream</code> automatically get set a <code>contentType</code> property on the S3 object metadata, based on the S3 object key (file name).</p>
+</div>
+<div class="paragraph">
+<p>By default, <code>PropertiesS3ObjectContentTypeResolver</code> - a component supporting over 800 file extensions is responsible for content type resolution.
+If this content type resolution does not meet your needs, you can provide a custom bean of type <code>S3ObjectContentTypeResolver</code> which will be automatically used in all components responsible for uploading files.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_configuration"><a class="link" href="#_configuration">Configuration</a></h3>
+<div class="paragraph">
+<p>The Spring Boot Starter for S3 provides the following configuration options:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 28.5714%;">
+<col style="width: 42.8571%;">
+<col style="width: 14.2857%;">
+<col style="width: 14.2858%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Name</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Required</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Default value</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.s3.enabled</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the S3 integration.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.s3.endpoint</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures endpoint used by <code>S3Client</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code><a href="http://localhost:4566" class="bare">http://localhost:4566</a></code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.s3.region</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures region used by <code>S3Client</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>eu-west-1</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.s3.accelerate-mode-enabled</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Option to enable using the accelerate endpoint when accessing S3. Accelerate endpoints allow faster transfer of objects by using Amazon CloudFront&#8217;s globally distributed edge locations.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code> (falls back to SDK default)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.s3.checksum-validation-enabled</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Option to disable doing a validation of the checksum of an object stored in S3.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code> (falls back to SDK default)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.s3.chunked-encoding-enabled</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Option to enable using chunked encoding when signing the request payload for <code>PutObjectRequest</code> and <code>UploadPartRequest</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code> (falls back to SDK default)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.s3.path-style-access-enabled</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Option to enable using path style access for accessing S3 objects instead of DNS style access. DNS style access is preferred as it will result in better load balancing when accessing S3.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code> (falls back to SDK default)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.s3.use-arn-region-enabled</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">If an S3 resource ARN is passed in as the target of an S3 operation that has a different region to the one the client was configured with, this flag must be set to 'true' to permit the client to make a cross-region call to the region specified in the ARN otherwise an exception will be thrown.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code> (falls back to SDK default)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_iam_permissions"><a class="link" href="#_iam_permissions">IAM Permissions</a></h3>
+<div class="paragraph">
+<p>Following IAM permissions are required by Spring Cloud AWS:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 66.6666%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Downloading files</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>s3:GetObject</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Searching files</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>s3:ListObjects</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uploading files</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>s3:PutObject</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Sample IAM policy granting access to <code>spring-cloud-aws-demo</code> bucket:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "s3:ListBucket",
+            "Resource": "arn:aws:s3:::spring-cloud-aws-demo"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::spring-cloud-aws-demo/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::spring-cloud-aws-demo/*"
+        }
+    ]
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<link rel="stylesheet" href="js/highlight/styles/github.min.css">
+<script src="js/highlight/highlight.min.js"></script>
+<script>hljs.initHighlighting()</script>
+<script type="text/javascript" src="js/tocbot/tocbot.min.js"></script>
+<script type="text/javascript" src="js/toc.js"></script>
+</body>
+</html>

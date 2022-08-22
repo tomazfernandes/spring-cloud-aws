@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.10">
+<title>Caching</title>
+<link rel="stylesheet" href="css/spring.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<style>
+.hidden {
+	display: none;
+}
+
+.switch {
+	border-width: 1px 1px 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+	display: inline-block;
+}
+
+.switch--item {
+	padding: 10px;
+	background-color: #ffffff;
+	color: #7a2518;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.switch--item:not(:first-child) {
+	border-width: 0 0 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+}
+
+.switch--item.selected {
+	background-color: #7a2519;
+	color: #ffffff;
+}
+
+</style>
+<script type="text/javascript">
+function addBlockSwitches() {
+	for (var primary of document.querySelectorAll('.primary')) {
+		var switchItem = createSwitchItem(primary, createBlockSwitch(primary));
+		switchItem.item.classList.add("selected");
+		var title = primary.querySelector('.title')
+		title.remove();
+	}
+	for (var secondary of document.querySelectorAll('.secondary')) {
+		var primary = findPrimary(secondary);
+		if (primary === null) {
+			console.error("Found secondary block with no primary sibling");
+		}
+		else {
+			var switchItem = createSwitchItem(secondary, primary.querySelector('.switch'));
+			switchItem.content.classList.add("hidden");
+			primary.append(switchItem.content);
+			secondary.remove();
+		}
+	}
+}
+
+function createElementFromHtml(html) {
+	var template = document.createElement('template');
+    template.innerHTML = html;
+    return template.content.firstChild;
+}
+
+function createBlockSwitch(primary) {
+    var blockSwitch = createElementFromHtml('<div class="switch"></div>');
+    primary.prepend(blockSwitch)
+	return blockSwitch;
+}
+
+function findPrimary(secondary) {
+	var candidate = secondary.previousElementSibling;
+	while (candidate != null && !candidate.classList.contains('primary')) {
+		candidate = candidate.previousElementSibling;
+	}
+	return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+	var blockName = block.querySelector('.title').textContent;
+	var content = block.querySelectorAll('.content').item(0);
+	var colist = nextSibling(block, '.colist');
+	if (colist != null) {
+		content.append(colist);
+	}
+	var item = createElementFromHtml('<div class="switch--item">' + blockName + '</div>');
+	item.dataset.blockName = blockName;
+	content.dataset.blockName = blockName;
+	blockSwitch.append(item);
+	return {'item': item, 'content': content};
+}
+
+function nextSibling(element, selector) {
+	var sibling = element.nextElementSibling;
+	while (sibling) {
+		if (sibling.matches(selector)) {
+			return sibling;
+		}
+		sibling = sibling.nextElementSibling;
+	}
+}
+
+function globalSwitch() {
+	document.querySelectorAll(".switch--item").forEach(function(item) {
+		var blockId = blockIdForSwitchItem(item);
+		var handler = function(event) {
+			selectedText = event.target.textContent;
+			window.localStorage.setItem(blockId, selectedText);
+			for (var switchItem of document.querySelectorAll(".switch--item")) {
+				if (blockIdForSwitchItem(switchItem) === blockId && switchItem.textContent === selectedText) {
+					select(switchItem);
+				}
+			}
+		}
+		item.addEventListener("click", handler);
+		if (item.textContent === window.localStorage.getItem(blockId)) {
+			select(item);
+		}
+	});
+}
+
+function select(selected) {
+	for (var child of selected.parentNode.children) {
+		child.classList.remove("selected");
+	}
+	selected.classList.add("selected");
+	for (var child of selected.parentNode.parentNode.children) {
+		if (child.classList.contains("content")) {
+			if (selected.dataset.blockName === child.dataset.blockName) {
+				child.classList.remove("hidden");
+			}
+			else {
+				child.classList.add("hidden");
+			}
+		}
+	}	
+}
+
+function blockIdForSwitchItem(item) {
+	idComponents = []
+	for (var switchItem of item.parentNode.querySelectorAll(".switch--item")) {
+		idComponents.push(switchItem.textContent.toLowerCase());
+	}
+	return idComponents.sort().join("-")
+}
+
+window.onload = function() {
+	addBlockSwitches();
+	globalSwitch();
+};
+
+</script>
+
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_caching">Caching</a>
+<ul class="sectlevel2">
+<li><a href="#_configuring_dependencies_for_redis_caches">Configuring dependencies for Redis caches</a></li>
+<li><a href="#_configuring_caching_with_xml">Configuring caching with XML</a></li>
+<li><a href="#_configuring_caching_using_java_configuration">Configuring caching using Java configuration</a></li>
+<li><a href="#_configuring_caching_in_spring_boot">Configuring caching in Spring Boot</a></li>
+<li><a href="#_using_caching">Using caching</a></li>
+<li><a href="#_memcached_client_implementation">Memcached client implementation</a></li>
+<li><a href="#_using_cloudformation">Using CloudFormation</a></li>
+<li><a href="#_iam_permissions">IAM Permissions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="_caching"><a class="link" href="#_caching">Caching</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Caching in a cloud environment is useful for applications to reduce the latency and to save database round trips.
+Reducing database round trips can significantly reduce the requirements for the database instance. The Spring Framework
+provides, since version 3.1, a unified Cache abstraction to allow declarative caching in applications analogous to the
+declarative transactions.</p>
+</div>
+<div class="paragraph">
+<p>Spring Cloud AWS integrates the <a href="https://aws.amazon.com/elasticache/">Amazon ElastiCache</a> service into the Spring unified
+caching abstraction providing a cache manager based on the memcached and Redis protocols. The caching support for Spring
+Cloud AWS provides its own memcached implementation for ElastiCache and uses
+<a href="https://projects.spring.io/spring-data-redis/">Spring Data Redis</a> for Redis caches.</p>
+</div>
+<div class="sect2">
+<h3 id="_configuring_dependencies_for_redis_caches"><a class="link" href="#_configuring_dependencies_for_redis_caches">Configuring dependencies for Redis caches</a></h3>
+<div class="paragraph">
+<p>Spring Cloud AWS delivers its own implementation of a memcached cache, therefore no other dependencies are needed. For Redis
+Spring Cloud AWS relies on Spring Data Redis to support caching and also to allow multiple Redis drivers to be used. Spring
+Cloud AWS supports all Redis drivers that Spring Data Redis supports (currently Jedis, JRedis, SRP and Lettuce) with Jedis
+being used internally for testing against ElastiCache. A dependency definition for Redis with Jedis is shown in the example</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;dependencies&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.springframework.data&lt;/groupId&gt;
+        &lt;artifactId&gt;spring-data-redis&lt;/artifactId&gt;
+        &lt;version&gt;${spring-data-redis.version}&lt;/version&gt;
+    &lt;/dependency&gt;
+    &lt;dependency&gt;
+    	&lt;groupId&gt;redis.clients&lt;/groupId&gt;
+    	&lt;artifactId&gt;jedis&lt;/artifactId&gt;
+    	&lt;version&gt;2.6.1&lt;/version&gt;
+    &lt;/dependency&gt;
+&lt;/dependencies&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Spring Cloud AWS will automatically detect the Redis driver and will use one of them automatically.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_configuring_caching_with_xml"><a class="link" href="#_configuring_caching_with_xml">Configuring caching with XML</a></h3>
+<div class="paragraph">
+<p>The cache support for Spring Cloud AWS resides in the context module and can therefore be used if the context module
+is already imported in the project. The cache integration provides its own namespace to configure cache clusters that are
+hosted in the Amazon ElastiCache service. The next example contains a configuration for the cache cluster and the Spring
+configuration to enable declarative, annotation-based caching.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;beans xmlns:aws-cache="http://www.springframework.org/schema/cloud/aws/cache"
+	   xmlns:cache="http://www.springframework.org/schema/cache"
+	   xmlns="http://www.springframework.org/schema/beans"
+	   xsi:schemaLocation="http://www.springframework.org/schema/cloud/aws/cache
+	   	http://www.springframework.org/schema/cloud/aws/cache/spring-cloud-aws-cache.xsd
+	   	http://www.springframework.org/schema/cache
+	   	https://www.springframework.org/schema/cache/spring-cache.xsd"&gt;
+
+	&lt;aws-context:context-credentials&gt;
+		...
+        &lt;/aws-context:context-credentials&gt;
+
+	&lt;aws-cache:cache-manager&gt;
+		&lt;aws-cache:cache-cluster name="CacheCluster" /&gt;
+	&lt;/aws-cache:cache-manager&gt;
+
+	&lt;cache:annotation-driven /&gt;
+&lt;/beans&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The configuration above configures a <code>cache-manager</code> with one cache with the name <code>CacheCluster</code> that represents an
+<a href="https://docs.aws.amazon.com/AmazonElastiCache/latest/UserGuide/ManagingCacheClusters.html">ElasticCache cluster</a>.</p>
+</div>
+<div class="sect3">
+<h4 id="_mixing_caches"><a class="link" href="#_mixing_caches">Mixing caches</a></h4>
+<div class="paragraph">
+<p>Applications may have the need for multiple caches that are maintained by one central cache cluster. The Spring Cloud
+AWS caching support allows to define multiple caches inside one cache manager and also to use externally defined caches
+inside the cache manager.</p>
+</div>
+<div class="paragraph">
+<p>The example below demonstrates a configuration example that contains a pre-configured cache with a <code>cache-ref</code> element
+(which might be a local cache) and a <code>cache-cluster</code> configuration for ElastiCache cache clusters.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;beans ...&gt;
+	&lt;aws-cache:cache-manager id="cacheManager"&gt;
+		&lt;aws-cache:cache-ref ref="memcached" /&gt;
+		&lt;aws-cache:cache-cluster name="SimpleCache"/&gt;
+	&lt;/aws-cache:cache-manager&gt;
+&lt;/beans&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_defining_expiration"><a class="link" href="#_defining_expiration">Defining expiration</a></h4>
+<div class="paragraph">
+<p>The Spring cache demarcation does not support expiry time configuration and leaves it up to the cache implementation
+to support an expiry time. The Spring Cloud AWS cache configuration supports the expiry time setting per cache. The
+expiry time will be passed to the memcached service.</p>
+</div>
+<div class="paragraph">
+<p>The <code>cache-cluster</code> element accepts an expiration attribute that defines the expiration time in seconds.
+No configured values implies that there is an infinite expiration time.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;beans&gt;
+	&lt;aws-cache:cache-manager&gt;
+		&lt;aws-cache:cache-cluster expiration="10000" name="CacheCluster" /&gt;
+	&lt;/aws-cache:cache-manager&gt;
+&lt;/beans&gt;</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_configuring_caching_using_java_configuration"><a class="link" href="#_configuring_caching_using_java_configuration">Configuring caching using Java configuration</a></h3>
+<div class="paragraph">
+<p>Spring Cloud AWS also support the cache configuration with Java configuration classes. On any <code>Configuration</code> class,
+the caching can be configured using the <code>io.awspring.cloud.cache.config.annotation.EnableElastiCache</code>
+annotation provided by Spring Cloud AWS. The next example shows a configuration of two cache clusters.</p>
+</div>
+<div class="admonitionblock caution">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-caution" title="Caution"></i>
+</td>
+<td class="content">
+Since 2.3.0 <code>@EnableElastiCache</code> annotation has been deprecated. We suggest using Spring Boot auto-configuration instead.
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@EnableElastiCache({@CacheClusterConfig(name = "firstCache"), @CacheClusterConfig(name = "secondCache")})
+public class ApplicationConfiguration {
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+If you leave the <code>value</code> attribute empty, then all the caches inside your CloudFormation stack (if available)
+will be configured automatically.
+</td>
+</tr>
+</table>
+</div>
+<div class="sect3">
+<h4 id="_configuring_expiry_time_for_caches"><a class="link" href="#_configuring_expiry_time_for_caches">Configuring expiry time for caches</a></h4>
+<div class="paragraph">
+<p>The Java configuration also allows to configure the expiry time for the caches. This can be done for all
+caches using the <code>defaultExpiration</code> attribute as shown in the example below.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@EnableElastiCache(defaultExpiration = 23)
+public class ApplicationConfiguration {
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The expiration can be defined on a cache level using the <code>@CacheClusterConfig</code> annotations expiration attribute as shown below (using seconds as
+the value).</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@EnableElastiCache({@CacheClusterConfig(name = "firstCache", expiration = 23), @CacheClusterConfig(name = "secondCache", expiration = 42)})
+public class ApplicationConfiguration {
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_configuring_caching_in_spring_boot"><a class="link" href="#_configuring_caching_in_spring_boot">Configuring caching in Spring Boot</a></h3>
+<div class="paragraph">
+<p>The caches will automatically be configured in Spring Boot without any explicit configuration property.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_using_caching"><a class="link" href="#_using_caching">Using caching</a></h3>
+<div class="paragraph">
+<p>Based on the configuration of the cache, developers can annotate their methods to use the caching for method return values.
+The next example contains a caching declaration for a service for which the return values should be cached</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Service
+public class ExpensiveService {
+
+    @Cacheable("CacheCluster")
+    public String calculateExpensiveValue(String key) {
+		...
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_memcached_client_implementation"><a class="link" href="#_memcached_client_implementation">Memcached client implementation</a></h3>
+<div class="paragraph">
+<p>There are different memcached client implementations available for Java, the most prominent ones are
+<a href="https://github.com/couchbase/spymemcached">Spymemcached</a> and <a href="https://github.com/killme2008/xmemcached">XMemcached</a>.
+Amazon AWS supports a dynamic configuration and delivers an enhanced memcached client based on Spymemcached to support the
+<a href="https://docs.aws.amazon.com/AmazonElastiCache/latest/UserGuide/AutoDiscovery.html">auto-discovery</a> of new nodes based on
+a central configuration endpoint.</p>
+</div>
+<div class="paragraph">
+<p>Spring Cloud AWS relies on the Amazon ElastiCache Client implementation and therefore has a dependency on that.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_using_cloudformation"><a class="link" href="#_using_cloudformation">Using CloudFormation</a></h3>
+<div class="paragraph">
+<p>Amazon ElastiCache clusters can also be configured within a stack and then be used by applications. Spring Cloud AWS
+also supports the lookup of stack-configured cache clusters by their logical name with the resolution to the physical
+name. The example below shows a cache cluster configuration inside a CloudFormation template.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">"CacheCluster": {
+	"Type": "AWS::ElastiCache::CacheCluster",
+	"Properties": {
+	    "AutoMinorVersionUpgrade": "true",
+	    "Engine": "memcached",
+	    "CacheNodeType": "cache.t2.micro",
+	    "CacheSubnetGroupName" : "sample",
+	    "NumCacheNodes": "1",
+	    "VpcSecurityGroupIds": ["sample1"]
+	}
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The cache cluster can then be used with the name <code>CacheCluster</code> inside the application configuration as shown below:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;beans...&gt;
+    &lt;aws-cache:cache-manager&gt;
+    	&lt;aws-cache:cache-cluster name="CacheCluster" expiration="15"/&gt;
+    &lt;/aws-cache:cache-manager&gt;
+&lt;beans&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With the configuration above the application can be deployed with multiple stacks on different environments
+without any configuration change inside the application.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_iam_permissions"><a class="link" href="#_iam_permissions">IAM Permissions</a></h3>
+<div class="paragraph">
+<p>Following IAM permissions are required by Spring Cloud AWS:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">To configure to ElastiCache you will need:</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>elasticache:DescribeCacheClusters</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Sample IAM policy granting access to ElastiCache:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "elasticache:DescribeCacheClusters",
+            "Resource": "yourArn"
+        }
+    ]
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<link rel="stylesheet" href="js/highlight/styles/github.min.css">
+<script src="js/highlight/highlight.min.js"></script>
+<script>hljs.initHighlighting()</script>
+<script type="text/javascript" src="js/tocbot/tocbot.min.js"></script>
+<script type="text/javascript" src="js/toc.js"></script>
+</body>
+</html>

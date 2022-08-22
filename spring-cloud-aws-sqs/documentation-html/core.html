@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.10">
+<title>Spring Cloud AWS Core</title>
+<link rel="stylesheet" href="css/spring.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<style>
+.hidden {
+	display: none;
+}
+
+.switch {
+	border-width: 1px 1px 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+	display: inline-block;
+}
+
+.switch--item {
+	padding: 10px;
+	background-color: #ffffff;
+	color: #7a2518;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.switch--item:not(:first-child) {
+	border-width: 0 0 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+}
+
+.switch--item.selected {
+	background-color: #7a2519;
+	color: #ffffff;
+}
+
+</style>
+<script type="text/javascript">
+function addBlockSwitches() {
+	for (var primary of document.querySelectorAll('.primary')) {
+		var switchItem = createSwitchItem(primary, createBlockSwitch(primary));
+		switchItem.item.classList.add("selected");
+		var title = primary.querySelector('.title')
+		title.remove();
+	}
+	for (var secondary of document.querySelectorAll('.secondary')) {
+		var primary = findPrimary(secondary);
+		if (primary === null) {
+			console.error("Found secondary block with no primary sibling");
+		}
+		else {
+			var switchItem = createSwitchItem(secondary, primary.querySelector('.switch'));
+			switchItem.content.classList.add("hidden");
+			primary.append(switchItem.content);
+			secondary.remove();
+		}
+	}
+}
+
+function createElementFromHtml(html) {
+	var template = document.createElement('template');
+    template.innerHTML = html;
+    return template.content.firstChild;
+}
+
+function createBlockSwitch(primary) {
+    var blockSwitch = createElementFromHtml('<div class="switch"></div>');
+    primary.prepend(blockSwitch)
+	return blockSwitch;
+}
+
+function findPrimary(secondary) {
+	var candidate = secondary.previousElementSibling;
+	while (candidate != null && !candidate.classList.contains('primary')) {
+		candidate = candidate.previousElementSibling;
+	}
+	return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+	var blockName = block.querySelector('.title').textContent;
+	var content = block.querySelectorAll('.content').item(0);
+	var colist = nextSibling(block, '.colist');
+	if (colist != null) {
+		content.append(colist);
+	}
+	var item = createElementFromHtml('<div class="switch--item">' + blockName + '</div>');
+	item.dataset.blockName = blockName;
+	content.dataset.blockName = blockName;
+	blockSwitch.append(item);
+	return {'item': item, 'content': content};
+}
+
+function nextSibling(element, selector) {
+	var sibling = element.nextElementSibling;
+	while (sibling) {
+		if (sibling.matches(selector)) {
+			return sibling;
+		}
+		sibling = sibling.nextElementSibling;
+	}
+}
+
+function globalSwitch() {
+	document.querySelectorAll(".switch--item").forEach(function(item) {
+		var blockId = blockIdForSwitchItem(item);
+		var handler = function(event) {
+			selectedText = event.target.textContent;
+			window.localStorage.setItem(blockId, selectedText);
+			for (var switchItem of document.querySelectorAll(".switch--item")) {
+				if (blockIdForSwitchItem(switchItem) === blockId && switchItem.textContent === selectedText) {
+					select(switchItem);
+				}
+			}
+		}
+		item.addEventListener("click", handler);
+		if (item.textContent === window.localStorage.getItem(blockId)) {
+			select(item);
+		}
+	});
+}
+
+function select(selected) {
+	for (var child of selected.parentNode.children) {
+		child.classList.remove("selected");
+	}
+	selected.classList.add("selected");
+	for (var child of selected.parentNode.parentNode.children) {
+		if (child.classList.contains("content")) {
+			if (selected.dataset.blockName === child.dataset.blockName) {
+				child.classList.remove("hidden");
+			}
+			else {
+				child.classList.add("hidden");
+			}
+		}
+	}	
+}
+
+function blockIdForSwitchItem(item) {
+	idComponents = []
+	for (var switchItem of item.parentNode.querySelectorAll(".switch--item")) {
+		idComponents.push(switchItem.textContent.toLowerCase());
+	}
+	return idComponents.sort().join("-")
+}
+
+window.onload = function() {
+	addBlockSwitches();
+	globalSwitch();
+};
+
+</script>
+
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#spring-cloud-aws-core">Spring Cloud AWS Core</a>
+<ul class="sectlevel2">
+<li><a href="#_credentials">Credentials</a></li>
+<li><a href="#_region">Region</a></li>
+<li><a href="#_endpoint">Endpoint</a></li>
+<li><a href="#_customizing_aws_clients">Customizing AWS Clients</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="spring-cloud-aws-core"><a class="link" href="#spring-cloud-aws-core">Spring Cloud AWS Core</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Each Spring Cloud AWS module uses <code>AwsCredentialsProvider</code> and <code>AwsRegionProvider</code> to get the AWS region and access credentials.</p>
+</div>
+<div class="paragraph">
+<p>Spring Cloud AWS provides a Spring Boot starter to auto-configure the core components.</p>
+</div>
+<div class="paragraph">
+<p>Maven coordinates, using <a href="getting-started.html#bill-of-materials">Spring Cloud AWS BOM</a>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;dependency&gt;
+    &lt;groupId&gt;io.awspring.cloud&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-cloud-aws-starter&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_credentials"><a class="link" href="#_credentials">Credentials</a></h3>
+<div class="paragraph">
+<p><code>software.amazon.awssdk.auth.credentials.AwsCredentialsProvider</code> is a functional interface that returns the credentials to authenticate and authorize calls to AWS services.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">public interface AwsCredentialsProvider {
+    AwsCredentials resolveCredentials();
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>By default, Spring Cloud AWS starter auto-configures a <code>DefaultCredentialsProvider</code>, which looks for AWS credentials in this order:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Java System Properties - <code>aws.accessKeyId</code> and <code>aws.secretAccessKey</code></p>
+</li>
+<li>
+<p>Environment Variables - <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code></p>
+</li>
+<li>
+<p>Web Identity Token credentials from system properties or environment variables</p>
+</li>
+<li>
+<p>Credential profiles file at the default location (<code>~/.aws/credentials</code>) shared by all AWS SDKs and the AWS CLI</p>
+</li>
+<li>
+<p>Credentials delivered through the Amazon EC2 container service if `AWS_CONTAINER_CREDENTIALS_RELATIVE_URI`" environment variable is set and security manager has permission to access the variable,</p>
+</li>
+<li>
+<p>Instance profile credentials delivered through the Amazon EC2 metadata service</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>If it does not serve your project needs, this behavior can be changed by setting additional properties:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">property</th>
+<th class="tableblock halign-left valign-top">example</th>
+<th class="tableblock halign-left valign-top">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spring.cloud.aws.credentials.access-key</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AKIAIOSFODNN7EXAMPLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The access key to be used with a static provider</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spring.cloud.aws.credentials.secret-key</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The secret key to be used with a static provider</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spring.cloud.aws.credentials.instance-profile</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures an <a href="https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/auth/credentials/InstanceProfileCredentialsProvider.html">InstanceProfileCredentialsProvider</a> with no further configuration</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spring.cloud.aws.credentials.profile.name</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">default</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The name of a configuration profile in the specified configuration file</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spring.cloud.aws.credentials.profile.path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>~/.aws/credentials</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The file path where the profile configuration file is located. Defaults to <code>~/.aws/credentials</code> if value is not provided</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>It is also possible to configure custom <code>AwsCredentialsProvider</code> bean which will prevent Spring Cloud AWS from auto-configuring credentials provider:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+
+@Configuration
+class CustomCredentialsProviderConfiguration {
+
+    @Bean
+    public AwsCredentialsProvider customAwsCredentialsProvider() {
+        return new CustomAWSCredentialsProvider();
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_region"><a class="link" href="#_region">Region</a></h3>
+<div class="paragraph">
+<p><code>software.amazon.awssdk.regions.providers.AwsRegionProvider</code> is a functional interface that returns the region AWS clients issue requests to.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">public interface AwsRegionProvider {
+    Region getRegion();
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>By default, Spring Cloud AWS starter auto-configures a <code>DefaultAwsRegionProviderChain</code>, which looks resolves AWS region in this order:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Check the <code>aws.region</code> system property for the region.</p>
+</li>
+<li>
+<p>Check the <code>AWS_REGION</code> environment variable for the region.</p>
+</li>
+<li>
+<p>Check the <code>{user.home}/.aws/credentials</code> and <code>{user.home}/.aws/config</code> files for the region.</p>
+</li>
+<li>
+<p>If running in EC2, check the EC2 metadata service for the region.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>If it does not serve your project needs, this behavior can be changed by setting additional properties:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">property</th>
+<th class="tableblock halign-left valign-top">example</th>
+<th class="tableblock halign-left valign-top">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spring.cloud.aws.region.static</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eu-west-1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A static value for region used by auto-configured AWS clients</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spring.cloud.aws.region.instance-profile</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures an <a href="https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/regions/providers/InstanceProfileRegionProvider.html">InstanceProfileRegionProvider</a> with no further configuration</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spring.cloud.aws.region.profile.name</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">default</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The name of a configuration profile in the specified configuration file</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spring.cloud.aws.region.profile.path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>~/.aws/credentials</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The file path where the profile configuration file is located. Defaults to <code>~/.aws/credentials</code> if value is not provided</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>It is also possible to configure custom <code>AwsRegionProvider</code> bean which will prevent Spring Cloud AWS from auto-configuring region provider:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import software.amazon.awssdk.regions.providers.AwsRegionProvider;
+
+@Configuration
+class CustomRegionProviderConfiguration {
+
+    @Bean
+    public AwsRegionProvider customRegionProvider() {
+        return new CustomRegionProvider();
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_endpoint"><a class="link" href="#_endpoint">Endpoint</a></h3>
+<div class="paragraph">
+<p>To simplify using services with AWS compatible APIs, or running applications against <a href="https://localstack.cloud/">Localstack</a>, it is possible to configure an endpoint set on all auto-configured AWS clients:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">property</th>
+<th class="tableblock halign-left valign-top">example</th>
+<th class="tableblock halign-left valign-top">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.endpoint</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code><a href="http://localhost:4566" class="bare">http://localhost:4566</a></code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">endpoint url applied to auto-configured AWS clients</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_customizing_aws_clients"><a class="link" href="#_customizing_aws_clients">Customizing AWS Clients</a></h3>
+<div class="paragraph">
+<p>To configure an AWS client with custom HTTP client or <code>ClientOverrideConfiguration</code>, define a bean of type <code>AwsClientConfigurer</code> with a type parameter indicating configured client builder.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">import io.awspring.cloud.autoconfigure.core.AwsClientCustomizer;
+import org.springframework.context.annotation.Bean;
+
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.http.SdkHttpClient;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
+import software.amazon.awssdk.services.sns.SnsClientBuilder;
+
+import java.time.Duration;
+
+@Configuration
+class S3AwsClientConfigurerConfiguration {
+
+    @Bean
+    AwsClientCustomizer&lt;S3ClientBuilder&gt; s3ClientBuilderAwsClientConfigurer() {
+        return new S3AwsClientClientConfigurer();
+    }
+
+    static class S3AwsClientClientConfigurer implements AwsClientCustomizer&lt;S3ClientBuilder&gt; {
+        @Override
+        public ClientOverrideConfiguration overrideConfiguration() {
+            return ClientOverrideConfiguration.builder().apiCallTimeout(Duration.ofMillis(500)).build();
+        }
+
+        @Override
+        public SdkHttpClient httpClient() {
+            return ApacheHttpClient.builder().connectionTimeout(Duration.ofMillis(1000)).build();
+        }
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<link rel="stylesheet" href="js/highlight/styles/github.min.css">
+<script src="js/highlight/highlight.min.js"></script>
+<script>hljs.initHighlighting()</script>
+<script type="text/javascript" src="js/tocbot/tocbot.min.js"></script>
+<script type="text/javascript" src="js/toc.js"></script>
+</body>
+</html>

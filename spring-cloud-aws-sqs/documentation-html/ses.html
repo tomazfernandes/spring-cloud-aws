@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.10">
+<title>SES Integration</title>
+<link rel="stylesheet" href="css/spring.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<style>
+.hidden {
+	display: none;
+}
+
+.switch {
+	border-width: 1px 1px 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+	display: inline-block;
+}
+
+.switch--item {
+	padding: 10px;
+	background-color: #ffffff;
+	color: #7a2518;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.switch--item:not(:first-child) {
+	border-width: 0 0 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+}
+
+.switch--item.selected {
+	background-color: #7a2519;
+	color: #ffffff;
+}
+
+</style>
+<script type="text/javascript">
+function addBlockSwitches() {
+	for (var primary of document.querySelectorAll('.primary')) {
+		var switchItem = createSwitchItem(primary, createBlockSwitch(primary));
+		switchItem.item.classList.add("selected");
+		var title = primary.querySelector('.title')
+		title.remove();
+	}
+	for (var secondary of document.querySelectorAll('.secondary')) {
+		var primary = findPrimary(secondary);
+		if (primary === null) {
+			console.error("Found secondary block with no primary sibling");
+		}
+		else {
+			var switchItem = createSwitchItem(secondary, primary.querySelector('.switch'));
+			switchItem.content.classList.add("hidden");
+			primary.append(switchItem.content);
+			secondary.remove();
+		}
+	}
+}
+
+function createElementFromHtml(html) {
+	var template = document.createElement('template');
+    template.innerHTML = html;
+    return template.content.firstChild;
+}
+
+function createBlockSwitch(primary) {
+    var blockSwitch = createElementFromHtml('<div class="switch"></div>');
+    primary.prepend(blockSwitch)
+	return blockSwitch;
+}
+
+function findPrimary(secondary) {
+	var candidate = secondary.previousElementSibling;
+	while (candidate != null && !candidate.classList.contains('primary')) {
+		candidate = candidate.previousElementSibling;
+	}
+	return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+	var blockName = block.querySelector('.title').textContent;
+	var content = block.querySelectorAll('.content').item(0);
+	var colist = nextSibling(block, '.colist');
+	if (colist != null) {
+		content.append(colist);
+	}
+	var item = createElementFromHtml('<div class="switch--item">' + blockName + '</div>');
+	item.dataset.blockName = blockName;
+	content.dataset.blockName = blockName;
+	blockSwitch.append(item);
+	return {'item': item, 'content': content};
+}
+
+function nextSibling(element, selector) {
+	var sibling = element.nextElementSibling;
+	while (sibling) {
+		if (sibling.matches(selector)) {
+			return sibling;
+		}
+		sibling = sibling.nextElementSibling;
+	}
+}
+
+function globalSwitch() {
+	document.querySelectorAll(".switch--item").forEach(function(item) {
+		var blockId = blockIdForSwitchItem(item);
+		var handler = function(event) {
+			selectedText = event.target.textContent;
+			window.localStorage.setItem(blockId, selectedText);
+			for (var switchItem of document.querySelectorAll(".switch--item")) {
+				if (blockIdForSwitchItem(switchItem) === blockId && switchItem.textContent === selectedText) {
+					select(switchItem);
+				}
+			}
+		}
+		item.addEventListener("click", handler);
+		if (item.textContent === window.localStorage.getItem(blockId)) {
+			select(item);
+		}
+	});
+}
+
+function select(selected) {
+	for (var child of selected.parentNode.children) {
+		child.classList.remove("selected");
+	}
+	selected.classList.add("selected");
+	for (var child of selected.parentNode.parentNode.children) {
+		if (child.classList.contains("content")) {
+			if (selected.dataset.blockName === child.dataset.blockName) {
+				child.classList.remove("hidden");
+			}
+			else {
+				child.classList.add("hidden");
+			}
+		}
+	}	
+}
+
+function blockIdForSwitchItem(item) {
+	idComponents = []
+	for (var switchItem of item.parentNode.querySelectorAll(".switch--item")) {
+		idComponents.push(switchItem.textContent.toLowerCase());
+	}
+	return idComponents.sort().join("-")
+}
+
+window.onload = function() {
+	addBlockSwitches();
+	globalSwitch();
+};
+
+</script>
+
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#spring-cloud-aws-ses">SES Integration</a>
+<ul class="sectlevel2">
+<li><a href="#_sending_simple_mails">Sending simple mails</a></li>
+<li><a href="#_sending_attachments">Sending attachments</a></li>
+<li><a href="#_authenticating_e_mails">Authenticating e-mails</a></li>
+<li><a href="#_configuration">Configuration</a></li>
+<li><a href="#_iam_permissions">IAM Permissions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="spring-cloud-aws-ses"><a class="link" href="#spring-cloud-aws-ses">SES Integration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Spring has a built-in support to send e-mails based on the <a href="https://www.oracle.com/technetwork/java/javamail/index.html">Java Mail API</a>
+to avoid any static method calls while using the Java Mail API and thus supporting the testability of an application.
+Spring Cloud AWS supports the <a href="https://aws.amazon.com/de/ses/">Amazon SES</a> as an implementation of the Spring Mail abstraction.</p>
+</div>
+<div class="paragraph">
+<p>As a result Spring Cloud AWS users can decide to use the Spring Cloud AWS implementation of the Amazon SES service or
+use the standard Java Mail API based implementation that sends e-mails via SMTP to Amazon SES.</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>It is preferred to use the Spring Cloud AWS implementation instead of SMTP mainly for performance reasons.
+Spring Cloud AWS uses one API call to send a mail message, while the SMTP protocol makes multiple requests (EHLO, MAIL FROM, RCPT TO, DATA, QUIT)
+until it sends an e-mail.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>A Spring Boot starter is provided to auto-configure SES integration beans.</p>
+</div>
+<div class="paragraph">
+<p>Maven coordinates, using <a href="index.html#bill-of-materials">Spring Cloud AWS BOM</a>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;dependency&gt;
+    &lt;groupId&gt;io.awspring.cloud&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-cloud-aws-starter-ses&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_sending_simple_mails"><a class="link" href="#_sending_simple_mails">Sending simple mails</a></h3>
+<div class="paragraph">
+<p>Application developers can inject the <code>MailSender</code> into their application code and directly send simple text based e-mail
+messages. The sample below demonstrates the creation of a simple mail message.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">import org.springframework.mail.MailSender;
+import org.springframework.mail.SimpleMailMessage;
+
+class MailSendingService {
+
+	private final MailSender mailSender;
+
+	public MailSendingService(MailSender mailSender) {
+		this.mailSender = mailSender;
+	}
+
+	public void sendMailMessage() {
+		SimpleMailMessage simpleMailMessage = new SimpleMailMessage();
+		simpleMailMessage.setFrom("foo@bar.com");
+		simpleMailMessage.setTo("bar@baz.com");
+		simpleMailMessage.setSubject("test subject");
+		simpleMailMessage.setText("test content");
+		this.mailSender.send(simpleMailMessage);
+	}
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_sending_attachments"><a class="link" href="#_sending_attachments">Sending attachments</a></h3>
+<div class="paragraph">
+<p>Sending attachments with e-mail requires MIME messages to be created and sent. In order to create MIME messages,
+the Java Mail dependency is required and has to be included in the classpath. Spring Cloud AWS will detect the
+dependency and create a <code>org.springframework.mail.javamail.JavaMailSender</code> implementation that allows to create and
+build MIME messages and send them. A dependency configuration for the Java Mail API is the only change in the configuration
+which is shown below.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;dependency&gt;
+	&lt;groupId&gt;javax.mail&lt;/groupId&gt;
+	&lt;artifactId&gt;mailapi&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Even though there is a dependency to the Java Mail API there is still the Amazon SES API used underneath to send mail
+messages. There is no <a href="https://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-email-smtp.html">SMTP setup</a> required
+on the Amazon AWS side.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Sending the mail requires the application developer to use the <code>JavaMailSender</code> to send an e-mail as shown in the example
+below.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.mail.javamail.MimeMessagePreparator;
+
+class MailSendingService {
+
+	private final JavaMailSender mailSender;
+
+	public MailSendingService(JavaMailSender mailSender) {
+		this.mailSender = mailSender;
+	}
+
+	public void sendMailMessage() {
+		this.mailSender.send(new MimeMessagePreparator() {
+
+   			@Override
+   			public void prepare(MimeMessage mimeMessage) throws Exception {
+   				MimeMessageHelper helper =
+   					new MimeMessageHelper(mimeMessage, true, "UTF-8");
+   				helper.addTo("foo@bar.com");
+   				helper.setFrom("bar@baz.com");
+   				helper.addAttachment("test.txt", ...);
+   				helper.setSubject("test subject with attachment");
+   				helper.setText("mime body", false);
+   			}
+   		});
+	}
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_authenticating_e_mails"><a class="link" href="#_authenticating_e_mails">Authenticating e-mails</a></h3>
+<div class="paragraph">
+<p>To avoid any spam attacks on the Amazon SES mail service, applications without production access must
+<a href="https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-email-addresses.html">verify</a> each
+e-mail receiver otherwise the mail sender will throw a <code>software.amazon.awssdk.services.ses.model.MessageRejectedException</code>.</p>
+</div>
+<div class="paragraph">
+<p><a href="https://docs.aws.amazon.com/ses/latest/DeveloperGuide/request-production-access.html">Production access</a> can be requested
+and will disable the need for mail address verification.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_configuration"><a class="link" href="#_configuration">Configuration</a></h3>
+<div class="paragraph">
+<p>The Spring Boot Starter for SES provides the following configuration options:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 37.5%;">
+<col style="width: 37.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Name</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Required</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Default value</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.ses.enabled</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the SES integration.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.ses.endpoint</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures endpoint used by <code>SesClient</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.ses.region</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures region used by <code>SesClient</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Amazon SES is not available in all <a href="https://docs.aws.amazon.com/ses/latest/DeveloperGuide/regions.html">regions</a> of the
+Amazon Web Services cloud. Therefore, an application hosted and operated in a region that does not support the mail
+service will produce an error while using the mail service. Therefore, the region must be overridden for the mail
+sender configuration. The example below shows a typical combination of a region (<code>EU-CENTRAL-1</code>) that does not provide
+an SES service where the client is overridden to use a valid region (<code>EU-WEST-1</code>).</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="properties" class="language-properties hljs">spring.cloud.aws.ses.region=eu-west-1</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_iam_permissions"><a class="link" href="#_iam_permissions">IAM Permissions</a></h3>
+<div class="paragraph">
+<p>Following IAM permissions are required by Spring Cloud AWS:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Send e-mail without attachment</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ses:SendEmail</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Send e-mail with attachment</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ses:SendRawEmail</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Sample IAM policy granting access to SES:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ses:SendEmail",
+                "ses:SendRawEmail"
+            ],
+            "Resource": "arn:aws:ses:your:arn"
+        }
+    ]
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<link rel="stylesheet" href="js/highlight/styles/github.min.css">
+<script src="js/highlight/highlight.min.js"></script>
+<script>hljs.initHighlighting()</script>
+<script type="text/javascript" src="js/tocbot/tocbot.min.js"></script>
+<script type="text/javascript" src="js/toc.js"></script>
+</body>
+</html>

@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.10">
+<title>Data Access with JDBC</title>
+<link rel="stylesheet" href="css/spring.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<style>
+.hidden {
+	display: none;
+}
+
+.switch {
+	border-width: 1px 1px 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+	display: inline-block;
+}
+
+.switch--item {
+	padding: 10px;
+	background-color: #ffffff;
+	color: #7a2518;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.switch--item:not(:first-child) {
+	border-width: 0 0 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+}
+
+.switch--item.selected {
+	background-color: #7a2519;
+	color: #ffffff;
+}
+
+</style>
+<script type="text/javascript">
+function addBlockSwitches() {
+	for (var primary of document.querySelectorAll('.primary')) {
+		var switchItem = createSwitchItem(primary, createBlockSwitch(primary));
+		switchItem.item.classList.add("selected");
+		var title = primary.querySelector('.title')
+		title.remove();
+	}
+	for (var secondary of document.querySelectorAll('.secondary')) {
+		var primary = findPrimary(secondary);
+		if (primary === null) {
+			console.error("Found secondary block with no primary sibling");
+		}
+		else {
+			var switchItem = createSwitchItem(secondary, primary.querySelector('.switch'));
+			switchItem.content.classList.add("hidden");
+			primary.append(switchItem.content);
+			secondary.remove();
+		}
+	}
+}
+
+function createElementFromHtml(html) {
+	var template = document.createElement('template');
+    template.innerHTML = html;
+    return template.content.firstChild;
+}
+
+function createBlockSwitch(primary) {
+    var blockSwitch = createElementFromHtml('<div class="switch"></div>');
+    primary.prepend(blockSwitch)
+	return blockSwitch;
+}
+
+function findPrimary(secondary) {
+	var candidate = secondary.previousElementSibling;
+	while (candidate != null && !candidate.classList.contains('primary')) {
+		candidate = candidate.previousElementSibling;
+	}
+	return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+	var blockName = block.querySelector('.title').textContent;
+	var content = block.querySelectorAll('.content').item(0);
+	var colist = nextSibling(block, '.colist');
+	if (colist != null) {
+		content.append(colist);
+	}
+	var item = createElementFromHtml('<div class="switch--item">' + blockName + '</div>');
+	item.dataset.blockName = blockName;
+	content.dataset.blockName = blockName;
+	blockSwitch.append(item);
+	return {'item': item, 'content': content};
+}
+
+function nextSibling(element, selector) {
+	var sibling = element.nextElementSibling;
+	while (sibling) {
+		if (sibling.matches(selector)) {
+			return sibling;
+		}
+		sibling = sibling.nextElementSibling;
+	}
+}
+
+function globalSwitch() {
+	document.querySelectorAll(".switch--item").forEach(function(item) {
+		var blockId = blockIdForSwitchItem(item);
+		var handler = function(event) {
+			selectedText = event.target.textContent;
+			window.localStorage.setItem(blockId, selectedText);
+			for (var switchItem of document.querySelectorAll(".switch--item")) {
+				if (blockIdForSwitchItem(switchItem) === blockId && switchItem.textContent === selectedText) {
+					select(switchItem);
+				}
+			}
+		}
+		item.addEventListener("click", handler);
+		if (item.textContent === window.localStorage.getItem(blockId)) {
+			select(item);
+		}
+	});
+}
+
+function select(selected) {
+	for (var child of selected.parentNode.children) {
+		child.classList.remove("selected");
+	}
+	selected.classList.add("selected");
+	for (var child of selected.parentNode.parentNode.children) {
+		if (child.classList.contains("content")) {
+			if (selected.dataset.blockName === child.dataset.blockName) {
+				child.classList.remove("hidden");
+			}
+			else {
+				child.classList.add("hidden");
+			}
+		}
+	}	
+}
+
+function blockIdForSwitchItem(item) {
+	idComponents = []
+	for (var switchItem of item.parentNode.querySelectorAll(".switch--item")) {
+		idComponents.push(switchItem.textContent.toLowerCase());
+	}
+	return idComponents.sort().join("-")
+}
+
+window.onload = function() {
+	addBlockSwitches();
+	globalSwitch();
+};
+
+</script>
+
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_data_access_with_jdbc">Data Access with JDBC</a>
+<ul class="sectlevel2">
+<li><a href="#_configuring_data_source">Configuring data source</a></li>
+<li><a href="#_configuring_data_source_with_java_config">Configuring data source with Java config</a></li>
+<li><a href="#_configuring_data_source_in_spring_boot">Configuring data source in Spring Boot</a></li>
+<li><a href="#_read_replica_configuration">Read-replica configuration</a></li>
+<li><a href="#_failover_support">Failover support</a></li>
+<li><a href="#_cloudformation_support">CloudFormation support</a></li>
+<li><a href="#_database_tags">Database tags</a></li>
+<li><a href="#_iam_permissions">IAM Permissions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="_data_access_with_jdbc"><a class="link" href="#_data_access_with_jdbc">Data Access with JDBC</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Spring has a broad support of data access technologies built on top of JDBC like <code>JdbcTemplate</code> and dedicated ORM (JPA,
+Hibernate support). Spring Cloud AWS enables application developers to re-use their JDBC technology of choice and access the
+<a href="https://aws.amazon.com/rds/">Amazon Relational Database Service</a> with a declarative configuration. The main support provided by Spring
+Cloud AWS for JDBC data access are:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Automatic data source configuration and setup based on the Amazon RDS database instance.</p>
+</li>
+<li>
+<p>Automatic read-replica detection and configuration for Amazon RDS database instances.</p>
+</li>
+<li>
+<p>Retry-support to handle exception during Multi-AZ failover inside the data center.</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Amazon Aurora database clusters (both serverless and provisioned) are not supported by Spring Cloud AWS. Please follow <a href="https://github.com/awspring/spring-cloud-aws/issues/50">this issue</a> for more information.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_configuring_data_source"><a class="link" href="#_configuring_data_source">Configuring data source</a></h3>
+<div class="paragraph">
+<p>Before using and configuring the database support, the application has to include the respective module dependency
+into its Maven configuration. Spring Cloud AWS JDBC support comes as a separate module to allow the modularized use of the
+modules.</p>
+</div>
+<div class="sect3">
+<h4 id="_maven_dependency_configuration"><a class="link" href="#_maven_dependency_configuration">Maven dependency configuration</a></h4>
+<div class="paragraph">
+<p>The Spring Cloud AWS JDBC module comes as a standalone module and can be imported with the following dependency declaration.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;dependency&gt;
+	&lt;groupId&gt;io.awspring.cloud&lt;/groupId&gt;
+	&lt;artifactId&gt;spring-cloud-aws-jdbc&lt;/artifactId&gt;
+	&lt;version&gt;{spring-cloud-version}&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_basic_data_source_configuration"><a class="link" href="#_basic_data_source_configuration">Basic data source configuration</a></h4>
+<div class="paragraph">
+<p>The data source configuration requires the security and region configuration as a minimum allowing Spring Cloud AWS to retrieve
+the database metadata information with the Amazon RDS service. Spring Cloud AWS provides an additional <code>jdbc</code> specific namespace
+to configure the data source with the minimum attributes as shown in the example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	   xmlns:jdbc="http://www.springframework.org/schema/cloud/aws/jdbc"
+	   xmlns="http://www.springframework.org/schema/beans"
+	   xsi:schemaLocation="http://www.springframework.org/schema/cloud/aws/jdbc
+	   http://www.springframework.org/schema/cloud/aws/jdbc/spring-cloud-aws-jdbc.xsd"&gt;
+
+ &lt;aws-context:context-credentials&gt;
+  ...
+ &lt;/aws-context:context-credentials&gt;
+
+ &lt;aws-context:context-region region="..."/&gt;
+
+&lt;jdbc:data-source
+		 db-instance-identifier="myRdsDatabase"
+		 password="${rdsPassword}"&gt;
+&lt;/jdbc:data-source&gt;
+&lt;/beans&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The minimum configuration parameters are a unique <code>id</code> for the data source, a valid <code>db-instance-identifier</code> attribute
+that points to a valid Amazon RDS database instance. The master user password for the master user. If there is another
+user to be used (which is recommended) then the <code>username</code> attribute can be set.</p>
+</div>
+<div class="paragraph">
+<p>With this configuration Spring Cloud AWS fetches all the necessary metadata and creates a
+<a href="https://tomcat.apache.org/tomcat-7.0-doc/jdbc-pool.html">Tomcat JDBC pool</a> with the default properties. The data source
+can be later injected into any Spring Bean as shown below:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Service
+public class SimpleDatabaseService implements DatabaseService {
+
+ private final JdbcTemplate jdbcTemplate;
+
+ @Autowired
+ public SimpleDatabaseService(DataSource dataSource) {
+ 	this.jdbcTemplate = new JdbcTemplate(dataSource);
+ }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>It is possible to qualify the data source injection point with an <code>@Qualifier</code> annotation to allow multiple data source
+configurations inside one application context and still use auto-wiring.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_data_source_pool_configuration"><a class="link" href="#_data_source_pool_configuration">Data source pool configuration</a></h4>
+<div class="paragraph">
+<p>Spring Cloud AWS creates a new Tomcat JDBC pool with the default properties. Often these default properties do not meet the
+requirements of the application with regards to pool size and other settings. The data source configuration supports the configuration
+of all valid pool properties with a nested XML element. The following example demonstrates the re-configuration of the data source
+with custom pool properties.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;beans ..&gt;
+
+ &lt;aws-context:context-credentials&gt;
+  ...
+ &lt;/aws-context:context-credentials&gt;
+
+ &lt;aws-context:context-region region="..."/&gt;
+
+ &lt;jdbc:data-source
+		 db-instance-identifier="myRdsDatabase"
+		 password="${rdsPassword}"&gt;
+		 &lt;jdbc:pool-attributes initialSize="1" " maxActive="200" minIdle="10"
+         		testOnBorrow="true" validationQuery="SELECT 1" /&gt;
+ &lt;/jdbc:data-source&gt;
+
+&lt;/beans&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A full list of all configuration attributes with their value is available <a href="https://tomcat.apache.org/tomcat-7.0-doc/jdbc-pool.html">here</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_configuring_data_source_with_java_config"><a class="link" href="#_configuring_data_source_with_java_config">Configuring data source with Java config</a></h3>
+<div class="paragraph">
+<p>Spring Cloud AWS also supports the configuration of the data source within an <code>@Configuration</code> class. The
+<code>io.awspring.cloud.jdbc.config.annotation.EnableRdsInstance</code> annotation can be used to configure one data
+source. Multiple ones can be used to configure more then one data source. Each annotation will generate exactly one
+data source bean.</p>
+</div>
+<div class="admonitionblock caution">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-caution" title="Caution"></i>
+</td>
+<td class="content">
+Since 2.3.0 <code>@EnableRdsInstance</code> annotation has been deprecated. We suggest using configuration Spring Boot auto-configuration instead.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The class below shows a data source configuration inside a configuration class</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Configuration
+@EnableRdsInstance(dbInstanceIdentifier = "test",password = "secret", readReplicaSupport = true)
+public class ApplicationConfiguration {
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+The configuration attributes are the same in the XML element. The required attributes are also the same
+for the XML configuration (the <code>dbInstanceIdentifier</code> and <code>password</code> attribute)
+</td>
+</tr>
+</table>
+</div>
+<div class="sect3">
+<h4 id="_java_based_data_source_pool_configuration"><a class="link" href="#_java_based_data_source_pool_configuration">Java based data source pool configuration</a></h4>
+<div class="paragraph">
+<p>It is also possible to override the pool configuration with custom values. Spring Cloud AWS provides a
+<code>io.awspring.cloud.jdbc.config.annotation.RdsInstanceConfigurer</code> that creates a
+<code>io.awspring.cloud.jdbc.datasource.DataSourceFactory</code> which might contain custom pool attributes. The next
+examples shows the implementation of one configurer that overrides the validation query and the initial size.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Configuration
+@EnableRdsInstance(dbInstanceIdentifier = "test",password = "secret")
+public class ApplicationConfiguration {
+
+    @Bean
+    public RdsInstanceConfigurer instanceConfigurer() {
+        return new RdsInstanceConfigurer() {
+            @Override
+        	public DataSourceFactory getDataSourceFactory() {
+        		TomcatJdbcDataSourceFactory dataSourceFactory = new TomcatJdbcDataSourceFactory();
+        		dataSourceFactory.setInitialSize(10);
+        		dataSourceFactory.setValidationQuery("SELECT 1 FROM DUAL");
+        		return dataSourceFactory;
+        	}
+        };
+    }
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+This class returns an anonymous class of type <code>io.awspring.cloud.jdbc.config.annotation.RdsInstanceConfigurer</code>,
+which might also of course be a standalone class.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_configuring_data_source_in_spring_boot"><a class="link" href="#_configuring_data_source_in_spring_boot">Configuring data source in Spring Boot</a></h3>
+<div class="paragraph">
+<p>The data sources can also be configured using the Spring Boot configuration files. Because of the dynamic number of
+data sources inside one application, the Spring Boot properties must be configured for each data source.</p>
+</div>
+<div class="paragraph">
+<p>A data source configuration consists of the general property name <code>cloud.aws.rds.instances</code> with <code>[index]</code> dereferences for the multiple data sources
+following the sub properties for each particular data source. The table below
+outlines all properties for a data source.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">property</th>
+<th class="tableblock halign-left valign-top">example</th>
+<th class="tableblock halign-left valign-top">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">cloud.aws.rds.instances[0].dbInstanceIdentifier</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The identifier for the db instance</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">cloud.aws.rds.instances[0].password</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">verySecret</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The password for the db instance test</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">cloud.aws.rds.instances[0].username</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">admin</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The username for the db instance test (optional)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">cloud.aws.rds.instances[0].readReplicaSupport</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">If read-replicas should be used for the data source (see below)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">cloud.aws.rds.instances[0].databaseName</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">fooDb</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Custom database name if the default one from rds should not be used</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_read_replica_configuration"><a class="link" href="#_read_replica_configuration">Read-replica configuration</a></h3>
+<div class="paragraph">
+<p>Amazon RDS allows to use MySQL, MariaDB, Oracle, PostgreSQL and
+Microsoft SQL Server <a href="https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html">read-replica</a>
+instances to increase the overall throughput of the database by offloading read data access to one or more read-replica
+slaves while maintaining the data in one master database.</p>
+</div>
+<div class="paragraph">
+<p>Spring Cloud AWS supports the use of read-replicas in combination with Spring read-only transactions. If the read-replica
+support is enabled, any read-only transaction will be routed to a read-replica instance while using the master database
+for write operations.</p>
+</div>
+<div class="admonitionblock caution">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-caution" title="Caution"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Using read-replica instances does not guarantee strict <a href="https://en.wikipedia.org/wiki/ACID">ACID</a> semantics for the database
+access and should be used with care. This is due to the fact that the read-replica might be behind and a write might not
+be immediately visible to the read transaction. Therefore it is recommended to use read-replica instances only for transactions that read
+data which is not changed very often and where outdated data can be handled by the application.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The read-replica support can be enabled with the <code>read-replica</code> attribute in the datasource configuration.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;beans ..&gt;
+ &lt;jdbc:data-source db-instance-identifier="RdsSingleMicroInstance"
+	password="${rdsPassword}" read-replica-support="true"&gt;
+
+ &lt;/jdbc:data-source&gt;
+&lt;/beans&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Spring Cloud AWS will search for any read-replica that is created for the master database and route the read-only transactions
+to one of the read-replicas that are available. A business service that uses read-replicas can be implemented like shown
+in the example.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Service
+public class SimpleDatabaseService {
+
+	private final JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	public SimpleDatabaseService(DataSource dataSource) {
+		this.jdbcTemplate = new JdbcTemplate(dataSource);
+	}
+
+	@Transactional(readOnly = true)
+	public Person loadAll() {
+		// read data on the read replica
+	}
+
+	@Transactional
+	public void updatePerson(Person person) {
+		// write data into database
+	}
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_failover_support"><a class="link" href="#_failover_support">Failover support</a></h3>
+<div class="paragraph">
+<p>Amazon RDS supports a <a href="https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html">Multi-AZ</a> fail-over if
+one availability zone is not available due to an outage or failure of the primary instance. The replication is synchronous
+(compared to the read-replicas) and provides continuous service. Spring Cloud AWS supports a Multi-AZ failover with a retry
+mechanism to recover transactions that fail during a Multi-AZ failover.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>In most cases it is better to provide direct feedback to a user instead of trying potentially long and frequent retries within
+a user interaction. Therefore the fail-over support is primarily useful for batch application or applications where the
+responsiveness of a service call is not critical.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The Spring Cloud AWS JDBC module provides a retry interceptor that can be used to decorate services with an interceptor.
+The interceptor will retry the database operation again if there is a temporary error due to a Multi-AZ failover. A Multi-AZ
+failover typically lasts only a couple of seconds, therefore a retry of the business transaction will likely succeed.</p>
+</div>
+<div class="paragraph">
+<p>The interceptor can be configured as a regular bean and then be used by a pointcut expression to decorate the respective
+method calls with the interceptor. The interceptor must have a configured database to retrieve the current status (if it
+is a temporary fail-over or a permanent error) from the Amazon RDS service.</p>
+</div>
+<div class="paragraph">
+<p>The configuration for the interceptor can be done with a custom element from the Spring Cloud AWS jdbc namespace and
+will be configured like shown:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;beans ..&gt;
+	&lt;jdbc:retry-interceptor id="myInterceptor"
+		db-instance-identifier="myRdsDatabase"
+		max-number-of-retries="10" /&gt;
+&lt;/beans&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The interceptor itself can be used with any Spring advice configuration to wrap the respective service. A pointcut
+for the services shown in the chapter before can be defined as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;beans ..&gt;
+ &lt;aop:config&gt;
+  &lt;aop:advisor advice-ref="myInterceptor" pointcut="bean(simpleDatabaseService)" order="1" /&gt;
+ &lt;/aop:config&gt;
+&lt;/beans&gt;</code></pre>
+</div>
+</div>
+<div class="admonitionblock caution">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-caution" title="Caution"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>It is important that the interceptor is called outside the transaction interceptor to ensure that the whole transaction
+will be re-executed. Configuring the interceptor inside the transaction interceptor will lead to a permanent error because
+the broken connection will never be refreshed.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The configuration above in combination with a transaction configuration will produce the following proxy configuration
+for the service.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/jdbc-retry-interceptor.png" alt="Retry interceptor">
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_cloudformation_support"><a class="link" href="#_cloudformation_support">CloudFormation support</a></h3>
+<div class="paragraph">
+<p>Spring Cloud AWS supports database instances that are configured with CloudFormation. Spring Cloud AWS can use the logical
+name inside the database configuration and lookup the concrete database with the generated physical resource name. A database
+configuration can be easily configured in CloudFormation with a template definition that might look like the following
+example.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">"myRdsDatabase": {
+ 	"Type": "AWS::RDS::DBInstance",
+ 	"Properties": {
+ 	 "AllocatedStorage": "5",
+ 	 "DBInstanceClass": "db.t1.micro",
+ 	 "DBName": "test",
+ 	 "Engine": "mysql",
+ 	 "MasterUsername": "admin",
+ 	 "MasterUserPassword": {"Ref":"RdsPassword"},
+ 	 ...
+ 	}
+ },
+ "readReplicaDatabase": {
+ 	"Type": "AWS::RDS::DBInstance",
+ 	"Properties": {
+ 	 "AllocatedStorage" : "5",
+ 	 "SourceDBInstanceIdentifier": {
+ 	 	"Ref": "myRdsDatabase"
+ 	 },
+ 	 "DBInstanceClass": "db.t1.micro"
+ 	}
+ }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The database can then be configured using the name set in the template. Also, the read-replica can
+be enabled to use the configured read-replica database in the application. A configuration to use the configured
+database is outlined below:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;beans&gt;
+ &lt;aws-context:stack-configuration/&gt;
+
+ &lt;jdbc:data-source db-instance-identifier="myRdsDatabase" password="${rdsPassword}" read-replica-support="true"/&gt;
+&lt;/beans&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_database_tags"><a class="link" href="#_database_tags">Database tags</a></h3>
+<div class="paragraph">
+<p>Amazon RDS instances can also be configured using RDS database specific tags, allowing users to configure database specific
+configuration metadata with the database. Database instance specific tags can be configured using the <code>user-tags-map</code> attribute
+on the <code>data-source</code> element. Configure the tags support like in the example below:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;jdbc:data-source
+	db-instance-identifier="myRdsDatabase"
+	password="${rdsPassword}" user-tags-map="dbTags" /&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>That allows the developer to access the properties in the code using expressions like shown in the class below:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">public class SampleService {
+
+	@Value("#{dbTags['aws:cloudformation:aws:cloudformation:stack-name']}")
+	private String stackName;
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The database tag <code>aws:cloudformation:aws:cloudformation:stack-name</code> is a default tag that is created if the
+database is configured using CloudFormation.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_iam_permissions"><a class="link" href="#_iam_permissions">IAM Permissions</a></h3>
+<div class="paragraph">
+<p>Following IAM permissions are required by Spring Cloud AWS:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Describe database instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rds:DescribeDBInstances</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Sample IAM policy granting access to RDS:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "rds:DescribeDBInstances",
+            "Resource": "db-arn"
+        },
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<link rel="stylesheet" href="js/highlight/styles/github.min.css">
+<script src="js/highlight/highlight.min.js"></script>
+<script>hljs.initHighlighting()</script>
+<script type="text/javascript" src="js/tocbot/tocbot.min.js"></script>
+<script type="text/javascript" src="js/toc.js"></script>
+</body>
+</html>

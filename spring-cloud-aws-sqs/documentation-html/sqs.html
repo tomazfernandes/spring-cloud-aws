@@ -1,0 +1,2095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.10">
+<title>SQS Support</title>
+<link rel="stylesheet" href="css/spring.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<style>
+.hidden {
+	display: none;
+}
+
+.switch {
+	border-width: 1px 1px 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+	display: inline-block;
+}
+
+.switch--item {
+	padding: 10px;
+	background-color: #ffffff;
+	color: #7a2518;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.switch--item:not(:first-child) {
+	border-width: 0 0 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+}
+
+.switch--item.selected {
+	background-color: #7a2519;
+	color: #ffffff;
+}
+
+</style>
+<script type="text/javascript">
+function addBlockSwitches() {
+	for (var primary of document.querySelectorAll('.primary')) {
+		var switchItem = createSwitchItem(primary, createBlockSwitch(primary));
+		switchItem.item.classList.add("selected");
+		var title = primary.querySelector('.title')
+		title.remove();
+	}
+	for (var secondary of document.querySelectorAll('.secondary')) {
+		var primary = findPrimary(secondary);
+		if (primary === null) {
+			console.error("Found secondary block with no primary sibling");
+		}
+		else {
+			var switchItem = createSwitchItem(secondary, primary.querySelector('.switch'));
+			switchItem.content.classList.add("hidden");
+			primary.append(switchItem.content);
+			secondary.remove();
+		}
+	}
+}
+
+function createElementFromHtml(html) {
+	var template = document.createElement('template');
+    template.innerHTML = html;
+    return template.content.firstChild;
+}
+
+function createBlockSwitch(primary) {
+    var blockSwitch = createElementFromHtml('<div class="switch"></div>');
+    primary.prepend(blockSwitch)
+	return blockSwitch;
+}
+
+function findPrimary(secondary) {
+	var candidate = secondary.previousElementSibling;
+	while (candidate != null && !candidate.classList.contains('primary')) {
+		candidate = candidate.previousElementSibling;
+	}
+	return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+	var blockName = block.querySelector('.title').textContent;
+	var content = block.querySelectorAll('.content').item(0);
+	var colist = nextSibling(block, '.colist');
+	if (colist != null) {
+		content.append(colist);
+	}
+	var item = createElementFromHtml('<div class="switch--item">' + blockName + '</div>');
+	item.dataset.blockName = blockName;
+	content.dataset.blockName = blockName;
+	blockSwitch.append(item);
+	return {'item': item, 'content': content};
+}
+
+function nextSibling(element, selector) {
+	var sibling = element.nextElementSibling;
+	while (sibling) {
+		if (sibling.matches(selector)) {
+			return sibling;
+		}
+		sibling = sibling.nextElementSibling;
+	}
+}
+
+function globalSwitch() {
+	document.querySelectorAll(".switch--item").forEach(function(item) {
+		var blockId = blockIdForSwitchItem(item);
+		var handler = function(event) {
+			selectedText = event.target.textContent;
+			window.localStorage.setItem(blockId, selectedText);
+			for (var switchItem of document.querySelectorAll(".switch--item")) {
+				if (blockIdForSwitchItem(switchItem) === blockId && switchItem.textContent === selectedText) {
+					select(switchItem);
+				}
+			}
+		}
+		item.addEventListener("click", handler);
+		if (item.textContent === window.localStorage.getItem(blockId)) {
+			select(item);
+		}
+	});
+}
+
+function select(selected) {
+	for (var child of selected.parentNode.children) {
+		child.classList.remove("selected");
+	}
+	selected.classList.add("selected");
+	for (var child of selected.parentNode.parentNode.children) {
+		if (child.classList.contains("content")) {
+			if (selected.dataset.blockName === child.dataset.blockName) {
+				child.classList.remove("hidden");
+			}
+			else {
+				child.classList.add("hidden");
+			}
+		}
+	}	
+}
+
+function blockIdForSwitchItem(item) {
+	idComponents = []
+	for (var switchItem of item.parentNode.querySelectorAll(".switch--item")) {
+		idComponents.push(switchItem.textContent.toLowerCase());
+	}
+	return idComponents.sort().join("-")
+}
+
+window.onload = function() {
+	addBlockSwitches();
+	globalSwitch();
+};
+
+</script>
+
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_sqs_support">SQS Support</a>
+<ul class="sectlevel2">
+<li><a href="#_sample_listener_application">Sample Listener Application</a></li>
+<li><a href="#_sending_messages">Sending Messages</a></li>
+<li><a href="#_receiving_messages">Receiving Messages</a></li>
+<li><a href="#_message_interceptor">Message Interceptor</a></li>
+<li><a href="#_error_handling">Error Handling</a></li>
+<li><a href="#_message_conversion_and_payload_deserialization">Message Conversion and Payload Deserialization</a></li>
+<li><a href="#_acknowledging_messages">Acknowledging Messages</a></li>
+<li><a href="#_global_configuration_for_sqslisteners">Global Configuration for @SqsListeners</a></li>
+<li><a href="#_message_processing_throughput">Message Processing Throughput</a></li>
+<li><a href="#_blocking_and_non_blocking_async_components">Blocking and Non-Blocking (Async) Components</a></li>
+<li><a href="#_iam_permissions">IAM Permissions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="_sqs_support"><a class="link" href="#_sqs_support">SQS Support</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Amazon <code>Simple Queue Service</code> is a messaging service that provides point-to-point communication with queues.
+Spring Cloud AWS SQS integration offers support to receive and send messages using common <code>Spring</code> abstractions such as <code>@SqsListener</code>, <code>MessageListenerContainer</code> and <code>MessageListenerContainerFactory</code>.</p>
+</div>
+<div class="paragraph">
+<p>Compared to JMS or other message services Amazon SQS has limitations that should be taken into consideration.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Amazon SQS allows only <code>String</code> payloads, so any <code>Object</code> must be transformed into a String representation.
+Spring Cloud AWS has dedicated support to transfer Java objects with Amazon SQS messages by converting them to JSON.</p>
+</li>
+<li>
+<p>Amazon SQS has a maximum message size of 256kb per message, so bigger messages will fail to be sent.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>A Spring Boot starter is provided to auto-configure SQS integration beans.
+Maven coordinates, using <a href="index.html#bill-of-materials">Spring Cloud AWS BOM</a>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="xml" class="language-xml hljs">&lt;dependency&gt;
+    &lt;groupId&gt;io.awspring.cloud&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-cloud-aws-starter-sqs&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_sample_listener_application"><a class="link" href="#_sample_listener_application">Sample Listener Application</a></h3>
+<div class="paragraph">
+<p>Below is a minimal sample application leveraging auto-configuration from <code>Spring Boot</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@SpringBootApplication
+public class SqsApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(SqsApplication.class, args);
+    }
+
+    @SqsListener("myQueue")
+    public void listen(String message) {
+        System.out.println(message);
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Without Spring Boot, it&#8217;s necessary to import the <code>SqsBootstrapConfiguration</code> class in a <code>@Configuration</code>, as well as declare a <code>SqsMessageListenerContainerFactory</code> bean.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">public class Listener {
+
+    @SqsListener("myQueue")
+    public void listen(String message) {
+        System.out.println(message);
+    }
+
+}
+
+@Import(SqsBootstrapConfiguration.class)
+@Configuration
+public class SQSConfiguration {
+
+    @Bean
+    public SqsMessageListenerContainerFactory&lt;Object&gt; defaultSqsListenerContainerFactory() {
+        return SqsMessageListenerContainerFactory
+            .builder()
+            .sqsAsyncClient(sqsAsyncClient())
+            .build();
+    }
+
+    @Bean
+    public SqsAsyncClient sqsAsyncClient() {
+        return SqsAsyncClient.builder().build();
+    }
+
+    @Bean
+    public Listener listener() {
+        return new Listener();
+    }
+
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_sending_messages"><a class="link" href="#_sending_messages">Sending Messages</a></h3>
+<div class="paragraph">
+<p>Spring Cloud AWS SQS autoconfigures a <code>SqsAsyncClient</code> bean that can be used for sending messages.
+Note that the payload has to be converted to a JSON String to be sent.
+A <code>SqsTemplate</code> should be included in a future milestone simplifying this process.</p>
+</div>
+<div class="paragraph">
+<p>Currently, a lightweight producer abstraction can be created to facilitate sending messages, such as:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Component
+public class SqsSampleProducer {
+
+    private final SqsAsyncClient sqsAsyncClient;
+
+    private final ObjectMapper objectMapper;
+
+    public SqsSampleProducer(SqsAsyncClient sqsAsyncClient, ObjectMapper objectMapper) {
+        this.sqsAsyncClient = sqsAsyncClient;
+        this.objectMapper = objectMapper;
+    }
+
+    public CompletableFuture&lt;Void&gt; sendToUrl(String queueUrl, Object payload) {
+        return this.sqsAsyncClient.sendMessage(request -&gt; request.messageBody(getMessageBodyAsJson(payload)).queueUrl(queueUrl))
+                .thenRun(() -&gt; {});
+    }
+
+    public CompletableFuture&lt;Void&gt; send(String queueName, Object payload) {
+        return this.sqsAsyncClient.getQueueUrl(request -&gt; request.queueName(queueName))
+                .thenApply(GetQueueUrlResponse::queueUrl)
+                .thenCompose(queueUrl -&gt; sendToUrl(queueUrl, payload));
+    }
+
+    private String getMessageBodyAsJson(Object payload) {
+        try {
+            return objectMapper.writeValueAsString(payload);
+        }
+        catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Error converting payload: " + payload, e);
+        }
+    }
+
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Modifications can be made to enable adding other attributes such as <code>MessageGroupId</code>, <code>MessageAttributes</code> and <code>MessageDeduplicationId</code>.</p>
+</div>
+<div class="paragraph">
+<p>It can then be autowired and used such as:</p>
+</div>
+<div class="paragraph">
+<p><code>sampleProducer.send(queueName, new MyPojo("My value", "My Other Value")).join();</code></p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+The <code>join()</code> method blocks the thread and throws any error from the operation. If a <code>CompletableFuture</code> chain is being used, simply return the value instead.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_receiving_messages"><a class="link" href="#_receiving_messages">Receiving Messages</a></h3>
+<div class="paragraph">
+<p>The framework offers the following options to receive messages from a queue.</p>
+</div>
+<div class="sect3">
+<h4 id="_message_listeners"><a class="link" href="#_message_listeners">Message Listeners</a></h4>
+<div class="paragraph">
+<p>To receive messages in a manually created container, a <code>MessageListener</code> or <code>AsyncMessageListener</code> must be provided.
+Both interfaces come with <code>single message</code> and a <code>batch</code> methods.
+These are functional interfaces and a lambda or method reference can be provided for the single message methods.</p>
+</div>
+<div class="paragraph">
+<p>Single message / batch modes and message payload conversion can be configured via <code>ContainerOptions</code>.
+See <a href="#_message_conversion_and_payload_deserialization">Message Conversion and Payload Deserialization</a> for more information.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@FunctionalInterface
+public interface MessageListener&lt;T&gt; {
+
+	void onMessage(Message&lt;T&gt; message);
+
+	default void onMessage(Collection&lt;Message&lt;T&gt;&gt; messages) {
+		throw new UnsupportedOperationException("Batch not implemented by this MessageListener");
+	}
+
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@FunctionalInterface
+public interface AsyncMessageListener&lt;T&gt; {
+
+	CompletableFuture&lt;Void&gt; onMessage(Message&lt;T&gt; message);
+
+	default CompletableFuture&lt;Void&gt; onMessage(Collection&lt;Message&lt;T&gt;&gt; messages) {
+		return CompletableFutures
+				.failedFuture(new UnsupportedOperationException("Batch not implemented by this AsyncMessageListener"));
+	}
+
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_sqsmessagelistenercontainer"><a class="link" href="#_sqsmessagelistenercontainer">SqsMessageListenerContainer</a></h4>
+<div class="paragraph">
+<p>The <code>MessageListenerContainer</code> manages the entire messages` lifecycle, from polling, to processing, to acknowledging.</p>
+</div>
+<div class="paragraph">
+<p>It can be instantiated directly, using a <code>SqsMessageListenerContainerFactory</code>, or using <code>@SqsListener</code> annotations.
+If declared as a <code>@Bean</code>, the <code>Spring</code> context will manage its lifecycle, starting the container on application startup and stopping it on application shutdown.
+See <a href="#_container_lifecycle">Container Lifecycle</a> for more information.</p>
+</div>
+<div class="paragraph">
+<p>It implements the <code>MessageListenerContainer</code> interface:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">public interface MessageListenerContainer&lt;T&gt; extends SmartLifecycle {
+
+	String getId();
+
+	void setId(String id);
+
+	void setMessageListener(MessageListener&lt;T&gt; messageListener);
+
+	void setAsyncMessageListener(AsyncMessageListener&lt;T&gt; asyncMessageListener);
+
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The generic parameter <code>&lt;T&gt;</code> stands for the <code>payload type</code> of messages to be consumed by this container.
+This allows ensuring at compile-time that all components used with the container are for the same type.
+If more than one payload type is to be used by the same container or factory, simply type it as <code>Object</code>.
+This type is not considered for payload conversion.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>A container can be instantiated in a familiar Spring way in a <code>@Configuration</code> annotated class.
+For example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Bean
+MessageListenerContainer&lt;Object&gt; listenerContainer(SqsAsyncClient sqsAsyncClient) {
+    SqsMessageListenerContainer&lt;Object&gt; container = new SqsMessageListenerContainer&lt;&gt;(sqsAsyncClient);
+    container.setMessageListener(System.out::println);
+    container.setQueueNames("myTestQueue");
+    return container;
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This framework also provides a convenient <code>Builder</code> that allows a different approach, such as:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Bean
+MessageListenerContainer&lt;Object&gt; listenerContainer(SqsAsyncClient sqsAsyncClient) {
+    return SqsMessageListenerContainer
+            .builder()
+            .sqsAsyncClient(sqsAsyncClient)
+            .messageListener(System.out::println)
+            .queueNames("myTestQueue")
+            .build();
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The container&#8217;s lifecycle can also be managed manually:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">void myMethod(SqsAsyncClient sqsAsyncClient) {
+    SqsMessageListenerContainer&lt;Object&gt; container = SqsMessageListenerContainer
+            .builder()
+            .sqsAsyncClient(sqsAsyncClient)
+            .messageListener(System.out::println)
+            .queueNames("myTestQueue")
+            .build();
+    container.start();
+    container.stop();
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_sqsmessagelistenercontainerfactory"><a class="link" href="#_sqsmessagelistenercontainerfactory">SqsMessageListenerContainerFactory</a></h4>
+<div class="paragraph">
+<p>A <code>MessageListenerContainerFactory</code> can be used to create <code>MessageListenerContainer</code> instances, both directly or through <code>@SqsListener</code> annotations.</p>
+</div>
+<div class="paragraph">
+<p>It can be created in a familiar <code>Spring</code> way, such as:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Bean
+SqsMessageListenerContainerFactory&lt;Object&gt; defaultSqsListenerContainerFactory(SqsAsyncClient sqsAsyncClient) {
+    SqsMessageListenerContainerFactory&lt;Object&gt; factory = new SqsMessageListenerContainerFactory&lt;&gt;();
+    factory.setSqsAsyncClient(sqsAsyncClient);
+    return factory;
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Or through the <code>Builder</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Bean
+SqsMessageListenerContainerFactory&lt;Object&gt; defaultSqsListenerContainerFactory(SqsAsyncClient sqsAsyncClient) {
+    return SqsMessageListenerContainerFactory
+            .builder()
+            .sqsAsyncClient(sqsAsyncClient)
+            .build();
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+Using this method for setting the <code>SqsAsyncClient</code> instance in the factory, all containers created by this factory will share the same <code>SqsAsyncClient</code> instance.
+For high-throughput applications, a <code>Supplier&lt;SqsAsyncClient&gt;</code> can be provided instead through the factory&#8217;s <code>setSqsAsyncClientSupplier</code> or the builder&#8217;s <code>sqsAsyncSupplier</code> methods.
+In this case each container will receive a <code>SqsAsyncClient</code> instance.
+Alternatively, a single <code>SqsAsyncClient</code> instance can be configured for higher throughput. See the AWS documentation for more information on tradeoffs of each approach.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The factory can also be used to create a container directly, such as:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Bean
+MessageListenerContainer&lt;Object&gt; myListenerContainer(SqsAsyncClient sqsAsyncClient) {
+    return SqsMessageListenerContainerFactory
+            .builder()
+            .sqsAsyncClient(sqsAsyncClient)
+            .messageListener(System.out::println)
+            .build()
+            .createContainer("myQueue");
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_sqslistener_annotation"><a class="link" href="#_sqslistener_annotation">@SqsListener Annotation</a></h4>
+<div class="paragraph">
+<p>The simplest way to consume <code>SQS</code> messages is by annotating a method in a <code>@Component</code> class with the <code>@SqsListener</code> annotation.
+The framework will then create the <code>MessageListenerContainer</code> and set a <code>MessagingMessageListenerAdapter</code> to invoke the method when a message is received.</p>
+</div>
+<div class="paragraph">
+<p>When using <code>Spring Boot</code> with <code>auto-configuration</code>, no configuration is necessary.</p>
+</div>
+<div class="paragraph">
+<p>Most attributes on the annotation can be resolved from SpEL <code>(#{&#8230;&#8203;})</code> or property placeholders <code>(${&#8230;&#8203;})</code>.</p>
+</div>
+<div class="sect4">
+<h5 id="_queue_names"><a class="link" href="#_queue_names">Queue Names</a></h5>
+<div class="paragraph">
+<p>One or more queues can be specified in the annotation through the <code>queueNames</code> or <code>value</code> properties - there&#8217;s no distinction between the two properties.</p>
+</div>
+<div class="paragraph">
+<p>Instead of queue names, queue urls can also be provided.
+Using urls instead of queue names can result in slightly faster startup times since it prevents the framework from looking up the queue url when the containers start.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@SqsListener({"${my.queue.url}", "myOtherQueue"})
+public void listenTwoQueues(String message) {
+    System.out.println(message);
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Any number of <code>@SqsListener</code> annotations can be used in a bean class, and each annotated method will be handled by a separate <code>MessageListenerContainer</code>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Queues declared in the same annotation will share the container, though each will have separate throughput and acknowledgement controls.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_specifying_a_messagelistenercontainerfactory"><a class="link" href="#_specifying_a_messagelistenercontainerfactory">Specifying a MessageListenerContainerFactory</a></h5>
+<div class="paragraph">
+<p>A <code>MessageListenerContainerFactory</code> can be specified through the <code>factory</code> property.
+Such factory will then be used to create the container for the annotated method.</p>
+</div>
+<div class="paragraph">
+<p>If not specified, a factory with the <code>defaultSqsListenerContainerFactory</code> name will be looked up.
+For changing this default name, see <a href="#_global_configuration_for_sqslisteners">Global Configuration for @SqsListeners</a>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@SqsListener(queueNames = "myQueue", factory = "myFactory")
+public void listen(String message) {
+    System.out.println(message);
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When using a <code>Spring Boot</code> application with <code>auto-configuration</code>, a default factory is provided if there are no other factory beans declared in the context.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_other_annotation_properties"><a class="link" href="#_other_annotation_properties">Other Annotation Properties</a></h5>
+<div class="paragraph">
+<p>The following properties can be specified in the <code>@SqsListener</code> annotation.
+Such properties override the equivalent <code>ContainerOptions</code> for the resulting <code>MessageListenerContainer</code>.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>id</code> - Specify the resulting container&#8217;s id.
+This can be used for fetching the container from the <code>MessageListenerContainerRegistry</code>, and is used by the container and its components for general logging and thread naming.</p>
+</li>
+<li>
+<p><code>maxInflightMessagesPerQueue</code> - Set the maximum number of messages that can be <code>inflight</code> at any given moment.
+See <a href="#_message_processing_throughput">Message Processing Throughput</a> for more information.</p>
+</li>
+<li>
+<p><code>pollTimeoutSeconds</code> - Set the maximum time to wait before a poll returns from SQS.
+Note that if there are messages available the call may return earlier than this setting.</p>
+</li>
+<li>
+<p><code>messageVisibilitySeconds</code> - Set the minimum visibility for the messages retrieved in a poll.
+Note that for <code>FIFO</code> single message listener methods, this visibility is applied to the whole batch before each message is sent to the listener.
+See <a href="#_fifo_support">FIFO Support</a> for more information.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_listener_method_arguments"><a class="link" href="#_listener_method_arguments">Listener Method Arguments</a></h5>
+<div class="paragraph">
+<p>A number of possible argument types are allowed in the listener method&#8217;s signature.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>MyPojo</code> - POJO types are automatically deserialized from JSON.</p>
+</li>
+<li>
+<p><code>Message&lt;MyPojo&gt;</code> - Provides a <code>Message&lt;MyPojo&gt;</code> instance with the deserialized payload and <code>MessageHeaders</code>.</p>
+</li>
+<li>
+<p><code>List&lt;MyPojo&gt;</code> - Enables batch mode and receives the batch that was polled from SQS.</p>
+</li>
+<li>
+<p><code>List&lt;Message&lt;MyPojo&gt;&gt;</code> - Enables batch mode and receives the batch that was polled from SQS along with headers.</p>
+</li>
+<li>
+<p><code>@Header(String headerName)</code> - provides the specified header.</p>
+</li>
+<li>
+<p><code>@Headers</code> - provides the <code>MessageHeaders</code> or a <code>Map&lt;String, Object&gt;</code></p>
+</li>
+<li>
+<p><code>Acknowledgement</code> - provides the <code>.acknowledge()</code> method that can be used to manually acknowledge the message.
+AcknowledgementMode must be set to <code>MANUAL</code> (see <a href="#_acknowledging_messages">Acknowledging Messages</a>)</p>
+</li>
+<li>
+<p><code>AsyncAcknowledgement</code> - provides the <code>.acknowledgeAsync()</code> method that can be used to manually acknowledge the message.
+AcknowledgementMode must be set to <code>MANUAL</code> (see <a href="#_acknowledging_messages">Acknowledging Messages</a>)</p>
+</li>
+<li>
+<p><code>Visibility</code> - provides the <code>changeTo()</code> method that enables changing the message&#8217;s visibility to the provided value.</p>
+</li>
+<li>
+<p><code>QueueAttributes</code> - provides queue attributes for the queue that received the message.
+See <a href="#_retrieving_attributes_from_sqs">Retrieving Attributes from SQS</a> for how to specify the queue attributes that will be fetched from <code>SQS</code></p>
+</li>
+<li>
+<p><code>software.amazon.awssdk.services.sqs.model.Message</code> - provides the original <code>Message</code> from <code>SQS</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Here&#8217;s a sample with many arguments:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@SqsListener("${my-queue-name}")
+public void listen(Message&lt;MyPojo&gt; message, MyPojo pojo, MessageHeaders headers, Acknowledgement ack, Visibility visibility, QueueAttributes queueAttributes, AsyncAcknowledgement asyncAck, software.amazon.awssdk.services.sqs.model.Message originalMessage) {
+    Assert.notNull(message);
+    Assert.notNull(pojo);
+    Assert.notNull(headers);
+    Assert.notNull(ack);
+    Assert.notNull(asyncAck);
+    Assert.notNull(visibility);
+    Assert.notNull(queueAttributes);
+    Assert.notNull(originalMessage);
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+Currently, batch listeners only support <code>List&lt;MyPojo&gt;</code> and <code>List&lt;Message&lt;MyPojo&gt;&gt;</code> method arguments.
+Other arguments can be found as headers in the <code>Message&lt;MyPojo&gt;</code> instances and can be extracted through the <code>getHeader</code> method.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_batch_processing"><a class="link" href="#_batch_processing">Batch Processing</a></h4>
+<div class="paragraph">
+<p>All message processing interfaces have both <code>single message</code> and <code>batch</code> methods.
+This means the same set of components can be used to process both single and batch methods, and can share logic where applicable.</p>
+</div>
+<div class="paragraph">
+<p>When batch mode is enabled, the framework will serve the entire result of a poll to the listener.</p>
+</div>
+<div class="paragraph">
+<p>To enable batch processing using <code>@SqsListener</code>, declare a <code>List&lt;MyPojo&gt;</code> or <code>List&lt;Message&lt;MyPojo&gt;&gt;</code> method argument in the listener method.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+Currently, when declaring batch mode this way, no other arguments can be added to the method signature.
+If any metadata is required, the <code>List&lt;Message&lt;MyPojo&gt;&gt;</code> variant should be used, then the headers can be checked to retrieve such information.
+The <code>SqsHeaders.SQS_ACKNOWLEDGMENT_CALLBACK_HEADER</code> will contain the <code>AcknowldgementCallback</code> you can use to manually acknowledge the messages in <code>AcknowledgementMode.MANUAL</code>.
+If acknowledgement batching is being used, acknowledgements will be batched instead of executing immediately.
+See <a href="#_acknowledging_messages">Acknowledging Messages</a> for more information on <code>Acknowledging messages</code>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>To configure a batch processing at factory or container level, set <code>MessageDeliveryStrategy.BATCH</code> in the <code>ContainerOptions</code>, in the factory or container.
+This will affect manually created containers.
+Containers created from <code>@SqsListener</code> annotations will override this setting with whether they contain a <code>List&lt;Pojoj&gt;</code> or <code>List&lt;Message&lt;Pojo&gt;&gt;</code> argument.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The same factory can be used to create both <code>single message</code> and <code>batch</code> containers for <code>@SqsListener</code> methods.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+In case the same factory is shared by both delivery methods, any supplied <code>ErrorHandler</code>, <code>MessageInterceptor</code> or <code>MessageListener</code> should implement the proper methods.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+If batch mode is enabled, make sure all components being used have the necessary <code>batch</code> methods implemented, otherwise an error may occur.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_container_options"><a class="link" href="#_container_options">Container Options</a></h4>
+<div class="paragraph">
+<p>Each <code>MessageListenerContainer</code> can have a different set of options.
+<code>MessageListenerContainerFactory</code> instances have a <code>ContainerOptions.Builder</code> instance property that is used as a template for the containers it creates.</p>
+</div>
+<div class="paragraph">
+<p>Both factory and container offer a <code>configure</code> method that can be used to change the options:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Bean
+SqsMessageListenerContainerFactory&lt;Object&gt; defaultSqsListenerContainerFactory(SqsAsyncClient sqsAsyncClient) {
+    return SqsMessageListenerContainerFactory
+            .builder()
+            .configure(options -&gt; options
+                    .messagesPerPoll(5)
+                    .pollTimeout(Duration.ofSeconds(10)))
+            .sqsAsyncClient(sqsAsyncClient)
+            .build();
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Bean
+MessageListenerContainer&lt;Object&gt; listenerContainer(SqsAsyncClient sqsAsyncClient) {
+    return SqsMessageListenerContainer
+            .builder()
+            .configure(options -&gt; options
+                    .messagesPerPoll(5)
+                    .pollTimeout(Duration.ofSeconds(10)))
+            .sqsAsyncClient(sqsAsyncClient)
+            .messageListener(System.out::println)
+            .queueNames("myTestQueue")
+            .build();
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>ContainerOptions</code> instance is immutable and can be retrieved via the <code>container.getContainerOptions()</code> method.
+If more complex configurations are necessary, the <code>toBuilder</code> and <code>fromBuilder</code> methods provide ways to create a new copy of the options, and then set it back to the factory or container:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">void myMethod(MessageListenerContainer&lt;Object&gt; container) {
+    ContainerOptions.Builder modifiedOptions = container.getContainerOptions()
+            .toBuilder()
+            .pollTimeout(Duration.ofSeconds(5))
+            .shutdownTimeout(Duration.ofSeconds(20));
+    container.configure(options -&gt; options.fromBuilder(modifiedOptions));
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A copy of the options can also be created with <code>containerOptions.createCopy()</code> or <code>containerOptionsBuilder.createCopy()</code>.</p>
+</div>
+<div class="sect4">
+<h5 id="_using_auto_configuration"><a class="link" href="#_using_auto_configuration">Using Auto-Configuration</a></h5>
+<div class="paragraph">
+<p>The Spring Boot Starter for SQS provides the following auto-configuration properties:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 28.5714%;">
+<col style="width: 42.8571%;">
+<col style="width: 14.2857%;">
+<col style="width: 14.2858%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Name</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Required</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Default value</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.sqs.enabled</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the SQS integration.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.sqs.endpoint</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures endpoint used by <code>SqsAsyncClient</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code><a href="http://localhost:4566" class="bare">http://localhost:4566</a></code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spring.cloud.aws.sqs.region</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures region used by <code>SqsAsyncClient</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>eu-west-1</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#_maxinflightmessagesperqueue"><code>spring.cloud.aws.sqs.listener.max-inflight-messages-per-queue</code></a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum number of inflight messages per queue.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#_maxmessagesperpoll"><code>spring.cloud.aws.sqs.listener.max-messages-per-poll</code></a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum number of messages to be received per poll.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#_polltimeout"><code>spring.cloud.aws.sqs.listener.poll-timeout</code></a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum amount of time to wait for messages in a poll.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10 seconds</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="_containeroptions_descriptions"><a class="link" href="#_containeroptions_descriptions">ContainerOptions Descriptions</a></h5>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 27.6595%;">
+<col style="width: 19.1489%;">
+<col style="width: 19.1489%;">
+<col style="width: 34.0427%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property</th>
+<th class="tableblock halign-left valign-top">Range</th>
+<th class="tableblock halign-left valign-top">Default</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#_maxinflightmessagesperqueue">maxInflightMessagesPerQueue</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 - <code>Integer.MAX_VALUE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The maximum number of messages from each queue that can be processed simultaneously in this container.
+This number will be used for defining the thread pool size for the container following (maxInflightMessagesPerQueue * number of queues).
+For batching acknowledgements a message is considered as no longer inflight when it&#8217;s handed to the acknowledgement queue.
+See <a href="#_acknowledging_messages">Acknowledging Messages</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#_maxmessagesperpoll">maxMessagesPerPoll</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 - 10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The maximum number of messages that will be received by a poll to a SQS queue in this container.
+See AWS documentation for more information.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#_polltimeout">pollTimeout</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 - 10 seconds</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10 seconds</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The maximum duration for a poll to a SQS queue before returning empty.
+Longer polls decrease the chance of empty polls when messages are available.
+See AWS documentation for more information.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#_permitacquiretimeout">permitAcquireTimeout</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 - 10 seconds</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10 seconds</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The maximum time the framework will wait for permits to be available for a queue before attempting the next poll.
+After that period, the framework will try to perform a partial acquire with the available permits, resulting in a poll for less than <code>maxMessagesPerPoll</code> messages, unless otherwise configured.
+See <a href="#_message_processing_throughput">Message Processing Throughput</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shutdownTimeout</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0 - undefined</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10 seconds</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The amount of time the container will wait for a queue to complete its operations before attempting to forcefully shutdown.
+See <a href="#_container_lifecycle">Container Lifecycle</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>backPressureMode</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AUTO</code>, <code>ALWAYS_POLL_MAX_MESSAGES</code>, <code>FIXED_HIGH_THROUGHPUT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AUTO</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures the backpressure strategy to be used by the container.
+See <a href="#_configuring_backpressuremode">Configuring BackPressureMode</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>messageDeliveryStrategy</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SINGLE_MESSAGE</code>, <code>BATCH</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SINGLE_MESSAGE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures whether this container will use <code>single message</code> or <code>batch</code> listeners.
+This value is overriden by <code>@SqsListener</code> depending on whether the listener method contains a <code>List</code> argument.
+See <a href="#_batch_processing">Batch Processing</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>queueAttributeNames</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Collection&lt;QueueAttributeName&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Empty list</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures the <code>QueueAttributes</code> that will be retrieved from SQS when a container starts.
+See <a href="#_retrieving_attributes_from_sqs">Retrieving Attributes from SQS</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>messageAttributeNames</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Collection&lt;String&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ALL</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures the <code>MessageAttributes</code> that will be retrieved from SQS for each message.
+See <a href="#_retrieving_attributes_from_sqs">Retrieving Attributes from SQS</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>messageSystemAttributeNames</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Collection&lt;String&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ALL</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures the <code>MessageSystemAttribute</code> that will be retrieved from SQS for each message.
+See <a href="#_retrieving_attributes_from_sqs">Retrieving Attributes from SQS</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>messageConverter</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MessagingMessageConverter</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SqsMessagingMessageConverter</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures the <code>MessagingMessageConverter</code> that will be used to convert SQS messages into Spring Messaging Messages.
+See <a href="#_message_conversion_and_payload_deserialization">Message Conversion and Payload Deserialization</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>acknowledgementMode</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ON_SUCCESS</code>, <code>ALWAYS</code>, <code>MANUAL</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ON_SUCCESS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures the processing outcomes that will trigger automatic acknowledging of messages.
+See <a href="#_acknowledging_messages">Acknowledging Messages</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>acknowledgementInterval</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0 - undefined</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1 second</code> for <code>Standard SQS</code>, <code>Duration.ZERO</code> for <code>FIFO SQS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures the interval between acknowledges for batching.
+Set to <code>Duration.ZERO</code> along with <code>acknowledgementThreshold</code> to zero to enable <code>immediate acknowledgement</code>
+See <a href="#_acknowledging_messages">Acknowledging Messages</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>acknowledgementThreshold</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0 - undefined</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>10</code> for <code>Standard SQS</code>, <code>0</code> for <code>FIFO SQS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures the minimal amount of messages in the acknowledgement queue to trigger acknowledgement of a batch.
+Set to zero along with <code>acknowledgementInterval</code> to <code>Duration.ZERO</code> to enable <code>immediate acknowledgement</code>.
+See <a href="#_acknowledging_messages">Acknowledging Messages</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>acknowledgementOrdering</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PARALLEL</code>, <code>ORDERED</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PARALLEL</code> for <code>Standard SQS</code> and <code>FIFO</code> queues with immediate acknowledgement, <code>ORDERED</code> for <code>FIFO</code> queues with acknowledgement batching enabled.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures the order acknowledgements should be made.
+Fifo queues can be acknowledged in parallel for immediate acknowledgement since the next message for a message group will only start being processed after the previous one has been acknowledged.
+See <a href="#_acknowledging_messages">Acknowledging Messages</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>containerComponentsTaskExecutor</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TaskExecutor</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Provides a <code>TaskExecutor</code> instance to be used by the <code>MessageListenerContainer</code> internal components.
+See <a href="#_providing_a_taskexecutor">Providing a TaskExecutor</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>messageVisibility</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Duration</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Specify the message visibility duration for messages polled in this container.
+For <code>FIFO</code> queues, visibility is extended for all messages in a message group before each message is processed.
+See <a href="#_fifo_support">FIFO Support</a>.
+Otherwise, visibility is specified once when polling SQS.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>queueNotFoundStrategy</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>FAIL</code>, <code>CREATE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CREATE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures the behavior when a queue is not found at container startup.
+See <a href="#_container_lifecycle">Container Lifecycle</a>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_retrieving_attributes_from_sqs"><a class="link" href="#_retrieving_attributes_from_sqs">Retrieving Attributes from SQS</a></h4>
+<div class="paragraph">
+<p><code>QueueAttributes</code>, <code>MessageAttributes</code> and <code>MessageSystemAttributes</code> can be retrieved from SQS.
+These can be configured using the <code>ContainerOptions</code> <code>queueAttributeNames</code>, <code>messageAttributeNames</code> and <code>messageSystemAttributeNames</code> methods.</p>
+</div>
+<div class="paragraph">
+<p><code>QueueAttributes</code> for a queue are retrieved when containers start, and can be looked up by adding the <code>QueueAttributes</code> method parameter in a <code>@SqsListener</code> method, or by getting the <code>SqsHeaders.SQS_QUEUE_ATTRIBUTES_HEADER</code> header.</p>
+</div>
+<div class="paragraph">
+<p><code>MessageAttributes</code> and <code>MessageSystemAttributes</code> are retrieved with each message, and are mapped to message headers.
+Those can be retrieved with <code>@Header</code> parameters, or directly in the <code>Message</code>.
+The message headers are prefixed with <code>SqsHeaders.SQS_MA_HEADER_PREFIX</code> ("Sqs_MA_") for message attributes and
+<code>SqsHeaders.SQS_MSA_HEADER_PREFIX</code> ("Sqs_MSA_") for message system attributes.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+By default, no <code>QueueAttributes</code> and <code>ALL</code> <code>MessageAttributes</code> and <code>MessageSystemAttributes</code> are retrieved.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_container_lifecycle"><a class="link" href="#_container_lifecycle">Container Lifecycle</a></h4>
+<div class="paragraph">
+<p>The <code>MessageListenerContainer</code> interface extends <code>SmartLifecycle</code>, which provides methods to control the container&#8217;s lifecycle.</p>
+</div>
+<div class="paragraph">
+<p>Containers created from <code>@SqsListener</code> annotations are registered in a <code>MessageListenerContainerRegistry</code> bean that is registered by the framework.
+The containers themselves are not Spring-managed beans, and the registry is responsible for managing these containers` lifecycle in application startup and shutdown.</p>
+</div>
+<div class="paragraph">
+<p>At startup, the containers will make requests to <code>SQS</code> to retrieve the queues` urls for the provided queue names, and for retrieving <code>QueueAttributes</code> if so configured.
+Providing queue urls instead of names and not requesting queue attributes can result in slightly better startup times since there&#8217;s no need for such requests.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+If retrieving the queue url fails due to the queue not existing, the framework can be configured to either create the queue or fail.
+If a URL is provided instead of a queue name the framework will not make this request at startup, and thus if the queue does not exist it will fail at runtime.
+This configuration is available in <code>ContainerOptions</code> <code>queueNotFoundStrategy.</code>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>At shutdown, by default containers will wait for all polling, processing and acknowledging operations to finish, up to <code>ContainerOptions.getShutdownTimeout()</code>.
+After this period, operations will be canceled and the container will attempt to forcefully shutdown.</p>
+</div>
+<div class="sect4">
+<h5 id="_containers_as_spring_beans"><a class="link" href="#_containers_as_spring_beans">Containers as Spring Beans</a></h5>
+<div class="paragraph">
+<p>Manually created containers can be registered as beans, e.g. by declaring a <code>@Bean</code> in a <code>@Configuration</code> annotated class.
+In these cases the containers lifecycle will be managed by the <code>Spring</code> context at application startup and shutdown.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Bean
+MessageListenerContainer&lt;Object&gt; listenerContainer(SqsAsyncClient sqsAsyncClient) {
+    return SqsMessageListenerContainer
+            .builder()
+            .sqsAsyncClient(sqsAsyncClient)
+            .messageListener(System.out::println)
+            .queueNames("myTestQueue")
+            .build();
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_retrieving_containers_from_the_registry"><a class="link" href="#_retrieving_containers_from_the_registry">Retrieving Containers from the Registry</a></h5>
+<div class="paragraph">
+<p>Containers can be retrieved by fetching the <code>MessageListenerContainer</code> bean from the container and using the <code>getListenerContainers</code> and <code>getContainerById</code> methods.
+Then lifecycle methods can be used to start and stop instances.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Autowired
+MessageListenerContainerRegistry registry;
+
+public void myLifecycleMethod() {
+    MessageListenerContainer container = registry.getContainerById("myId");
+    container.stop();
+    container.start();
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_lifecycle_execution"><a class="link" href="#_lifecycle_execution">Lifecycle Execution</a></h5>
+<div class="paragraph">
+<p>By default, all lifecycle actions performed by the <code>MessageListenerContainerRegistry</code> and internally by the <code>MessageListenerContainer</code> instances are executed in parallel.</p>
+</div>
+<div class="paragraph">
+<p>This behavior can be disabled by setting <code>LifecycleHandler.get().setParallelLifecycle(false)</code>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Spring-managed <code>MessageListenerContainer</code> beans' lifecycle actions are always performed sequentially.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_fifo_support"><a class="link" href="#_fifo_support">FIFO Support</a></h4>
+<div class="paragraph">
+<p><code>FIFO</code> SQS queues are fully supported for receiving messages - queues with names that ends in <code>.fifo</code> will automatically be setup as such.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Messages are polled with a <code>receiveRequestAttemptId</code>, and the received batch of messages is split according to the message`s <code>MessageGroupId</code>.</p>
+</li>
+<li>
+<p>Each message from a given group will then be processed in order, while each group is processed in parallel.</p>
+</li>
+<li>
+<p>If processing fails for a message, the following messages from the same message group are discarded so they will be served again after their <code>message visibility</code>
+expires.</p>
+</li>
+<li>
+<p>Messages which were already successfully processed and acknowledged will not be served again.</p>
+</li>
+<li>
+<p>If a <code>batch</code> listener is used, each message group from a poll will be served as a batch to the listener method.</p>
+</li>
+<li>
+<p><code>FIFO</code> queues also have different defaults for acknowledging messages, see <a href="#_acknowledgement_defaults">Acknowledgement Defaults</a> for more information.</p>
+</li>
+<li>
+<p>If a <code>message visibility</code> is set through <code>@SqsListener</code> or <code>ContainerOptions</code>, visibility will be extended for all messages in the message group before each message is processed.</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+A <code>MessageListenerContainer</code> can either have only <code>Standard</code> queues or <code>FIFO</code> queues - not both.
+This is valid both for manually created containers and <code>@SqsListener</code> annotated methods.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_message_interceptor"><a class="link" href="#_message_interceptor">Message Interceptor</a></h3>
+<div class="paragraph">
+<p>The framework offers the <code>MessageInterceptor</code> and the <code>AsyncMessageInterceptor</code> interfaces:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">public interface MessageInterceptor&lt;T&gt; {
+
+	default Message&lt;T&gt; intercept(Message&lt;T&gt; message) {
+		return message;
+	}
+
+	default Collection&lt;Message&lt;T&gt;&gt; intercept(Collection&lt;Message&lt;T&gt;&gt; messages) {
+		return messages;
+	}
+
+	default void afterProcessing(Message&lt;T&gt; message, Throwable t) {
+	}
+
+	default void afterProcessing(Collection&lt;Message&lt;T&gt;&gt; messages, Throwable t) {
+	}
+
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">public interface AsyncMessageInterceptor&lt;T&gt; {
+
+	default CompletableFuture&lt;Message&lt;T&gt;&gt; intercept(Message&lt;T&gt; message) {
+		return CompletableFuture.completedFuture(message);
+	}
+
+	default CompletableFuture&lt;Collection&lt;Message&lt;T&gt;&gt;&gt; intercept(Collection&lt;Message&lt;T&gt;&gt; messages) {
+		return CompletableFuture.completedFuture(messages);
+	}
+
+	default CompletableFuture&lt;Void&gt; afterProcessing(Message&lt;T&gt; message, Throwable t) {
+		return CompletableFuture.completedFuture(null);
+	}
+
+	default CompletableFuture&lt;Void&gt; afterProcessing(Collection&lt;Message&lt;T&gt;&gt; messages, Throwable t) {
+		return CompletableFuture.completedFuture(null);
+	}
+
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When using the auto-configured factory, simply declare a <code>@Bean</code> and the interceptor will be set:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Bean
+public MessageInterceptor&lt;Object&gt; messageInterceptor() {
+    return new MessageInterceptor&lt;Object&gt;() {
+            @Override
+            public Message&lt;Object&gt; intercept(Message&lt;Object&gt; message) {
+                return MessageBuilder
+                    .fromMessage(message)
+                    .setHeader("newHeader", "newValue")
+                    .build();
+            }
+        };
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Alternatively, implementations can be set in the <code>MessageListenerContainerFactory</code> or directly in the <code>MessageListenerContainer</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Bean
+public SqsMessageListenerContainerFactory&lt;Object&gt; defaultSqsListenerContainerFactory() {
+    return SqsMessageListenerContainerFactory
+        .builder()
+        .sqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient)
+        .messageInterceptor(new MessageInterceptor&lt;Object&gt;() {
+            @Override
+            public Message&lt;Object&gt; intercept(Message&lt;Object&gt; message) {
+                return MessageBuilder
+                    .fromMessage(message)
+                    .setHeader("newHeader", "newValue")
+                    .build();
+            }
+        })
+        .build();
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Multiple interceptors can be added to the same factory or container.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The <code>intercept</code> methods are executed <code>before</code> a message is processed, and a different message can be returned.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+In case a different message is returned, it&#8217;s important to add the <code>SqsHeaders.SQS_RECEIPT_HANDLE_HEADER</code> with the value of the original handler so the original message is acknowledged after processing.
+Also, a <code>SqsHeaders.SQS_MESSAGE_ID_HEADER</code> must always be present.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+The <code>intercept</code> methods must not return null.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The <code>afterProcessing</code> methods are executed after message is processed and the <code>ErrorHandler</code> is invoked, but before the message is acknowledged.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_error_handling"><a class="link" href="#_error_handling">Error Handling</a></h3>
+<div class="paragraph">
+<p>By default, messages that have an error thrown by the listener will not be acknowledged, and the message can be polled again after <code>visibility timeout</code> expires.</p>
+</div>
+<div class="paragraph">
+<p>Alternatively, the framework offers the <code>ErrorHandler</code> and <code>AsyncErrorHandler</code> interfaces, which are invoked after a listener execution fails.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">public interface ErrorHandler&lt;T&gt; {
+
+	default void handle(Message&lt;T&gt; message, Throwable t) {
+	}
+
+	default void handle(Collection&lt;Message&lt;T&gt;&gt; messages, Throwable t) {
+	}
+
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">public interface AsyncErrorHandler&lt;T&gt; {
+
+	default CompletableFuture&lt;Void&gt; handle(Message&lt;T&gt; message, Throwable t) {
+		return CompletableFutures.failedFuture(t);
+	}
+
+	default CompletableFuture&lt;Void&gt; handle(Collection&lt;Message&lt;T&gt;&gt; messages, Throwable t) {
+		return CompletableFutures.failedFuture(t);
+	}
+
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When using the auto-configured factory, simply declare a <code>@Bean</code> and the error handler will be set:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Bean
+public ErrorHandler&lt;Object&gt; errorHandler() {
+    return new ErrorHandler&lt;Object&gt;() {
+        @Override
+        public void handle(Message&lt;Object&gt; message, Throwable t) {
+            // error handling logic
+            // throw if the message should not be acknowledged
+        }
+    }}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Alternatively, implementations can be set in the <code>MessageListenerContainerFactory</code> or directly in the <code>MessageListenerContainer</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Bean
+public SqsMessageListenerContainerFactory&lt;Object&gt; defaultSqsListenerContainerFactory() {
+    return SqsMessageListenerContainerFactory
+        .builder()
+        .sqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient)
+        .errorHandler(new ErrorHandler&lt;Object&gt;() {
+            @Override
+            public void handle(Message&lt;Object&gt; message, Throwable t) {
+                // error handling logic
+            }
+        })
+        .build();
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If the error handler execution succeeds, i.e. no error is thrown from the error handler, the message is considered to be recovered and is acknowledged according to the acknowledgement configuration.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+If the message should not be acknowledged and the <code>ON_SUCCESS</code> acknowledgement mode is set, it&#8217;s important to propagate the error.
+For simply executing an action in case of errors, an <code>interceptor</code> should be used instead, checking the presence of the <code>throwable</code> argument for detecting a failed execution.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_message_conversion_and_payload_deserialization"><a class="link" href="#_message_conversion_and_payload_deserialization">Message Conversion and Payload Deserialization</a></h3>
+<div class="paragraph">
+<p>Payloads are automatically deserialized from <code>JSON</code> for <code>@SqsListener</code> annotated methods using a <code>MappingJackson2MessageConverter</code>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+When using Spring Boot&#8217;s auto-configuration, if there&#8217;s a single <code>ObjectMapper</code> in Spring Context, such object mapper will be used for converting messages.
+This includes the one provided by Spring Boot&#8217;s auto-configuration itself.
+For configuring a different <code>ObjectMapper</code>, see <a href="#_global_configuration_for_sqslisteners">Global Configuration for @SqsListeners</a>.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>For manually created <code>MessageListeners</code>, <code>MessageInterceptor</code> and <code>ErrorHandler</code> components, or more fine-grained conversion such as using <code>interfaces</code> or <code>inheritance</code> in listener methods, type mapping is required for payload deserialization.</p>
+</div>
+<div class="paragraph">
+<p>By default, the framework looks for a <code>MessageHeader</code> named <code>Sqs_MA_JavaType</code> containing the fully qualified class name (<code>FQCN</code>) for which the payload should be deserialized to.
+If such header is found, the message is automatically deserialized to the provided class.</p>
+</div>
+<div class="paragraph">
+<p>Further configuration can be achieved by providing a configured <code>MessagingMessageConverter</code> instance in the <code>ContainerOptions</code>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+If type mapping is setup or type information is added to the headers, payloads are deserialized right after the message is polled.
+Otherwise, for <code>@SqsListener</code> annotated methods, payloads are deserialized right before the message is sent to the listener.
+For providing custom <code>MessageConverter</code> instances to be used by <code>@SqsListener</code> methods, see <a href="#_global_configuration_for_sqslisteners">Global Configuration for @SqsListeners</a>
+</td>
+</tr>
+</table>
+</div>
+<div class="sect3">
+<h4 id="_configuring_a_messagingmessageconverter"><a class="link" href="#_configuring_a_messagingmessageconverter">Configuring a MessagingMessageConverter</a></h4>
+<div class="paragraph">
+<p>The framework provides the <code>SqsMessagingMessageConverter</code>, which implements the <code>MessagingMessageConverter</code> interface.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">public interface MessagingMessageConverter&lt;S&gt; {
+
+	Message&lt;?&gt; toMessagingMessage(S source);
+
+	S fromMessagingMessage(Message&lt;?&gt; message);
+
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The default header-based type mapping can be configured to use a different header name by using the <code>setPayloadTypeHeader</code> method.</p>
+</div>
+<div class="paragraph">
+<p>More complex mapping can be achieved by using the <code>setPayloadTypeMapper</code> method, which overrides the default header-based mapping.
+This method receives a <code>Function&lt;Message&lt;?&gt;, Class&lt;?&gt;&gt; payloadTypeMapper</code> that will be applied to incoming messages.</p>
+</div>
+<div class="paragraph">
+<p>The default <code>MappingJackson2MessageConverter</code> can be replaced by using the <code>setPayloadMessageConverter</code> method.</p>
+</div>
+<div class="paragraph">
+<p>The framework also provides the <code>SqsHeaderMapper</code>, which implements the <code>HeaderMapper</code> interface and is invoked by the <code>SqsMessagingMessageConverter</code>.
+To provide a different <code>HeaderMapper</code> implementation, use the <code>setHeaderMapper</code> method.</p>
+</div>
+<div class="paragraph">
+<p>An example of such configuration follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">// Create converter instance
+SqsMessagingMessageConverter messageConverter = new SqsMessagingMessageConverter();
+
+// Configure Type Header
+messageConverter.setPayloadTypeHeader("myTypeHeader");
+
+// Configure Header Mapper
+SqsHeaderMapper headerMapper = new SqsHeaderMapper();
+headerMapper.setAdditionalHeadersFunction(((sqsMessage, accessor) -&gt; {
+    accessor.setHeader("myCustomHeader", "myValue");
+    return accessor.toMessageHeaders();
+}));
+messageConverter.setHeaderMapper(headerMapper);
+
+// Configure Payload Converter
+MappingJackson2MessageConverter payloadConverter = new MappingJackson2MessageConverter();
+payloadConverter.setPrettyPrint(true);
+messageConverter.setPayloadMessageConverter(payloadConverter);
+
+// Set MessageConverter to the factory or container
+factory.configure(options -&gt; options.messageConverter(messageConverter));</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_interfaces_and_subclasses_in_listener_methods"><a class="link" href="#_interfaces_and_subclasses_in_listener_methods">Interfaces and Subclasses in Listener Methods</a></h4>
+<div class="paragraph">
+<p>Interfaces and subclasses can be used in <code>@SqsListener</code> annotated methods by configuring a <code>type mapper</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">messageConverter.setPayloadTypeMapper(message -&gt; {
+    String eventTypeHeader = message.getHeaders().get("myEventTypeHeader", String.class);
+    return "eventTypeA".equals(eventTypeHeader)
+        ? MyTypeA.class
+        : MyTypeB.class;
+});</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>And then, in the listener method:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@SpringBootApplication
+public class SqsApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(SqsApplication.class, args);
+    }
+
+    // Retrieve the converted payload
+    @SqsListener("myQueue")
+    public void listen(MyInterface message) {
+        System.out.println(message);
+    }
+
+    // Or retrieve a Message with the converted payload
+    @SqsListener("myOtherQueue")
+    public void listen(Message&lt;MyInterface&gt; message) {
+        System.out.println(message);
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_acknowledging_messages"><a class="link" href="#_acknowledging_messages">Acknowledging Messages</a></h3>
+<div class="paragraph">
+<p>In <code>SQS</code> acknowledging a message is the same as deleting the message from the queue.
+A number of <code>Acknowledgement</code> strategies are available and can be configured via <code>ContainerOptions</code>.</p>
+</div>
+<div class="paragraph">
+<p>Here&#8217;s an example of a possible configuration:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Bean
+SqsMessageListenerContainerFactory&lt;Object&gt; defaultSqsListenerContainerFactory(SqsAsyncClient sqsAsyncClient) {
+    return SqsMessageListenerContainerFactory
+            .builder()
+            .configure(options -&gt; options
+                    .acknowledgementMode(AcknowledgementMode.ALWAYS)
+                    .acknowledgementInterval(Duration.ofSeconds(3))
+                    .acknowledgementThreshold(5)
+                    .acknowledgementOrdering(AcknowledgementOrdering.ORDERED)
+            )
+            .sqsAsyncClient(sqsAsyncClient)
+            .build();
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Each option is explained in the following sections.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+All options are available for both <code>single message</code> and <code>batch</code> message listeners.
+</td>
+</tr>
+</table>
+</div>
+<div class="sect3">
+<h4 id="_acknowledgement_mode"><a class="link" href="#_acknowledgement_mode">Acknowledgement Mode</a></h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>ON_SUCCESS</code> - Acknowledges a message or batch of messages after successful processing.</p>
+</li>
+<li>
+<p><code>ALWAYS</code> - Acknowledges a message or batch of messages after processing returns success or error.</p>
+</li>
+<li>
+<p><code>MANUAL</code> - The framework won&#8217;t acknowledge messages automatically and <code>Acknowledgement</code> objects can be received in the listener method.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_acknowledgement_batching"><a class="link" href="#_acknowledgement_batching">Acknowledgement Batching</a></h4>
+<div class="paragraph">
+<p>The <code>acknowledgementInterval</code> and <code>acknowledgementThreshold</code> options enable acknowledgement batching.
+Acknowledgements will be executed after either the amount of time specified in the <code>interval</code> or the number of messages to acknowledge reaches the <code>threshold</code>.</p>
+</div>
+<div class="paragraph">
+<p>Setting <code>acknowledgementInterval</code> to <code>Duration.ZERO</code> will disable the periodic acknowledgement, which will be executed only when the number of messages to acknowledge reaches the specified <code>acknowledgementThreshold</code>.</p>
+</div>
+<div class="paragraph">
+<p>Setting <code>acknowledgementThreshold</code> to <code>0</code> will disable acknowledging per number of messages, and messages will be acknowledged only on the specified <code>acknowldgementInterval</code></p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+When using acknowledgement batching messages stay inflight for SQS purposes until their respective batch is acknowledged. <code>MessageVisibility</code> should be taken into consideration when configuring this strategy.
+</td>
+</tr>
+</table>
+</div>
+<div class="sect4">
+<h5 id="_immediate_acknowledging"><a class="link" href="#_immediate_acknowledging">Immediate Acknowledging</a></h5>
+<div class="paragraph">
+<p>Setting both <code>acknowledgementInterval</code> and <code>acknowledgementThreshold</code> to <code>Duration.ZERO</code> and <code>0</code> respectively enables <code>Immediate Acknowledging</code>.</p>
+</div>
+<div class="paragraph">
+<p>With this configuration, messages are acknowledged sequentially after being processed, and the message is only considered processed after the message is successfully acknowledged.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+If an immediate acknowledging triggers an error, message processing is considered failed and will be retried after the specified <code>visibilityTimeout</code>.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_manual_acknowledgement"><a class="link" href="#_manual_acknowledgement">Manual Acknowledgement</a></h4>
+<div class="paragraph">
+<p>Manual acknowledgement can be used in conjunction with acknowledgement batching - the message will be queued for acknowledgement but won&#8217;t be executed until one of the above criteria is met.</p>
+</div>
+<div class="paragraph">
+<p>It can also be used in conjunction with immediate acknowledgement.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_acknowledgement_ordering"><a class="link" href="#_acknowledgement_ordering">Acknowledgement Ordering</a></h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>PARALLEL</code> - Acknowledges the messages as soon as one of the above criterias is met - many acknowledgement calls can be made in parallel.</p>
+</li>
+<li>
+<p><code>ORDERED</code> - One batch of acknowledgements will only be executed after the previous one is completed, ensuring <code>FIFO</code> ordering of acknowledgements.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_acknowledgement_defaults"><a class="link" href="#_acknowledgement_defaults">Acknowledgement Defaults</a></h4>
+<div class="paragraph">
+<p>The defaults for acknowledging differ for <code>Standard</code> and <code>FIFO</code> SQS queues.</p>
+</div>
+<div class="sect4">
+<h5 id="_standard_sqs"><a class="link" href="#_standard_sqs">Standard SQS</a></h5>
+<div class="ulist">
+<ul>
+<li>
+<p>Acknowledgement Interval: One second</p>
+</li>
+<li>
+<p>Acknowledgement Threshold: Ten messages</p>
+</li>
+<li>
+<p>Acknowledgement Ordering: <code>PARALLEL</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_fifo_sqs"><a class="link" href="#_fifo_sqs">FIFO SQS</a></h5>
+<div class="ulist">
+<ul>
+<li>
+<p>Acknowledgement Interval: Zero (Immediate)</p>
+</li>
+<li>
+<p>Acknowledgement Threshold: Zero (Immediate)</p>
+</li>
+<li>
+<p>Acknowledgement Ordering: <code>PARALLEL</code> if immediate acknowledgement, <code>ORDERED</code> if batching is enabled (one or both above defaults are overridden).</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+PARALLEL is the default for FIFO because ordering is guaranteed for processing.
+This assures no messages from a given <code>MessageGroup</code> will be polled until the previous batch is acknowledged.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_global_configuration_for_sqslisteners"><a class="link" href="#_global_configuration_for_sqslisteners">Global Configuration for @SqsListeners</a></h3>
+<div class="paragraph">
+<p>A set of configurations can be set for all containers from <code>@SqsListener</code> by providing <code>SqsListenerCustomizer</code> beans.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@FunctionalInterface
+public interface SqsListenerCustomizer {
+
+	void configure(EndpointRegistrar registrar);
+
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The following attributes can be configured in the registrar:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>setMessageHandlerMethodFactory</code> - provide a different factory to be used to create the <code>invocableHandlerMethod</code> instances that wrap the listener methods.</p>
+</li>
+<li>
+<p><code>setListenerContainerRegistry</code> - provide a different <code>MessageListenerContainerRegistry</code> implementation to be used to register the <code>MessageListenerContainers</code></p>
+</li>
+<li>
+<p><code>setMessageListenerContainerRegistryBeanName</code> - provide a different bean name to be used to retrieve the <code>MessageListenerContainerRegistry</code></p>
+</li>
+<li>
+<p><code>setObjectMapper</code> - set the <code>ObjectMapper</code> instance that will be used to deserialize payloads in listener methods.
+See <a href="#_message_conversion_and_payload_deserialization">Message Conversion and Payload Deserialization</a> for more information on where this is used.</p>
+</li>
+<li>
+<p><code>manageMessageConverters</code> - gives access to the list of message converters that will be used to convert messages.
+By default, <code>StringMessageConverter</code>, <code>SimpleMessageConverter</code> and <code>MappingJackson2MessageConverter</code> are used.</p>
+</li>
+<li>
+<p><code>manageArgumentResolvers</code> - gives access to the list of argument resolvers that will be used to resolve the listener method arguments.
+The order of resolvers is important - <code>PayloadMethodArgumentResolver</code> should generally be last since it&#8217;s used as default.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>A simple example would be:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="java" class="language-java hljs">@Bean
+SqsListenerCustomizer customizer(ObjectMapper objectMapper) {
+    return registrar -&gt; registrar.setObjectMapper(objectMapper);
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Many <code>SqsListenerCustomizer</code> beans can be registered in the context.
+All instances will be looked up at application startup and iterated through.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_message_processing_throughput"><a class="link" href="#_message_processing_throughput">Message Processing Throughput</a></h3>
+<div class="paragraph">
+<p>The following options are available for tuning the application&#8217;s throughput.
+When a configuration is available both in the <code>ContainerOptions</code> and <code>@SqsListener</code> annotation, the annotation value takes precedence, if any.</p>
+</div>
+<div class="sect3">
+<h4 id="_containeroptions_and_sqslistener_properties"><a class="link" href="#_containeroptions_and_sqslistener_properties">ContainerOptions and <code>@SqsListener</code> properties</a></h4>
+<div class="sect4">
+<h5 id="_maxinflightmessagesperqueue"><a class="link" href="#_maxinflightmessagesperqueue">maxInflightMessagesPerQueue</a></h5>
+<div class="paragraph">
+<p>Can be set in either the <code>ContainerOptions</code> or the <code>@SqsListener</code> annotation.
+Represents the maximum number of messages being processed by the container at a given time.
+Defaults to 10.</p>
+</div>
+<div class="paragraph">
+<p>This value is enforced per queue, meaning the number of inflight messages in a container can be up to (number of queues in container * maxInflightMessagesPerQueue).</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+When using acknowledgement batching, a message is considered as no longer inflight when it&#8217;s delivered to the acknowledgement queue. In this case, the actual number of inflight messages on AWS SQS console can be higher than the configured value.
+When using immediate acknowledgement, a message is considered as no longer inflight after it&#8217;s been acknowledged or throws an error.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_maxmessagesperpoll"><a class="link" href="#_maxmessagesperpoll">maxMessagesPerPoll</a></h5>
+<div class="paragraph">
+<p>Set in <code>ContainerOptions</code>.
+Represents the maximum number of messages returned by a single poll to a SQS queue, to a maximum of 10.
+This value has to be less than or equal to <code>maxInflightMessagesPerQueue</code>.
+Defaults to 10.</p>
+</div>
+<div class="paragraph">
+<p>Note that even if the queue has more messages, a poll can return less messages than specified. See the AWS documentation for more information.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_polltimeout"><a class="link" href="#_polltimeout">pollTimeout</a></h5>
+<div class="paragraph">
+<p>Can be set in either the <code>ContainerOptions</code> or the <code>@SqsListener</code> annotation.
+Represents the maximum duration of a poll.
+Higher values represent <code>long polls</code> and increase the probability of receiving full batches of messages.
+Defaults to 10 seconds.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_permitacquiretimeout"><a class="link" href="#_permitacquiretimeout">permitAcquireTimeout</a></h5>
+<div class="paragraph">
+<p>Set in <code>ContainerOptions</code>.
+Represents the maximum amount of time the container will wait for <code>maxMessagesPerPoll</code> permits to be available before trying to acquire a partial batch.
+This wait is applied per queue and one queue has no interference in another in this regard.
+Defaults to 10 seconds.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_default_polling_behavior"><a class="link" href="#_default_polling_behavior">Default Polling Behavior</a></h4>
+<div class="paragraph">
+<p>By default, the framework starts all queues in <code>low throughput mode</code>, where it will perform one poll for messages at a time.
+When a poll returns at least one message, the queue enters a <code>high throughput mode</code> where it will try to fulfill <code>maxInflightMessagesPerQueue</code> messages by making (maxInflightMessagesPerQueue / maxMessagesPerPoll) parallel polls to the queue.
+Any poll that returns no messages will trigger a <code>low throughput mode</code> again, until at least one message is returned, triggering <code>high throughput mode</code> again, and so forth.</p>
+</div>
+<div class="paragraph">
+<p>After <code>permitAcquireTimeout</code>, if <code>maxMessagesPerPoll</code> permits are not available, it&#8217;ll poll for the difference, i.e. as many messages as have been processed so far, if any.</p>
+</div>
+<div class="paragraph">
+<p>E.g. Let&#8217;s consider a scenario where the container is configured for: <code>maxInflightMessagesPerQueue</code> = 20, <code>maxMessagesPerPoll</code> = 10, <code>permitAcquireTimeout</code> = 5 seconds, and a <code>pollTimeout</code> = 10 seconds.</p>
+</div>
+<div class="paragraph">
+<p>The container starts in <code>low throughput mode</code>, meaning it&#8217;ll attempt a single poll for 10 messages.
+If any messages are returned, it&#8217;ll switch to <code>high throughput mode</code>, and will make up to 2 simultaneous polls for 10 messages each.
+If all 20 messages are retrieved, it&#8217;ll not attempt any more polls until messages are processed.
+If after the 5 seconds for <code>permitAcquireTimeout</code> 6 messages have been processed, the framework will poll for the 6 messages.
+If the queue is depleted and a poll returns no messages, it&#8217;ll enter <code>low throughput</code> mode again and perform only one poll at a time.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_configuring_backpressuremode"><a class="link" href="#_configuring_backpressuremode">Configuring BackPressureMode</a></h4>
+<div class="paragraph">
+<p>The following <code>BackPressureMode</code> values can be set in <code>ContainerOptions</code> to configure polling behavior:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>AUTO</code> - The default mode, as described in the previous section.</p>
+</li>
+<li>
+<p><code>ALWAYS_POLL_MAX_MESSAGES</code> - Disables partial batch polling, i.e. if the container is configured for 10 messages per poll, it&#8217;ll wait for 10 messages to be processed before attempting to poll for the next 10 messages.
+Useful for optimizing for fewer polls at the expense of throughput.</p>
+</li>
+<li>
+<p><code>FIXED_HIGH_THROUGHPUT</code> - Disables <code>low throughput mode</code>, while still attempting partial batch polling as described in the previous section.
+Useful for really high throughput scenarios where the risk of making parallel polls to an idle queue is preferable to an eventual switch to <code>low throughput mode</code> .</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The <code>AUTO</code> setting should be balanced for most use cases, including high throughput ones.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_blocking_and_non_blocking_async_components"><a class="link" href="#_blocking_and_non_blocking_async_components">Blocking and Non-Blocking (Async) Components</a></h3>
+<div class="paragraph">
+<p>The SQS integration leverages the <code>CompletableFuture</code>-based async capabilities of <code>AWS SDK 2.0</code> to deliver a fully non-blocking infrastructure.
+All processing involved in polling for messages, changing message visibilities and acknowledging messages is done in an async, non-blocking fashion. This allows a higher overall throughput for the application.</p>
+</div>
+<div class="paragraph">
+<p>When a <code>MessageListener</code>, <code>MessageInterceptor</code>, and <code>ErrorHandler</code> implementation is set to a <code>MesssageListenerContainer</code> or <code>MesssageListenerContainerFactory</code> these are adapted by the framework. This way, blocking and non-blocking components can be used in conjunction with each other.</p>
+</div>
+<div class="paragraph">
+<p>Listener methods annotated with <code>@SqsListener</code> can either return a simple value, e.g. <code>void</code>, or a <code>CompletableFuture&lt;Void&gt;</code>.
+The listener method will then be wrapped in either a <code>MessagingMessageListenerAdapter</code> or a <code>AsyncMessagingMessageListenerAdapter</code> respectively.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+In order to achieve higher throughput, it&#8217;s encouraged that, at least for simpler logic in message listeners, <code>interceptors</code> and <code>error handlers</code>, the async variants are used.
+</td>
+</tr>
+</table>
+</div>
+<div class="sect3">
+<h4 id="_threading_and_blocking_components"><a class="link" href="#_threading_and_blocking_components">Threading and Blocking Components</a></h4>
+<div class="paragraph">
+<p>Message processing always starts in a framework thread from the default or provided <code>TaskExecutor</code>.</p>
+</div>
+<div class="paragraph">
+<p>If an async component is invoked and the execution returns to the framework on a different thread, such thread will be used until a <code>blocking</code> component is found, when the execution switches back to a <code>TaskExecutor</code> thread to avoid blocking i.e. <code>SqsAsyncClient</code> or <code>HttpClient</code> threads.</p>
+</div>
+<div class="paragraph">
+<p>If by the time the execution reaches a <code>blocking</code> component it&#8217;s already on a framework thread, it remains in the same thread to avoid excessive thread allocation and hopping.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+When using <code>async</code> methods it&#8217;s critical not to block the incoming thread, which might be very detrimental to overall performance.
+If thread-blocking logic has to be used, the blocking logic should be executed on another thread, e.g. using <code>CompletableFuture.supplyAsync(() &#8594; myLogic(), myExecutor)</code>.
+Otherwise, a <code>sync</code> interface should be used.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_providing_a_taskexecutor"><a class="link" href="#_providing_a_taskexecutor">Providing a TaskExecutor</a></h4>
+<div class="paragraph">
+<p>The default <code>TaskExecutor</code> is a <code>ThreadPoolTaskExecutor</code>, and a different <code>componentTaskExecutor</code> can be set in the <code>ContainerOptions</code>.</p>
+</div>
+<div class="paragraph">
+<p>When providing a custom executor, it&#8217;s important that it&#8217;s configured to support all threads that will be created, which should be (maxInflightMessagesPerQueue * total number of queues).
+When set as a <code>MessageListenerContainerFactory</code> options, it&#8217;s important to consider all the containers it will be applied to.
+Also, to avoid excessive thread hopping, a <code>MessageExecutionThreadFactory</code> should be set to the executor.</p>
+</div>
+<div class="paragraph">
+<p>If setting the <code>ThreadFactory</code> is not possible, it&#8217;s advisable to allow for extra threads in the thread pool to account for the time between a new thread is requested and the previous thread is released.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_iam_permissions"><a class="link" href="#_iam_permissions">IAM Permissions</a></h3>
+<div class="paragraph">
+<p>Following IAM permissions are required by Spring Cloud AWS SQS:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Send message to Queue</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sqs:SendMessage</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Receive message from queue</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sqs:ReceiveMessage</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Delete message from queue</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sqs:DeleteMessage</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">To use sqsListener with SimpleMessageListenerContainerFactory you will need to add as well</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sqs:GetQueueAttributes</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">To use SqsListener with Sqs name instead of ARN you will need</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sqs:GetQueueUrl</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Sample IAM policy granting access to SQS:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "sqs:DeleteMessage",
+                "sqs:ReceiveMessage",
+                "sqs:SendMessage",
+                "sqs:GetQueueAttributes",
+                "sqs:GetQueueUrl"
+            ],
+            "Resource": "yourARN"
+        }</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<link rel="stylesheet" href="js/highlight/styles/github.min.css">
+<script src="js/highlight/highlight.min.js"></script>
+<script>hljs.initHighlighting()</script>
+<script type="text/javascript" src="js/tocbot/tocbot.min.js"></script>
+<script type="text/javascript" src="js/toc.js"></script>
+</body>
+</html>
