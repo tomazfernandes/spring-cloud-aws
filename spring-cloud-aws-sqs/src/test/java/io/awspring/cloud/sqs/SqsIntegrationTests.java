@@ -75,8 +75,6 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 
 	private static final String TEST_SQS_ASYNC_CLIENT_BEAN_NAME = "testSqsAsyncClient";
 
-	private static final String LOW_RESOURCE_FACTORY_NAME = "lowResourceFactory";
-
 	static final String RECEIVES_MESSAGE_QUEUE_NAME = "receives_message_test_queue";
 
 	static final String RECEIVES_MESSAGE_ASYNC_QUEUE_NAME = "receives_message_async_test_queue";
@@ -101,8 +99,7 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 				createQueue(client, RESOLVES_PARAMETER_TYPES_QUEUE_NAME,
 						singletonMap(QueueAttributeName.VISIBILITY_TIMEOUT, "20")),
 				createQueue(client, MANUALLY_CREATE_CONTAINER_QUEUE_NAME),
-				createQueue(client, MANUALLY_CREATE_FACTORY_QUEUE_NAME))
-				.join();
+				createQueue(client, MANUALLY_CREATE_FACTORY_QUEUE_NAME)).join();
 	}
 
 	@Autowired
@@ -414,13 +411,15 @@ class SqsIntegrationTests extends BaseSqsIntegrationTest {
 
 		@Bean
 		SqsListenerCustomizer customizer() {
-			return registrar -> registrar.setMessageHandlerMethodFactory(new DefaultMessageHandlerMethodFactory() {
-				@Override
-				public InvocableHandlerMethod createInvocableHandlerMethod(Object bean, Method method) {
-					latchContainer.invocableHandlerMethodLatch.countDown();
-					return super.createInvocableHandlerMethod(bean, method);
-				}
-			});
+			return registrar -> {
+				registrar.setMessageHandlerMethodFactory(new DefaultMessageHandlerMethodFactory() {
+					@Override
+					public InvocableHandlerMethod createInvocableHandlerMethod(Object bean, Method method) {
+						latchContainer.invocableHandlerMethodLatch.countDown();
+						return super.createInvocableHandlerMethod(bean, method);
+					}
+				});
+			};
 		}
 
 		@Bean

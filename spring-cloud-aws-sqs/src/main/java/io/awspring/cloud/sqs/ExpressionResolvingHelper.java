@@ -53,6 +53,9 @@ public class ExpressionResolvingHelper implements BeanFactoryAware {
 	 */
 	@Nullable
 	public String asString(String value, String attribute) {
+		if (this.expressionContext == null) {
+			return value;
+		}
 		if (!StringUtils.hasText(value)) {
 			return null;
 		}
@@ -75,7 +78,7 @@ public class ExpressionResolvingHelper implements BeanFactoryAware {
 	 */
 	@Nullable
 	public Integer asInteger(String value, String attribute) {
-		if (!StringUtils.hasText(value)) {
+		if (!StringUtils.hasText(value) || this.expressionContext == null) {
 			return null;
 		}
 		Object resolved = resolveExpression(value);
