@@ -36,8 +36,8 @@ public class MessageListenerExecutionStage<T> implements MessageProcessingPipeli
 
 	private final AsyncMessageListener<T> messageListener;
 
-	public MessageListenerExecutionStage(MessageProcessingConfiguration<T> context) {
-		this.messageListener = context.getMessageListener();
+	public MessageListenerExecutionStage(MessageProcessingConfiguration<T> configuration) {
+		this.messageListener = configuration.getMessageListener();
 	}
 
 	@Override

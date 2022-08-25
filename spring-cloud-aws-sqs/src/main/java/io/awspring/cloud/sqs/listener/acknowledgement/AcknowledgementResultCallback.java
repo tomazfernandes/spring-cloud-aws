@@ -15,20 +15,31 @@
  */
 package io.awspring.cloud.sqs.listener.acknowledgement;
 
-import java.util.concurrent.CompletableFuture;
+import java.util.Collection;
+import org.springframework.messaging.Message;
 
 /**
- * Interface representing an async message acknowledgement. For this interface to be used as a listener method
- * parameter, {@link io.awspring.cloud.sqs.listener.acknowledgement.handler.AcknowledgementMode#MANUAL} has to be set.
+ * Provides actions to be executed after a message acknowledgement completes with either success or failure.
+ *
  * @author Tomaz Fernandes
  * @since 3.0
+ * @see AbstractOrderingAcknowledgementProcessor
  */
-public interface AsyncAcknowledgement {
+public interface AcknowledgementResultCallback<T> {
 
 	/**
-	 * Acknowledge the message asynchronously.
-	 * @return a completable future.
+	 * Execute an action after the messages are successfully acknowledged.
+	 * @param messages the messages.
 	 */
-	CompletableFuture<Void> acknowledgeAsync();
+	default void onSuccess(Collection<Message<T>> messages) {
+	}
+
+	/**
+	 * Execute an action if message acknowledgement fails.
+	 * @param messages the messages.
+	 * @param t the error thrown by the acknowledgement.
+	 */
+	default void onFailure(Collection<Message<T>> messages, Throwable t) {
+	}
 
 }

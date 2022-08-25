@@ -41,4 +41,5 @@ public class FanOutMessageSink<T> extends AbstractMessageProcessingPipelineSink<
 		return CompletableFuture
 				.allOf(messages.stream().map(msg -> execute(msg, context)).toArray(CompletableFuture[]::new));
 	}
+
 }

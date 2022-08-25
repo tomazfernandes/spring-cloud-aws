@@ -24,7 +24,7 @@ package io.awspring.cloud.sqs.listener;
  * @see io.awspring.cloud.sqs.listener.sink.OrderedMessageSink
  * @see io.awspring.cloud.sqs.listener.sink.BatchMessageSink
  */
-public enum MessageDeliveryStrategy {
+public enum ListenerMode {
 
 	/**
 	 * Configure the container to receive one message at a time in its components.
