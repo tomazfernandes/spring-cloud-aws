@@ -23,12 +23,15 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
+import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.core.retry.conditions.RetryOnExceptionsCondition;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
+import software.amazon.awssdk.services.kinesis.model.LimitExceededException;
 
 /**
  * The base contract for JUnit tests based on the container for Localstack. The Testcontainers 'reuse' option must be
@@ -48,7 +51,9 @@ public interface LocalstackContainerTest {
 
 	@BeforeAll
 	static void startContainer() {
-		LOCAL_STACK_CONTAINER.start();
+		synchronized (LOCAL_STACK_CONTAINER) {
+			LOCAL_STACK_CONTAINER.start();
+		}
 	}
 
 	static KinesisAsyncClient kinesisClient() {
@@ -75,6 +80,13 @@ public interface LocalstackContainerTest {
 	private static <B extends AwsClientBuilder<B, T>, T> T applyAwsClientOptions(B clientBuilder) {
 		return clientBuilder.region(Region.of(LOCAL_STACK_CONTAINER.getRegion()))
 				.credentialsProvider(credentialsProvider()).endpointOverride(LOCAL_STACK_CONTAINER.getEndpoint())
+				// Test classes run concurrently, so concurrent 'CreateStream' calls can hit the
+				// 'streams being created concurrently' limit. The SDK does not classify Kinesis
+				// 'LimitExceededException' as retryable, so it needs an explicit retry condition.
+				// Only that exception is retried: 'CreateStream' is not idempotent, and retrying it
+				// after a timeout recreates a stream that the first attempt already created.
+				.overrideConfiguration(config -> config.retryPolicy(RetryPolicy.builder().numRetries(20)
+						.retryCondition(RetryOnExceptionsCondition.create(LimitExceededException.class)).build()))
 				.build();
 	}
 
