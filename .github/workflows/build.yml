@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - name: Pull the Localstack image in the background
+        run: docker pull localstack/localstack:4.14.0 > /dev/null 2>&1 &
       - name: Set up JDK ${{ matrix.version }}
         uses: actions/setup-java@v5
         with:
