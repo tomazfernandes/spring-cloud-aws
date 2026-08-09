@@ -25,15 +25,12 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 import com.amazon.sqs.javamessaging.AmazonSQSExtendedAsyncClient;
 import io.awspring.cloud.autoconfigure.AwsSyncClientCustomizer;
 import io.awspring.cloud.autoconfigure.ConfiguredAwsClient;
-import io.awspring.cloud.autoconfigure.LocalstackContainerTest;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
@@ -51,7 +48,10 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.io.DefaultResourceLoader;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.localstack.LocalStackContainer;
+import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -67,13 +67,16 @@ import software.amazon.awssdk.services.sts.auth.StsWebIdentityTokenFileCredentia
  *
  * @author Maciej Walkowiak
  */
+@Testcontainers
 @ExtendWith(OutputCaptureExtension.class)
-class SecretsManagerConfigDataLoaderIntegrationTests implements LocalstackContainerTest {
+class SecretsManagerConfigDataLoaderIntegrationTests {
 
 	private static final String REGION = "us-east-1";
 	private static final String NEW_LINE_CHAR = System.lineSeparator();
 
-	static final LocalStackContainer localstack = LocalstackContainerTest.LOCAL_STACK_CONTAINER;
+	@Container
+	static LocalStackContainer localstack = new LocalStackContainer(
+			DockerImageName.parse("localstack/localstack:4.4.0"));
 
 	@TempDir
 	static Path tokenTempDir;
@@ -465,11 +468,6 @@ class SecretsManagerConfigDataLoaderIntegrationTests implements LocalstackContai
 			application.setResourceLoader(
 					new DefaultResourceLoader(new FilteredClassLoader(AmazonSQSExtendedAsyncClient.class)));
 
-			// RESTART_CONTEXT closes the running context and starts a replacement this test never sees,
-			// whose reload scheduler would otherwise keep polling after the test ends.
-			List<ConfigurableApplicationContext> createdContexts = new ArrayList<>();
-			application.addInitializers(createdContexts::add);
-
 			try (ConfigurableApplicationContext context = application.run(
 					"--spring.config.import=aws-secretsmanager:/config/spring;/config/second",
 					"--spring.cloud.aws.secretsmanager.region=" + REGION,
@@ -491,9 +489,6 @@ class SecretsManagerConfigDataLoaderIntegrationTests implements LocalstackContai
 				await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
 					assertThat(context.getEnvironment().getProperty("message")).isEqualTo("new value");
 				});
-			}
-			finally {
-				createdContexts.forEach(ConfigurableApplicationContext::close);
 			}
 		}
 	}

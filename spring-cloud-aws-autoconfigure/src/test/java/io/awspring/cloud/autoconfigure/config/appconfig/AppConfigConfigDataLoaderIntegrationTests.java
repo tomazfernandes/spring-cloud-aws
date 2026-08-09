@@ -264,11 +264,6 @@ class AppConfigConfigDataLoaderIntegrationTests {
 		void reloadsPropertiesWithRestartContextStrategy() throws IOException {
 			SpringApplication application = createApplication();
 
-			// RESTART_CONTEXT closes the running context and starts a replacement this test never sees,
-			// whose reload scheduler would otherwise keep polling after the test ends.
-			List<ConfigurableApplicationContext> createdContexts = new ArrayList<>();
-			application.addInitializers(createdContexts::add);
-
 			try (ConfigurableApplicationContext context = runApplication(application, IMPORT_PROPERTIES,
 					"spring.cloud.aws.appconfig.endpoint",
 					"--spring.cloud.aws.appconfig.reload.strategy=RESTART_CONTEXT",
@@ -286,9 +281,6 @@ class AppConfigConfigDataLoaderIntegrationTests {
 					assertThat(context.getEnvironment().getProperty("some.property.to.be.checked"))
 							.isEqualTo("updated");
 				});
-			}
-			finally {
-				createdContexts.forEach(ConfigurableApplicationContext::close);
 			}
 		}
 

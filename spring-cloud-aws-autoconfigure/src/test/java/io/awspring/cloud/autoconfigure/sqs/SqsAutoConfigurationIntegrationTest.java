@@ -19,7 +19,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.amazon.sqs.javamessaging.AmazonSQSExtendedAsyncClient;
-import io.awspring.cloud.autoconfigure.LocalstackContainerTest;
 import io.awspring.cloud.autoconfigure.core.AwsAutoConfiguration;
 import io.awspring.cloud.autoconfigure.core.CredentialsProviderAutoConfiguration;
 import io.awspring.cloud.autoconfigure.core.RegionProviderAutoConfiguration;
@@ -38,8 +37,11 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.ApplicationContextException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.localstack.LocalStackContainer;
 import org.testcontainers.shaded.org.bouncycastle.util.Arrays;
+import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -54,13 +56,20 @@ import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException;
  * @author Wei Jiang
  */
 @SpringBootTest
-class SqsAutoConfigurationIntegrationTest implements LocalstackContainerTest {
+@Testcontainers
+class SqsAutoConfigurationIntegrationTest {
 
 	private static final String QUEUE_NAME = "my_queue_name";
 
 	private static final String PAYLOAD = "Test";
 
-	static final LocalStackContainer localstack = LocalstackContainerTest.LOCAL_STACK_CONTAINER;
+	@Container
+	static LocalStackContainer localstack = new LocalStackContainer(
+			DockerImageName.parse("localstack/localstack:4.4.0"));
+
+	static {
+		localstack.start();
+	}
 
 	private static final String[] BASE_PARAMS = { "spring.cloud.aws.sqs.region=eu-west-1",
 			"spring.cloud.aws.sqs.endpoint=" + localstack.getEndpoint(), "spring.cloud.aws.credentials.access-key=noop",
