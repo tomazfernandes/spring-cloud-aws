@@ -52,7 +52,7 @@ public interface LocalstackContainerTest {
 	LocalStackContainer LOCAL_STACK_CONTAINER = new LocalStackContainer(
 			DockerImageName.parse("localstack/localstack:4.4.0"));
 
-	Semaphore STREAM_CREATION = new Semaphore(3);
+	Semaphore STREAM_CREATION = new Semaphore(1);
 
 	@BeforeAll
 	static void startContainer() {
