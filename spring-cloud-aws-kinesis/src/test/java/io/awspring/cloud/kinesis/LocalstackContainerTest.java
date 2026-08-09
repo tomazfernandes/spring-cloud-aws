@@ -15,6 +15,8 @@
  */
 package io.awspring.cloud.kinesis;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Semaphore;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.localstack.LocalStackContainer;
@@ -23,15 +25,14 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
-import software.amazon.awssdk.core.retry.RetryPolicy;
-import software.amazon.awssdk.core.retry.conditions.RetryOnExceptionsCondition;
+import software.amazon.awssdk.core.waiters.WaiterResponse;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
-import software.amazon.awssdk.services.kinesis.model.LimitExceededException;
+import software.amazon.awssdk.services.kinesis.model.DescribeStreamResponse;
 
 /**
  * The base contract for JUnit tests based on the container for Localstack. The Testcontainers 'reuse' option must be
@@ -49,11 +50,26 @@ public interface LocalstackContainerTest {
 	LocalStackContainer LOCAL_STACK_CONTAINER = new LocalStackContainer(
 			DockerImageName.parse("localstack/localstack:4.4.0"));
 
+	Semaphore STREAM_CREATION = new Semaphore(5);
+
 	@BeforeAll
 	static void startContainer() {
 		synchronized (LOCAL_STACK_CONTAINER) {
 			LOCAL_STACK_CONTAINER.start();
 		}
+	}
+
+	/**
+	 * Creates a stream and waits until it exists, at most five at a time. Test classes run concurrently and AWS
+	 * only allows a few streams to be in the 'CREATING' state at once, which the concurrent creations were
+	 * exceeding.
+	 */
+	static CompletableFuture<WaiterResponse<DescribeStreamResponse>> createStream(KinesisAsyncClient client,
+			String streamName, int shardCount) {
+		STREAM_CREATION.acquireUninterruptibly();
+		return client.createStream(request -> request.streamName(streamName).shardCount(shardCount))
+				.thenCompose(result -> client.waiter().waitUntilStreamExists(request -> request.streamName(streamName)))
+				.whenComplete((result, throwable) -> STREAM_CREATION.release());
 	}
 
 	static KinesisAsyncClient kinesisClient() {
@@ -80,13 +96,6 @@ public interface LocalstackContainerTest {
 	private static <B extends AwsClientBuilder<B, T>, T> T applyAwsClientOptions(B clientBuilder) {
 		return clientBuilder.region(Region.of(LOCAL_STACK_CONTAINER.getRegion()))
 				.credentialsProvider(credentialsProvider()).endpointOverride(LOCAL_STACK_CONTAINER.getEndpoint())
-				// Test classes run concurrently, so concurrent 'CreateStream' calls can hit the
-				// 'streams being created concurrently' limit. The SDK does not classify Kinesis
-				// 'LimitExceededException' as retryable, so it needs an explicit retry condition.
-				// Only that exception is retried: 'CreateStream' is not idempotent, and retrying it
-				// after a timeout recreates a stream that the first attempt already created.
-				.overrideConfiguration(config -> config.retryPolicy(RetryPolicy.builder().numRetries(20)
-						.retryCondition(RetryOnExceptionsCondition.create(LimitExceededException.class)).build()))
 				.build();
 	}
 

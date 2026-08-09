@@ -205,8 +205,7 @@ public class KclMessageDrivenChannelAdapterTests implements LocalstackContainerT
 	}
 
 	private static CompletableFuture<WaiterResponse<DescribeStreamResponse>> initializeStream(String streamName) {
-		return AMAZON_KINESIS.createStream(request -> request.streamName(streamName).shardCount(1)).thenCompose(
-				result -> AMAZON_KINESIS.waiter().waitUntilStreamExists(request -> request.streamName(streamName)));
+		return LocalstackContainerTest.createStream(AMAZON_KINESIS, streamName, 1);
 	}
 
 	/**
