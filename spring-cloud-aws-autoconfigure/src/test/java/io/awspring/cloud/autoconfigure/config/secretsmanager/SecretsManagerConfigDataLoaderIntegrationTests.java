@@ -37,6 +37,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.WebApplicationType;
@@ -69,6 +71,7 @@ import software.amazon.awssdk.services.sts.auth.StsWebIdentityTokenFileCredentia
  */
 @Testcontainers
 @ExtendWith(OutputCaptureExtension.class)
+@ResourceLock(Resources.SYSTEM_OUT)
 class SecretsManagerConfigDataLoaderIntegrationTests {
 
 	private static final String REGION = "us-east-1";

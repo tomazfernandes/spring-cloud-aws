@@ -31,6 +31,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.WebApplicationType;
@@ -61,6 +63,7 @@ import software.amazon.awssdk.services.appconfigdata.AppConfigDataClient;
 @Testcontainers
 @ExtendWith(OutputCaptureExtension.class)
 @EnabledIfEnvironmentVariable(named = "LOCALSTACK_AUTH_TOKEN", matches = ".+", disabledReason = "Requires LocalStack Pro image")
+@ResourceLock(Resources.SYSTEM_OUT)
 class AppConfigConfigDataLoaderIntegrationTests {
 
 	private static final String NEW_LINE_CHAR = System.lineSeparator();

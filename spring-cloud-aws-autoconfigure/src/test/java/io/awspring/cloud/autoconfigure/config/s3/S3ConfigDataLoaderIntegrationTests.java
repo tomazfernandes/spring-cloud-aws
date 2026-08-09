@@ -30,6 +30,8 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -66,6 +68,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @Testcontainers
 @ExtendWith(OutputCaptureExtension.class)
+@ResourceLock(Resources.SYSTEM_OUT)
 public class S3ConfigDataLoaderIntegrationTests {
 	private static final String YAML_TYPE = "application/x-yaml";
 	private static final String YAML_TYPE_ALTERNATIVE = "text/yaml";
