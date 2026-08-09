@@ -20,6 +20,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - name: Pull the test images in the background
+        run: |
+          for image in localstack/localstack:4.14.0 floci/floci:1.5.33 testcontainers/ryuk:0.14.0; do
+            docker pull "$image" > /dev/null 2>&1 &
+          done
       - name: Set up JDK ${{ matrix.version }}
         uses: actions/setup-java@v5
         with:
