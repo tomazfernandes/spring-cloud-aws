@@ -51,6 +51,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.ListBucketsResponse;
+import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import tools.jackson.databind.json.JsonMapper;
@@ -93,11 +94,17 @@ class S3TemplateIntegrationTests implements LocalstackContainerTest {
 
 	@AfterEach
 	void destroyBuckets() {
-		client.listBuckets().buckets().forEach(b -> {
-			client.listObjects(r -> r.bucket(b.name())).contents()
-					.forEach(s3Object -> client.deleteObject(r -> r.bucket(b.name()).key(s3Object.key())));
-			client.deleteBucket(r -> r.bucket(b.name()));
-		});
+		// Only this class's bucket. Listing the account and deleting everything also removes the buckets the
+		// other S3 test classes are working with, which is harmless while the classes run one at a time and
+		// fails them with NoSuchBucketException as soon as they do not.
+		try {
+			client.listObjects(r -> r.bucket(BUCKET_NAME)).contents()
+					.forEach(s3Object -> client.deleteObject(r -> r.bucket(BUCKET_NAME).key(s3Object.key())));
+			client.deleteBucket(r -> r.bucket(BUCKET_NAME));
+		}
+		catch (NoSuchBucketException ex) {
+			// already gone
+		}
 	}
 
 	@Test
