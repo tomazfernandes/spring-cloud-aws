@@ -50,7 +50,7 @@ public interface LocalstackContainerTest {
 	LocalStackContainer LOCAL_STACK_CONTAINER = new LocalStackContainer(
 			DockerImageName.parse("localstack/localstack:4.4.0"));
 
-	Semaphore STREAM_CREATION = new Semaphore(5);
+	Semaphore STREAM_CREATION = new Semaphore(3);
 
 	@BeforeAll
 	static void startContainer() {
@@ -60,7 +60,7 @@ public interface LocalstackContainerTest {
 	}
 
 	/**
-	 * Creates a stream and waits until it exists, at most five at a time. Test classes run concurrently and AWS
+	 * Creates a stream and waits until it exists, at most three at a time. Test classes run concurrently and AWS
 	 * only allows a few streams to be in the 'CREATING' state at once, which the concurrent creations were
 	 * exceeding.
 	 */
