@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         version: [ 17.0.12, 21.0.4, 24 ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v6
       - name: Pull the test images in the background
@@ -35,7 +35,7 @@ jobs:
         run: ./mvnw -V -B -T 3 verify -Pspring
   docs:
     name: Validate Docs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v6
       - name: Set up JDK 17
@@ -48,7 +48,7 @@ jobs:
         run: ./mvnw -V -B verify -Pdocs-classic -DskipTests
   sonar:
     name: Run Sonar Analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     # Disable Sonar for foreign PRs
     if: false
     steps:
