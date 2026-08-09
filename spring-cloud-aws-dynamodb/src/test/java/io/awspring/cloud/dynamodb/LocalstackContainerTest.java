@@ -47,7 +47,9 @@ public interface LocalstackContainerTest {
 
 	@BeforeAll
 	static void startContainer() {
-		LOCAL_STACK_CONTAINER.start();
+		synchronized (LOCAL_STACK_CONTAINER) {
+			LOCAL_STACK_CONTAINER.start();
+		}
 	}
 
 	static DynamoDbClient dynamoDbClient() {

@@ -15,7 +15,7 @@
  */
 package io.awspring.cloud.sns;
 
-import org.testcontainers.junit.jupiter.Container;
+import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.localstack.LocalStackContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -40,9 +40,20 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 @Testcontainers(disabledWithoutDocker = true)
 public interface LocalstackContainerTest {
 
-	@Container
 	LocalStackContainer LOCAL_STACK_CONTAINER = new LocalStackContainer(
 			DockerImageName.parse("localstack/localstack:4.14.0"));
+
+	/**
+	 * Starts the shared container under a lock. The classes run concurrently, and letting the Testcontainers extension
+	 * start the same static container from several of them at once lets one read the mapped port before another has
+	 * finished starting it.
+	 */
+	@BeforeAll
+	static void startContainer() {
+		synchronized (LOCAL_STACK_CONTAINER) {
+			LOCAL_STACK_CONTAINER.start();
+		}
+	}
 
 	static SnsClient snsClient() {
 		return applyAwsClientOptions(SnsClient.builder());
