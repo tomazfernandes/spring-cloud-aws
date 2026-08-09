@@ -53,6 +53,7 @@ import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
 import software.amazon.kinesis.common.InitialPositionInStream;
 import software.amazon.kinesis.common.InitialPositionInStreamExtended;
+import software.amazon.kinesis.coordinator.CoordinatorConfig.ClientVersionConfig;
 import software.amazon.kinesis.metrics.MetricsLevel;
 import software.amazon.kinesis.producer.KinesisProducer;
 import software.amazon.kinesis.producer.KinesisProducerConfiguration;
@@ -206,7 +207,8 @@ class KplKclIntegrationTests implements LocalstackContainerTest {
 			adapter.setLifecycleConfigCustomizer(lifecycleConfig -> lifecycleConfig.taskBackoffTimeMillis(100L));
 			adapter.setCoordinatorConfigCustomizer(
 					coordinatorConfig -> coordinatorConfig.shardConsumerDispatchPollIntervalMillis(500L)
-							.parentShardPollIntervalMillis(1000L).schedulerInitializationBackoffTimeMillis(200L));
+							.parentShardPollIntervalMillis(1000L).schedulerInitializationBackoffTimeMillis(200L)
+							.clientVersionConfig(ClientVersionConfig.CLIENT_VERSION_CONFIG_3X));
 			return adapter;
 		}
 

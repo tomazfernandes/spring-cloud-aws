@@ -51,6 +51,7 @@ import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
 import software.amazon.awssdk.services.kinesis.model.Consumer;
 import software.amazon.awssdk.services.kinesis.model.DescribeStreamResponse;
+import software.amazon.kinesis.coordinator.CoordinatorConfig.ClientVersionConfig;
 import software.amazon.kinesis.metrics.MetricsFactory;
 import software.amazon.kinesis.metrics.MetricsLevel;
 import software.amazon.kinesis.metrics.NullMetricsFactory;
@@ -192,7 +193,8 @@ public class KclMessageDrivenChannelAdapterTests implements LocalstackContainerT
 			adapter.setLifecycleConfigCustomizer(lifecycleConfig -> lifecycleConfig.taskBackoffTimeMillis(100L));
 			adapter.setCoordinatorConfigCustomizer(
 					coordinatorConfig -> coordinatorConfig.shardConsumerDispatchPollIntervalMillis(500L)
-							.parentShardPollIntervalMillis(1000L).schedulerInitializationBackoffTimeMillis(200L));
+							.parentShardPollIntervalMillis(1000L).schedulerInitializationBackoffTimeMillis(200L)
+							.clientVersionConfig(ClientVersionConfig.CLIENT_VERSION_CONFIG_3X));
 			adapter.setBindSourceRecord(true);
 			adapter.setEmptyRecordList(true);
 			adapter.setPollingMaxRecords(99);
