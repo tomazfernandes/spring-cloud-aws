@@ -32,7 +32,7 @@ jobs:
           java-version: ${{ matrix.version }}
           cache: maven
       - name: Build with Maven
-        run: ./mvnw -V -B -T 3 verify -Pspring
+        run: ./mvnw -V -B -T 3 verify -Pspring -Dmaven.javadoc.skip=true -Dsource.skip=true
   docs:
     name: Validate Docs
     runs-on: ubuntu-latest
