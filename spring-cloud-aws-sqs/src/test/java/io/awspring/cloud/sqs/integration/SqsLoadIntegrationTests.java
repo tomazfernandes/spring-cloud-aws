@@ -331,8 +331,7 @@ class SqsLoadIntegrationTests extends BaseSqsIntegrationTest {
 					.pollTimeout(Duration.ofSeconds(3))
 					.maxMessagesPerPoll(settings.messagesPerPoll)
 					.maxDelayBetweenPolls(Duration.ofSeconds(1))
-					.acknowledgementInterval(Duration.ZERO)
-					.acknowledgementThreshold(0)
+					.acknowledgementInterval(Duration.ofMillis(500))
 					.backPressureMode(BackPressureMode.FIXED_HIGH_THROUGHPUT)
 					.listenerShutdownTimeout(Duration.ZERO)
 					.acknowledgementShutdownTimeout(Duration.ZERO));

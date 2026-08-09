@@ -281,8 +281,7 @@ public class SqsAnnotationAcknowledgementIntegrationTests extends BaseSqsIntegra
 					.sqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient)
 					.acknowledgementResultCallback(getAcknowledgementResultCallback())
 					.configure(options -> options.listenerShutdownTimeout(Duration.ZERO)
-							.acknowledgementShutdownTimeout(Duration.ZERO).acknowledgementInterval(Duration.ZERO)
-							.acknowledgementThreshold(0).maxDelayBetweenPolls(Duration.ofSeconds(5))
+							.acknowledgementShutdownTimeout(Duration.ZERO).maxDelayBetweenPolls(Duration.ofSeconds(5))
 							.queueAttributeNames(Collections.singletonList(QueueAttributeName.QUEUE_ARN))
 							.pollTimeout(Duration.ofSeconds(5)))
 					.build();
@@ -292,9 +291,9 @@ public class SqsAnnotationAcknowledgementIntegrationTests extends BaseSqsIntegra
 		public SqsMessageListenerContainerFactory<Object> ackAfterSecondErrorFactory() {
 			return SqsMessageListenerContainerFactory.builder()
 					.configure(options -> options.listenerShutdownTimeout(Duration.ZERO)
-							.acknowledgementShutdownTimeout(Duration.ZERO).acknowledgementInterval(Duration.ZERO)
-							.acknowledgementThreshold(0).maxConcurrentMessages(10).pollTimeout(Duration.ofSeconds(10))
-							.maxMessagesPerPoll(10).maxDelayBetweenPolls(Duration.ofSeconds(1)))
+							.acknowledgementShutdownTimeout(Duration.ZERO).maxConcurrentMessages(10)
+							.pollTimeout(Duration.ofSeconds(10)).maxMessagesPerPoll(10)
+							.maxDelayBetweenPolls(Duration.ofSeconds(1)))
 					.containerComponentFactories(getExceptionThrowingAckExecutor())
 					.acknowledgementResultCallback(getAcknowledgementResultCallback()).errorHandler(testErrorHandler())
 					.sqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient).build();

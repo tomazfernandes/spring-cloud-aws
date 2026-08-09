@@ -873,7 +873,7 @@ class SqsFifoIntegrationTests extends BaseSqsIntegrationTest {
 			}).when(spyAsyncClient).changeMessageVisibilityBatch(any(ChangeMessageVisibilityBatchRequest.class));
 
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
-			factory.configure(options -> options.listenerShutdownTimeout(Duration.ZERO).acknowledgementShutdownTimeout(Duration.ZERO).acknowledgementInterval(Duration.ZERO).acknowledgementThreshold(0)
+			factory.configure(options -> options.listenerShutdownTimeout(Duration.ZERO).acknowledgementShutdownTimeout(Duration.ZERO)
 				.maxConcurrentMessages(10)
 				.acknowledgementThreshold(10)
 				.acknowledgementOrdering(AcknowledgementOrdering.ORDERED_BY_GROUP)

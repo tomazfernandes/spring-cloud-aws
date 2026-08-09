@@ -258,7 +258,7 @@ class SqsInterceptorIntegrationTests extends BaseSqsIntegrationTest {
 		@Bean
 		public SqsMessageListenerContainerFactory<String> defaultSqsListenerContainerFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
-			factory.configure(options -> options.listenerShutdownTimeout(Duration.ZERO).acknowledgementShutdownTimeout(Duration.ZERO).acknowledgementInterval(Duration.ZERO).acknowledgementThreshold(0)
+			factory.configure(options -> options.listenerShutdownTimeout(Duration.ZERO).acknowledgementShutdownTimeout(Duration.ZERO)
 				.maxDelayBetweenPolls(Duration.ofSeconds(1))
 				.queueAttributeNames(Collections.singletonList(QueueAttributeName.QUEUE_ARN))
 				.acknowledgementMode(AcknowledgementMode.ALWAYS)
@@ -275,8 +275,7 @@ class SqsInterceptorIntegrationTests extends BaseSqsIntegrationTest {
 		public SqsMessageListenerContainerFactory<String> interceptorThrowsFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.configure(options -> options.listenerShutdownTimeout(Duration.ZERO)
-					.acknowledgementShutdownTimeout(Duration.ZERO).acknowledgementInterval(Duration.ZERO)
-					.acknowledgementThreshold(0).maxDelayBetweenPolls(Duration.ofSeconds(1))
+					.acknowledgementShutdownTimeout(Duration.ZERO).maxDelayBetweenPolls(Duration.ofSeconds(1))
 					.acknowledgementMode(AcknowledgementMode.ALWAYS).pollTimeout(Duration.ofSeconds(3)));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			factory.addMessageInterceptor(new AsyncMessageInterceptor<String>() {
@@ -307,8 +306,7 @@ class SqsInterceptorIntegrationTests extends BaseSqsIntegrationTest {
 		public SqsMessageListenerContainerFactory<String> interceptorThrowsBatchFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.configure(options -> options.listenerShutdownTimeout(Duration.ZERO)
-					.acknowledgementShutdownTimeout(Duration.ZERO).acknowledgementInterval(Duration.ZERO)
-					.acknowledgementThreshold(0).maxDelayBetweenPolls(Duration.ofSeconds(1))
+					.acknowledgementShutdownTimeout(Duration.ZERO).maxDelayBetweenPolls(Duration.ofSeconds(1))
 					.acknowledgementMode(AcknowledgementMode.ALWAYS).pollTimeout(Duration.ofSeconds(3)));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			factory.addMessageInterceptor(new AsyncMessageInterceptor<String>() {
@@ -339,8 +337,7 @@ class SqsInterceptorIntegrationTests extends BaseSqsIntegrationTest {
 		public SqsMessageListenerContainerFactory<String> interceptorThrowsRecoversFactory() {
 			SqsMessageListenerContainerFactory<String> factory = new SqsMessageListenerContainerFactory<>();
 			factory.configure(options -> options.listenerShutdownTimeout(Duration.ZERO)
-					.acknowledgementShutdownTimeout(Duration.ZERO).acknowledgementInterval(Duration.ZERO)
-					.acknowledgementThreshold(0).maxDelayBetweenPolls(Duration.ofSeconds(1))
+					.acknowledgementShutdownTimeout(Duration.ZERO).maxDelayBetweenPolls(Duration.ofSeconds(1))
 					.acknowledgementMode(AcknowledgementMode.ON_SUCCESS).pollTimeout(Duration.ofSeconds(3)));
 			factory.setSqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient);
 			factory.addMessageInterceptor(new AsyncMessageInterceptor<String>() {

@@ -332,8 +332,7 @@ class SnsNotificationIntegrationTests extends BaseSqsIntegrationTest {
 					.sqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient)
 					.acknowledgementResultCallback(getAcknowledgementResultCallback())
 					.configure(options -> options.listenerShutdownTimeout(Duration.ZERO)
-							.acknowledgementShutdownTimeout(Duration.ZERO).acknowledgementInterval(Duration.ZERO)
-							.acknowledgementThreshold(0).maxDelayBetweenPolls(Duration.ofSeconds(5))
+							.acknowledgementShutdownTimeout(Duration.ZERO).maxDelayBetweenPolls(Duration.ofSeconds(5))
 							.queueAttributeNames(Collections.singletonList(QueueAttributeName.QUEUE_ARN))
 							.pollTimeout(Duration.ofSeconds(5)))
 					.build();
