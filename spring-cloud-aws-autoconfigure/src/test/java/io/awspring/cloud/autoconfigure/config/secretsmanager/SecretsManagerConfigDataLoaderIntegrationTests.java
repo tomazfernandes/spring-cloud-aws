@@ -24,6 +24,7 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 import com.amazon.sqs.javamessaging.AmazonSQSExtendedAsyncClient;
 import io.awspring.cloud.autoconfigure.AwsSyncClientCustomizer;
+import io.awspring.cloud.autoconfigure.CapturedLogs;
 import io.awspring.cloud.autoconfigure.ConfiguredAwsClient;
 import io.awspring.cloud.autoconfigure.LocalstackContainerTest;
 import java.io.File;
@@ -46,8 +47,8 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.bootstrap.BootstrapRegistry;
 import org.springframework.boot.bootstrap.BootstrapRegistryInitializer;
+import org.springframework.boot.diagnostics.LoggingFailureAnalysisReporter;
 import org.springframework.boot.test.context.FilteredClassLoader;
-import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.io.DefaultResourceLoader;
@@ -209,45 +210,49 @@ class SecretsManagerConfigDataLoaderIntegrationTests implements LocalstackContai
 	}
 
 	@Test
-	void whenKeysAreNotSpecifiedFailsWithHumanReadableFailureMessage(CapturedOutput output) {
-		SpringApplication application = new SpringApplication(App.class);
-		application.setWebApplicationType(WebApplicationType.NONE);
-		application.setResourceLoader(
-				new DefaultResourceLoader(new FilteredClassLoader(AmazonSQSExtendedAsyncClient.class)));
+	void whenKeysAreNotSpecifiedFailsWithHumanReadableFailureMessage() {
+		try (CapturedLogs capturedLogs = CapturedLogs.of(LoggingFailureAnalysisReporter.class)) {
+			SpringApplication application = new SpringApplication(App.class);
+			application.setWebApplicationType(WebApplicationType.NONE);
+			application.setResourceLoader(
+					new DefaultResourceLoader(new FilteredClassLoader(AmazonSQSExtendedAsyncClient.class)));
 
-		try (ConfigurableApplicationContext context = runApplication(application, "aws-secretsmanager:")) {
-			fail("Context without keys should fail to start");
-		}
-		catch (Exception e) {
-			assertThat(e).isInstanceOf(SecretsManagerKeysMissingException.class);
-			// ensure that failure analyzer catches the exception and provides meaningful
-			// error message
-			// Ensure that new line character should be platform independent
-			String errorMessage = "Description:%1$s%1$sCould not import properties from AWS Secrets Manager"
-					.formatted(NEW_LINE_CHAR);
-			assertThat(output.getOut()).contains(errorMessage);
+			try (ConfigurableApplicationContext context = runApplication(application, "aws-secretsmanager:")) {
+				fail("Context without keys should fail to start");
+			}
+			catch (Exception e) {
+				assertThat(e).isInstanceOf(SecretsManagerKeysMissingException.class);
+				// ensure that failure analyzer catches the exception and provides meaningful
+				// error message
+				// Ensure that new line character should be platform independent
+				String errorMessage = "Description:%1$s%1$sCould not import properties from AWS Secrets Manager"
+						.formatted(NEW_LINE_CHAR);
+				assertThat(capturedLogs.contains(errorMessage)).isTrue();
+			}
 		}
 	}
 
 	@Test
-	void whenKeysCannotBeFoundFailWithHumanReadableMessage(CapturedOutput output) {
-		SpringApplication application = new SpringApplication(App.class);
-		application.setWebApplicationType(WebApplicationType.NONE);
-		application.setResourceLoader(
-				new DefaultResourceLoader(new FilteredClassLoader(AmazonSQSExtendedAsyncClient.class)));
+	void whenKeysCannotBeFoundFailWithHumanReadableMessage() {
+		try (CapturedLogs capturedLogs = CapturedLogs.of(LoggingFailureAnalysisReporter.class)) {
+			SpringApplication application = new SpringApplication(App.class);
+			application.setWebApplicationType(WebApplicationType.NONE);
+			application.setResourceLoader(
+					new DefaultResourceLoader(new FilteredClassLoader(AmazonSQSExtendedAsyncClient.class)));
 
-		try (ConfigurableApplicationContext context = runApplication(application,
-				"aws-secretsmanager:/some/random/config")) {
-			fail("Context without keys should fail to start");
-		}
-		catch (Exception e) {
-			assertThat(e).isInstanceOf(AwsSecretsManagerPropertySourceNotFoundException.class);
-			// ensure that failure analyzer catches the exception and provides meaningful
-			// error message
-			// Ensure that new line character should be platform independent
-			String errorMessage = "Description:%1$s%1$sCould not import properties from AWS Secrets Manager. Exception happened while trying to load"
-					.formatted(NEW_LINE_CHAR);
-			assertThat(output.getOut()).contains(errorMessage);
+			try (ConfigurableApplicationContext context = runApplication(application,
+					"aws-secretsmanager:/some/random/config")) {
+				fail("Context without keys should fail to start");
+			}
+			catch (Exception e) {
+				assertThat(e).isInstanceOf(AwsSecretsManagerPropertySourceNotFoundException.class);
+				// ensure that failure analyzer catches the exception and provides meaningful
+				// error message
+				// Ensure that new line character should be platform independent
+				String errorMessage = "Description:%1$s%1$sCould not import properties from AWS Secrets Manager. Exception happened while trying to load"
+						.formatted(NEW_LINE_CHAR);
+				assertThat(capturedLogs.contains(errorMessage)).isTrue();
+			}
 		}
 	}
 
@@ -289,20 +294,6 @@ class SecretsManagerConfigDataLoaderIntegrationTests implements LocalstackContai
 			ConfiguredAwsClient secretsManagerClient = new ConfiguredAwsClient(
 					context.getBean(SecretsManagerClient.class));
 			assertThat(secretsManagerClient.getAwsCredentialsProvider()).isEqualTo(bootstrapCredentialsProvider);
-		}
-	}
-
-	@Test
-	void outputsDebugLogs(CapturedOutput output) {
-		SpringApplication application = new SpringApplication(App.class);
-		application.setWebApplicationType(WebApplicationType.NONE);
-		application.setResourceLoader(
-				new DefaultResourceLoader(new FilteredClassLoader(AmazonSQSExtendedAsyncClient.class)));
-
-		try (ConfigurableApplicationContext context = runApplication(application,
-				"aws-secretsmanager:/config/spring;/config/second")) {
-			context.getEnvironment().getProperty("message");
-			assertThat(output.getAll()).contains("Populating property retrieved from AWS Secrets Manager: message");
 		}
 	}
 
@@ -561,6 +552,20 @@ class SecretsManagerConfigDataLoaderIntegrationTests implements LocalstackContai
 			registry.register(AwsSyncClientCustomizer.class, context -> (builder -> {
 				builder.httpClient(Apache5HttpClient.builder().connectionTimeout(Duration.ofMillis(1542)).build());
 			}));
+		}
+	}
+
+	@Test
+	void populatesPropertiesFromTheExpectedSource() {
+		SpringApplication application = new SpringApplication(App.class);
+		application.setWebApplicationType(WebApplicationType.NONE);
+		application.setResourceLoader(
+				new DefaultResourceLoader(new FilteredClassLoader(AmazonSQSExtendedAsyncClient.class)));
+
+		try (ConfigurableApplicationContext context = runApplication(application,
+				"aws-secretsmanager:/config/spring;/config/second")) {
+			assertThat(context.getEnvironment().getPropertySources()).anyMatch(
+					source -> source.getName().contains("secretsmanager") && source.containsProperty("message"));
 		}
 	}
 
