@@ -190,6 +190,10 @@ public class KinesisBinderTests extends
 		output.send(MessageBuilder.withPayload(testPayload2)
 				.setHeader(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.TEXT_PLAIN).build());
 
+		// The unbound consumer shuts down asynchronously, so records already in flight still arrive on the
+		// channel it was bound to and would be read below as if they were the new consumer's replay. Give the
+		// new binding a channel of its own.
+		input2 = new QueueChannel();
 		binding2 = binder.bindConsumer(String.format("defaultGroup%s0", getDestinationNameDelimiter()), null, input2,
 				consumerProperties);
 		String testPayload3 = "foo-" + UUID.randomUUID();
