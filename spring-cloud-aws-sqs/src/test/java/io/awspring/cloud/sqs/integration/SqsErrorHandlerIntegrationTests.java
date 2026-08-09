@@ -332,7 +332,7 @@ public class SqsErrorHandlerIntegrationTests extends BaseSqsIntegrationTest {
 		@Autowired
 		LatchContainer latchContainer;
 		static Double multiplier = 2.0;
-		static Integer initialValueSeconds = 2;
+		static Integer initialValueSeconds = 1;
 		long firstReceiveTimestamp;
 
 		@SqsListener(queueNames = SUCCESS_EXPONENTIAL_FULL_JITTER_BACKOFF_ERROR_HANDLER_QUEUE, factory = SUCCESS_EXPONENTIAL_FULL_JITTER_BACKOFF_ERROR_HANDLER_FACTORY, id = "visibilityExponentialFullJitterErrorHandler")
@@ -391,8 +391,8 @@ public class SqsErrorHandlerIntegrationTests extends BaseSqsIntegrationTest {
 	static class LinearBackOffErrorHandlerListener {
 		@Autowired
 		LatchContainer latchContainer;
-		static int increment = 2;
-		static int initialValueSeconds = 2;
+		static int increment = 1;
+		static int initialValueSeconds = 1;
 		long firstReceiveTimestamp;
 
 		@SqsListener(queueNames = SUCCESS_LINEAR_BACKOFF_ERROR_HANDLER_QUEUE, factory = SUCCESS_LINEAR_BACKOFF_ERROR_HANDLER_FACTORY, id = "visibilityLinearErrorHandler")
