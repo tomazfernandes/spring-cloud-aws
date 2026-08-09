@@ -39,7 +39,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +62,6 @@ import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
  */
 
 @SpringBootTest
-@Order(1)
 public class SqsErrorHandlerIntegrationTests extends BaseSqsIntegrationTest {
 
 	private static final Logger logger = LoggerFactory.getLogger(SqsErrorHandlerIntegrationTests.class);
