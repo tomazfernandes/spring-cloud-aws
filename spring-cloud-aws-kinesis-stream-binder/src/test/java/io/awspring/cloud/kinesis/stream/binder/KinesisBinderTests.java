@@ -35,6 +35,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.mockito.BDDMockito;
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.cloud.stream.binder.Binding;
@@ -82,6 +84,7 @@ import software.amazon.kinesis.metrics.MetricsLevel;
  *
  * @since 4.0
  */
+@ResourceLock(value = "kinesis-binder", mode = ResourceAccessMode.READ)
 public class KinesisBinderTests extends
 		PartitionCapableBinderTests<KinesisTestBinder, ExtendedConsumerProperties<KinesisConsumerProperties>, ExtendedProducerProperties<KinesisProducerProperties>>
 		implements LocalstackContainerTest {
