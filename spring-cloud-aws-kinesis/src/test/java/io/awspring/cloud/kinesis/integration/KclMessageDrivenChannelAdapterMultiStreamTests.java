@@ -38,6 +38,7 @@ import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
 import software.amazon.awssdk.services.kinesis.model.Consumer;
 import software.amazon.kinesis.common.InitialPositionInStream;
 import software.amazon.kinesis.common.InitialPositionInStreamExtended;
+import software.amazon.kinesis.coordinator.CoordinatorConfig.ClientVersionConfig;
 import software.amazon.kinesis.metrics.MetricsLevel;
 
 /**
@@ -131,7 +132,8 @@ class KclMessageDrivenChannelAdapterMultiStreamTests implements LocalstackContai
 			adapter.setLifecycleConfigCustomizer(lifecycleConfig -> lifecycleConfig.taskBackoffTimeMillis(100L));
 			adapter.setCoordinatorConfigCustomizer(
 					coordinatorConfig -> coordinatorConfig.shardConsumerDispatchPollIntervalMillis(500L)
-							.parentShardPollIntervalMillis(1000L).schedulerInitializationBackoffTimeMillis(200L));
+							.parentShardPollIntervalMillis(1000L).schedulerInitializationBackoffTimeMillis(200L)
+							.clientVersionConfig(ClientVersionConfig.CLIENT_VERSION_CONFIG_3X));
 			return adapter;
 		}
 
