@@ -23,12 +23,18 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
+import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.core.retry.conditions.OrRetryCondition;
+import software.amazon.awssdk.core.retry.conditions.RetryCondition;
+import software.amazon.awssdk.core.retry.conditions.RetryOnExceptionsCondition;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
+import software.amazon.awssdk.services.kinesis.model.LimitExceededException;
+import software.amazon.awssdk.services.kinesis.model.ResourceInUseException;
 
 /**
  * The base contract for JUnit tests based on the container for Localstack. The Testcontainers 'reuse' option must be
@@ -48,7 +54,9 @@ public interface LocalstackContainerTest {
 
 	@BeforeAll
 	static void startContainer() {
-		LOCAL_STACK_CONTAINER.start();
+		synchronized (LOCAL_STACK_CONTAINER) {
+			LOCAL_STACK_CONTAINER.start();
+		}
 		System.setProperty("spring.cloud.aws.region.static", LOCAL_STACK_CONTAINER.getRegion());
 		System.setProperty("spring.cloud.aws.endpoint", LOCAL_STACK_CONTAINER.getEndpoint().toString());
 		System.setProperty("spring.cloud.aws.credentials.access-key", LOCAL_STACK_CONTAINER.getAccessKey());
@@ -79,6 +87,14 @@ public interface LocalstackContainerTest {
 	private static <B extends AwsClientBuilder<B, T>, T> T applyAwsClientOptions(B clientBuilder) {
 		return clientBuilder.region(Region.of(LOCAL_STACK_CONTAINER.getRegion()))
 				.credentialsProvider(credentialsProvider()).endpointOverride(LOCAL_STACK_CONTAINER.getEndpoint())
+				// The classes run concurrently and the binder's provisioner creates a stream per binding, so
+				// another class can be reading a stream Localstack still reports as CREATING or UPDATING. The
+				// SDK does not classify 'ResourceInUseException' as retryable, so it needs saying explicitly.
+				.overrideConfiguration(config -> config.retryPolicy(RetryPolicy.builder().numRetries(20)
+						.retryCondition(OrRetryCondition.create(RetryCondition.defaultRetryCondition(),
+								RetryOnExceptionsCondition.create(ResourceInUseException.class,
+										LimitExceededException.class)))
+						.build()))
 				.build();
 	}
 
