@@ -42,7 +42,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntUnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -101,7 +100,7 @@ class SqsBackPressureIntegrationTests extends BaseSqsIntegrationTest {
 
 		@Override
 		public boolean drain(Duration timeout) {
-			Duration drainingTimeout = Duration.ofSeconds(10L);
+			Duration drainingTimeout = Duration.ofSeconds(60L);
 			Duration drainingPollingIntervalCheck = Duration.ofMillis(50L);
 			draining.set(true);
 			limit.set(0);
@@ -118,7 +117,6 @@ class SqsBackPressureIntegrationTests extends BaseSqsIntegrationTest {
 
 	@ParameterizedTest
 	@CsvSource({ "2,2", "4,4", "5,5", "20,5" })
-	@Disabled("Flaky: the 10s latch expires under load before all 100 messages are processed")
 	void staticBackPressureLimitShouldCapQueueProcessingCapacity(int staticLimit, int expectedMaxConcurrentRequests)
 			throws Exception {
 		AtomicInteger concurrentRequest = new AtomicInteger();
@@ -149,7 +147,7 @@ class SqsBackPressureIntegrationTests extends BaseSqsIntegrationTest {
 					concurrentRequest.decrementAndGet();
 				}).build();
 		container.start();
-		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(maxConcurrentRequest.get()).isLessThanOrEqualTo(expectedMaxConcurrentRequests);
 		container.stop();
 	}
@@ -217,7 +215,7 @@ class SqsBackPressureIntegrationTests extends BaseSqsIntegrationTest {
 								opt -> limiter, BackPressureHandlerFactories.concurrencyLimiterBackPressureHandler())))
 				.messageListener(msg -> {
 					try {
-						if (!controlSemaphore.tryAcquire(5, TimeUnit.SECONDS) && !isDraining.get()) {
+						if (!controlSemaphore.tryAcquire(30, TimeUnit.SECONDS) && !isDraining.get()) {
 							processingFailed.set(true);
 							throw new IllegalStateException("Failed to wait for control semaphore");
 						}
@@ -272,7 +270,7 @@ class SqsBackPressureIntegrationTests extends BaseSqsIntegrationTest {
 			}
 
 			void waitForAdvance(int permits) throws InterruptedException {
-				assertThat(advanceSemaphore.tryAcquire(permits, 5, TimeUnit.SECONDS))
+				assertThat(advanceSemaphore.tryAcquire(permits, 30, TimeUnit.SECONDS))
 						.withFailMessage(() -> "Waiting for %d permits timed out. Only %d permits available"
 								.formatted(permits, advanceSemaphore.availablePermits()))
 						.isTrue();
@@ -321,7 +319,7 @@ class SqsBackPressureIntegrationTests extends BaseSqsIntegrationTest {
 			controller.updateLimit(6);
 
 			controller.waitForAdvance(50);
-			assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 			assertThat(controller.maxConcurrentRequest.get()).isLessThanOrEqualTo(5);
 			assertThat(processingFailed.get()).isFalse();
 		}
@@ -493,7 +491,7 @@ class SqsBackPressureIntegrationTests extends BaseSqsIntegrationTest {
 			}
 			eventsCsvWriter.write(Path.of("target/stats-%s.csv".formatted(queueName)));
 			assertThat(maxConcurrentRqSum).isLessThanOrEqualTo(limitsSum);
-			assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		}
 		finally {
 			container.stop();
