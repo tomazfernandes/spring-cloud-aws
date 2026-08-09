@@ -60,9 +60,8 @@ public interface LocalstackContainerTest {
 	}
 
 	/**
-	 * Creates a stream and waits until it exists, at most three at a time. Test classes run concurrently and AWS
-	 * only allows a few streams to be in the 'CREATING' state at once, which the concurrent creations were
-	 * exceeding.
+	 * Creates a stream and waits until it exists, at most three at a time. Test classes run concurrently and AWS only
+	 * allows a few streams to be in the 'CREATING' state at once, which the concurrent creations were exceeding.
 	 */
 	static CompletableFuture<WaiterResponse<DescribeStreamResponse>> createStream(KinesisAsyncClient client,
 			String streamName, int shardCount) {

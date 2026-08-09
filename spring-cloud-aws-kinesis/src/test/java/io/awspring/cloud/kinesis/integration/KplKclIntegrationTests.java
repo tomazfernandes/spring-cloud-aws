@@ -201,7 +201,12 @@ class KplKclIntegrationTests implements LocalstackContainerTest {
 			adapter.setMetricsLevel(MetricsLevel.NONE);
 			adapter.setLeaseManagementConfigCustomizer(
 					leaseManagementConfig -> leaseManagementConfig.maxLeasesForWorker(10).shardSyncIntervalMillis(0)
+							.failoverTimeMillis(1000).leaseAssignmentIntervalMillis(1000L).epsilonMillis(10)
 							.workerUtilizationAwareAssignmentConfig().disableWorkerMetrics(true));
+			adapter.setLifecycleConfigCustomizer(lifecycleConfig -> lifecycleConfig.taskBackoffTimeMillis(100L));
+			adapter.setCoordinatorConfigCustomizer(
+					coordinatorConfig -> coordinatorConfig.shardConsumerDispatchPollIntervalMillis(500L)
+							.parentShardPollIntervalMillis(1000L).schedulerInitializationBackoffTimeMillis(200L));
 			return adapter;
 		}
 
