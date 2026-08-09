@@ -76,7 +76,7 @@ public class S3ConfigDataLoaderIntegrationTests {
 	private static final String NEW_LINE_CHAR = System.lineSeparator();
 	@Container
 	static LocalStackContainer localstack = new LocalStackContainer(
-			DockerImageName.parse("localstack/localstack:4.4.0")).withReuse(true);
+			DockerImageName.parse("localstack/localstack:4.14.0")).withReuse(true);
 
 	@BeforeAll
 	static void beforeAll() {

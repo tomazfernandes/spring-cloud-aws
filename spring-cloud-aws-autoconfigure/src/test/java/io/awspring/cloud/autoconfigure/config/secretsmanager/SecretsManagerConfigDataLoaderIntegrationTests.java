@@ -76,7 +76,7 @@ class SecretsManagerConfigDataLoaderIntegrationTests {
 
 	@Container
 	static LocalStackContainer localstack = new LocalStackContainer(
-			DockerImageName.parse("localstack/localstack:4.4.0"));
+			DockerImageName.parse("localstack/localstack:4.14.0"));
 
 	@TempDir
 	static Path tokenTempDir;
