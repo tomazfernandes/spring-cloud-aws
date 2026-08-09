@@ -32,6 +32,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.WebApplicationType;
@@ -65,6 +67,7 @@ import software.amazon.awssdk.services.ssm.model.ParameterType;
  */
 @Testcontainers
 @ExtendWith(OutputCaptureExtension.class)
+@ResourceLock(Resources.SYSTEM_OUT)
 class ParameterStoreConfigDataLoaderIntegrationTests {
 
 	private static final String REGION = "us-east-1";

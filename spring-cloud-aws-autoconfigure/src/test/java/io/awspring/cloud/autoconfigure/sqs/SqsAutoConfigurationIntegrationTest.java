@@ -29,6 +29,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.FilteredClassLoader;
@@ -57,6 +58,7 @@ import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException;
  */
 @SpringBootTest
 @Testcontainers
+@ResourceLock("autoconfigure-sqs-localstack")
 class SqsAutoConfigurationIntegrationTest {
 
 	private static final String QUEUE_NAME = "my_queue_name";
