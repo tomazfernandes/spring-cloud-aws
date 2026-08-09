@@ -24,7 +24,6 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 import com.amazon.sqs.javamessaging.AmazonSQSExtendedAsyncClient;
 import io.awspring.cloud.autoconfigure.AwsSyncClientCustomizer;
-import io.awspring.cloud.autoconfigure.CapturedLogs;
 import io.awspring.cloud.autoconfigure.ConfiguredAwsClient;
 import io.awspring.cloud.autoconfigure.LocalstackContainerTest;
 import java.io.IOException;
@@ -42,8 +41,8 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.bootstrap.BootstrapRegistry;
 import org.springframework.boot.bootstrap.BootstrapRegistryInitializer;
-import org.springframework.boot.diagnostics.LoggingFailureAnalysisReporter;
 import org.springframework.boot.test.context.FilteredClassLoader;
+import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.io.DefaultResourceLoader;
@@ -197,49 +196,45 @@ class ParameterStoreConfigDataLoaderIntegrationTests implements LocalstackContai
 	}
 
 	@Test
-	void whenKeysAreNotSpecifiedFailsWithHumanReadableFailureMessage() {
-		try (CapturedLogs capturedLogs = CapturedLogs.of(LoggingFailureAnalysisReporter.class)) {
-			SpringApplication application = new SpringApplication(App.class);
-			application.setWebApplicationType(WebApplicationType.NONE);
-			application.setResourceLoader(
-					new DefaultResourceLoader(new FilteredClassLoader(AmazonSQSExtendedAsyncClient.class)));
+	void whenKeysAreNotSpecifiedFailsWithHumanReadableFailureMessage(CapturedOutput output) {
+		SpringApplication application = new SpringApplication(App.class);
+		application.setWebApplicationType(WebApplicationType.NONE);
+		application.setResourceLoader(
+				new DefaultResourceLoader(new FilteredClassLoader(AmazonSQSExtendedAsyncClient.class)));
 
-			try (ConfigurableApplicationContext context = runApplication(application, "aws-parameterstore:")) {
-				fail("Context without keys should fail to start");
-			}
-			catch (Exception e) {
-				assertThat(e).isInstanceOf(ParameterStoreKeysMissingException.class);
-				// ensure that failure analyzer catches the exception and provides meaningful
-				// error message
-				// Ensure that new line character should be platform independent
-				String errorMessage = "Description:%1$s%1$sCould not import properties from AWS Parameter Store"
-						.formatted(NEW_LINE_CHAR);
-				assertThat(capturedLogs.contains(errorMessage)).isTrue();
-			}
+		try (ConfigurableApplicationContext context = runApplication(application, "aws-parameterstore:")) {
+			fail("Context without keys should fail to start");
+		}
+		catch (Exception e) {
+			assertThat(e).isInstanceOf(ParameterStoreKeysMissingException.class);
+			// ensure that failure analyzer catches the exception and provides meaningful
+			// error message
+			// Ensure that new line character should be platform independent
+			String errorMessage = "Description:%1$s%1$sCould not import properties from AWS Parameter Store"
+					.formatted(NEW_LINE_CHAR);
+			assertThat(output.getOut()).contains(errorMessage);
 		}
 	}
 
 	@Test
-	void whenKeysCannotBeFoundFailWithHumanReadableMessage() {
-		try (CapturedLogs capturedLogs = CapturedLogs.of(LoggingFailureAnalysisReporter.class)) {
-			SpringApplication application = new SpringApplication(App.class);
-			application.setWebApplicationType(WebApplicationType.NONE);
-			application.setResourceLoader(
-					new DefaultResourceLoader(new FilteredClassLoader(AmazonSQSExtendedAsyncClient.class)));
+	void whenKeysCannotBeFoundFailWithHumanReadableMessage(CapturedOutput output) {
+		SpringApplication application = new SpringApplication(App.class);
+		application.setWebApplicationType(WebApplicationType.NONE);
+		application.setResourceLoader(
+				new DefaultResourceLoader(new FilteredClassLoader(AmazonSQSExtendedAsyncClient.class)));
 
-			try (ConfigurableApplicationContext context = runApplicationWithWrongEndpoint(application,
-					"aws-parameterstore:/config/fail/")) {
-				fail("Context without keys should fail to start");
-			}
-			catch (Exception e) {
-				assertThat(e).isInstanceOf(AwsParameterPropertySourceNotFoundException.class);
-				// ensure that failure analyzer catches the exception and provides meaningful
-				// error message
-				// Ensure that new line character should be platform independent
-				String errorMessage = "Description:%1$s%1$sCould not import properties from AWS Parameter Store"
-						.formatted(NEW_LINE_CHAR);
-				assertThat(capturedLogs.contains(errorMessage)).isTrue();
-			}
+		try (ConfigurableApplicationContext context = runApplicationWithWrongEndpoint(application,
+				"aws-parameterstore:/config/fail/")) {
+			fail("Context without keys should fail to start");
+		}
+		catch (Exception e) {
+			assertThat(e).isInstanceOf(AwsParameterPropertySourceNotFoundException.class);
+			// ensure that failure analyzer catches the exception and provides meaningful
+			// error message
+			// Ensure that new line character should be platform independent
+			String errorMessage = "Description:%1$s%1$sCould not import properties from AWS Parameter Store"
+					.formatted(NEW_LINE_CHAR);
+			assertThat(output.getOut()).contains(errorMessage);
 		}
 	}
 
@@ -281,6 +276,20 @@ class ParameterStoreConfigDataLoaderIntegrationTests implements LocalstackContai
 				"aws-parameterstore:/config/spring")) {
 			ConfiguredAwsClient ssmClient = new ConfiguredAwsClient(context.getBean(SsmClient.class));
 			assertThat(ssmClient.getAwsCredentialsProvider()).isEqualTo(bootstrapCredentialsProvider);
+		}
+	}
+
+	@Test
+	void outputsDebugLogs(CapturedOutput output) {
+		SpringApplication application = new SpringApplication(App.class);
+		application.setWebApplicationType(WebApplicationType.NONE);
+		application.setResourceLoader(
+				new DefaultResourceLoader(new FilteredClassLoader(AmazonSQSExtendedAsyncClient.class)));
+
+		try (ConfigurableApplicationContext context = runApplication(application,
+				"aws-parameterstore:/config/spring/")) {
+			context.getEnvironment().getProperty("message");
+			assertThat(output.getAll()).contains("Populating property retrieved from AWS Parameter Store: message");
 		}
 	}
 
@@ -559,20 +568,6 @@ class ParameterStoreConfigDataLoaderIntegrationTests implements LocalstackContai
 				builder.httpClient(Apache5HttpClient.builder().connectionTimeout(Duration.ofMillis(1542))
 						.socketTimeout(Duration.ofSeconds(30)).build());
 			}));
-		}
-	}
-
-	@Test
-	void populatesPropertiesFromTheExpectedSource() {
-		SpringApplication application = new SpringApplication(App.class);
-		application.setWebApplicationType(WebApplicationType.NONE);
-		application.setResourceLoader(
-				new DefaultResourceLoader(new FilteredClassLoader(AmazonSQSExtendedAsyncClient.class)));
-
-		try (ConfigurableApplicationContext context = runApplication(application,
-				"aws-parameterstore:/config/spring/")) {
-			assertThat(context.getEnvironment().getPropertySources()).anyMatch(
-					source -> source.getName().contains("parameterstore") && source.containsProperty("message"));
 		}
 	}
 

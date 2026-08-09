@@ -22,7 +22,6 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 import com.amazon.sqs.javamessaging.AmazonSQSExtendedAsyncClient;
 import io.awspring.cloud.autoconfigure.AwsSyncClientCustomizer;
-import io.awspring.cloud.autoconfigure.CapturedLogs;
 import io.awspring.cloud.autoconfigure.ConfiguredAwsClient;
 import io.awspring.cloud.autoconfigure.LocalstackContainerTest;
 import io.awspring.cloud.autoconfigure.s3.S3ClientCustomizer;
@@ -38,8 +37,8 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.bootstrap.BootstrapRegistry;
 import org.springframework.boot.bootstrap.BootstrapRegistryInitializer;
-import org.springframework.boot.diagnostics.LoggingFailureAnalysisReporter;
 import org.springframework.boot.test.context.FilteredClassLoader;
+import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.io.DefaultResourceLoader;
@@ -169,26 +168,24 @@ public class S3ConfigDataLoaderIntegrationTests implements LocalstackContainerTe
 	}
 
 	@Test
-	void failOnKeysMissing() {
-		try (CapturedLogs capturedLogs = CapturedLogs.of(LoggingFailureAnalysisReporter.class)) {
-			SpringApplication application = new SpringApplication(App.class);
-			application.setWebApplicationType(WebApplicationType.NONE);
-			application.setResourceLoader(
-					new DefaultResourceLoader(new FilteredClassLoader(AmazonSQSExtendedAsyncClient.class)));
+	void failOnKeysMissing(CapturedOutput output) {
+		SpringApplication application = new SpringApplication(App.class);
+		application.setWebApplicationType(WebApplicationType.NONE);
+		application.setResourceLoader(
+				new DefaultResourceLoader(new FilteredClassLoader(AmazonSQSExtendedAsyncClient.class)));
 
-			try (ConfigurableApplicationContext context = runApplication(application,
-					"aws-s3:test-bucket/tst.properties")) {
-				fail("Context without keys should fail to start");
-			}
-			catch (Exception e) {
-				assertThat(e).isInstanceOf(AwsS3PropertySourceNotFoundException.class);
-				// ensure that failure analyzer catches the exception and provides meaningful
-				// error message
-				// Ensure that new line character should be platform independent
-				String errorMessage = "Description:%1$s%1$sCould not import properties from AWS S3. Exception happened while trying to load the keys:"
-						.formatted(NEW_LINE_CHAR);
-				assertThat(capturedLogs.contains(errorMessage)).isTrue();
-			}
+		try (ConfigurableApplicationContext context = runApplication(application,
+				"aws-s3:test-bucket/tst.properties")) {
+			fail("Context without keys should fail to start");
+		}
+		catch (Exception e) {
+			assertThat(e).isInstanceOf(AwsS3PropertySourceNotFoundException.class);
+			// ensure that failure analyzer catches the exception and provides meaningful
+			// error message
+			// Ensure that new line character should be platform independent
+			String errorMessage = "Description:%1$s%1$sCould not import properties from AWS S3. Exception happened while trying to load the keys:"
+					.formatted(NEW_LINE_CHAR);
+			assertThat(output.getOut()).contains(errorMessage);
 		}
 	}
 

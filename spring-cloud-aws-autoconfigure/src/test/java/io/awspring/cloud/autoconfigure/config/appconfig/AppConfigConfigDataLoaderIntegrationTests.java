@@ -20,7 +20,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 import com.amazon.sqs.javamessaging.AmazonSQSExtendedAsyncClient;
-import io.awspring.cloud.autoconfigure.CapturedLogs;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -36,8 +35,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.diagnostics.LoggingFailureAnalysisReporter;
 import org.springframework.boot.test.context.FilteredClassLoader;
+import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.io.ClassPathResource;
@@ -150,29 +149,25 @@ class AppConfigConfigDataLoaderIntegrationTests {
 	}
 
 	@Test
-	void whenKeysAreNotSpecifiedFailsWithHumanReadableFailureMessage() {
-		try (CapturedLogs capturedLogs = CapturedLogs.of(LoggingFailureAnalysisReporter.class)) {
-			SpringApplication application = createApplication();
+	void whenKeysAreNotSpecifiedFailsWithHumanReadableFailureMessage(CapturedOutput output) {
+		SpringApplication application = createApplication();
 
-			assertThatThrownBy(() -> runApplication(application, "aws-appconfig:"))
-					.isInstanceOf(AppConfigKeysMissingException.class);
-			String errorMessage = "Description:%1$s%1$sCould not import properties from AWS App Config"
-					.formatted(NEW_LINE_CHAR);
-			assertThat(capturedLogs.contains(errorMessage)).isTrue();
-		}
+		assertThatThrownBy(() -> runApplication(application, "aws-appconfig:"))
+				.isInstanceOf(AppConfigKeysMissingException.class);
+		String errorMessage = "Description:%1$s%1$sCould not import properties from AWS App Config"
+				.formatted(NEW_LINE_CHAR);
+		assertThat(output.getOut()).contains(errorMessage);
 	}
 
 	@Test
-	void whenKeysCannotBeFoundFailWithHumanReadableMessage() {
-		try (CapturedLogs capturedLogs = CapturedLogs.of(LoggingFailureAnalysisReporter.class)) {
-			SpringApplication application = createApplication();
+	void whenKeysCannotBeFoundFailWithHumanReadableMessage(CapturedOutput output) {
+		SpringApplication application = createApplication();
 
-			assertThatThrownBy(() -> runApplication(application, "aws-appconfig:invalidApp#invalidProfile#invalidEnv"))
-					.isInstanceOf(AwsAppConfigPropertySourceNotFoundException.class);
-			String errorMessage = "Description:%1$s%1$sCould not import properties from App Config. Exception happened while trying to load the keys"
-					.formatted(NEW_LINE_CHAR);
-			assertThat(capturedLogs.contains(errorMessage)).isTrue();
-		}
+		assertThatThrownBy(() -> runApplication(application, "aws-appconfig:invalidApp#invalidProfile#invalidEnv"))
+				.isInstanceOf(AwsAppConfigPropertySourceNotFoundException.class);
+		String errorMessage = "Description:%1$s%1$sCould not import properties from App Config. Exception happened while trying to load the keys"
+				.formatted(NEW_LINE_CHAR);
+		assertThat(output.getOut()).contains(errorMessage);
 	}
 
 	@Test
