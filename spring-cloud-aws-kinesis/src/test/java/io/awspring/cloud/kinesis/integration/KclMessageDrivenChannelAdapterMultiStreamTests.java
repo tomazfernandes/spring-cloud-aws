@@ -69,15 +69,9 @@ class KclMessageDrivenChannelAdapterMultiStreamTests implements LocalstackContai
 		DYNAMO_DB = LocalstackContainerTest.dynamoDbClient();
 		CLOUD_WATCH = LocalstackContainerTest.cloudWatchClient();
 
-		CompletableFuture<?> completableFuture1 = AMAZON_KINESIS
-				.createStream(request -> request.streamName(TEST_STREAM1).shardCount(1))
-				.thenCompose(result -> AMAZON_KINESIS.waiter()
-						.waitUntilStreamExists(request -> request.streamName(TEST_STREAM1)));
+		CompletableFuture<?> completableFuture1 = LocalstackContainerTest.createStream(AMAZON_KINESIS, TEST_STREAM1, 1);
 
-		CompletableFuture<?> completableFuture2 = AMAZON_KINESIS
-				.createStream(request -> request.streamName(TEST_STREAM2).shardCount(1))
-				.thenCompose(result -> AMAZON_KINESIS.waiter()
-						.waitUntilStreamExists(request -> request.streamName(TEST_STREAM2)));
+		CompletableFuture<?> completableFuture2 = LocalstackContainerTest.createStream(AMAZON_KINESIS, TEST_STREAM2, 1);
 
 		CompletableFuture.allOf(completableFuture1, completableFuture2).join();
 	}

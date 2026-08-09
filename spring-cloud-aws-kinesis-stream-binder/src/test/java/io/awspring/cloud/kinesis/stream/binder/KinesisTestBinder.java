@@ -20,6 +20,7 @@ import io.awspring.cloud.kinesis.stream.binder.properties.KinesisBinderConfigura
 import io.awspring.cloud.kinesis.stream.binder.properties.KinesisConsumerProperties;
 import io.awspring.cloud.kinesis.stream.binder.properties.KinesisProducerProperties;
 import io.awspring.cloud.kinesis.stream.binder.provisioning.KinesisStreamProvisioner;
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.cloud.stream.binder.AbstractTestBinder;
@@ -33,6 +34,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.integration.config.EnableIntegration;
 import org.springframework.integration.core.MessageProducer;
+import software.amazon.awssdk.retries.api.BackoffStrategy;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
@@ -80,8 +82,12 @@ public class KinesisTestBinder extends
 		this.amazonKinesis.listStreams()
 				.thenCompose(reply -> CompletableFuture.allOf(reply.streamNames().stream()
 						.map(streamName -> this.amazonKinesis.deleteStream(request -> request.streamName(streamName))
-								.thenCompose(result -> this.amazonKinesis.waiter()
-										.waitUntilStreamNotExists(request -> request.streamName(streamName))))
+								// The SDK default waiter backs off in flat 10-second steps, so every
+								// stream deletion costs at least 10 seconds. Poll once per second.
+								.thenCompose(result -> this.amazonKinesis.waiter().waitUntilStreamNotExists(
+										request -> request.streamName(streamName),
+										waiter -> waiter.maxAttempts(60).backoffStrategyV2(
+												BackoffStrategy.fixedDelayWithoutJitter(Duration.ofSeconds(1))))))
 						.toArray(CompletableFuture[]::new)))
 				.join();
 	}
