@@ -26,6 +26,7 @@ import io.awspring.cloud.sqs.config.SqsBeanNames;
 import io.awspring.cloud.sqs.listener.DefaultListenerContainerRegistry;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.FilteredClassLoader;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -51,6 +52,7 @@ import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException;
  */
 @Testcontainers
 @SpringBootTest
+@ResourceLock("autoconfigure-sqs-localstack")
 class SqsListenerContainerStartupIntegrationTest {
 
 	private static final String EXISTING_QUEUE_NAME = "messaging-greetings-notifications";
