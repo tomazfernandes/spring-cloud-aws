@@ -23,6 +23,7 @@ import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
@@ -57,13 +58,37 @@ abstract class BaseSqsIntegrationTest {
 
 	static StaticCredentialsProvider credentialsProvider;
 
-	@BeforeAll
-	static synchronized void beforeAll() {
-		if (!localstack.isRunning()) {
-			localstack.start();
-			credentialsProvider = StaticCredentialsProvider
-					.create(AwsBasicCredentials.create(localstack.getAccessKey(), localstack.getSecretKey()));
+	private static final CompletableFuture<Void> STARTED = new CompletableFuture<>();
+
+	private static final AtomicBoolean STARTING = new AtomicBoolean();
+
+	/**
+	 * Starts the container off the JUnit worker threads. The workers block in {@link #beforeAll()} until it is up, and
+	 * a blocking wait does not make the pool compensate with another thread, so starting it from a test would hold as
+	 * many workers as there are integration classes scheduled and leave the rest of the suite idle.
+	 */
+	static void startAsync() {
+		if (!STARTING.compareAndSet(false, true)) {
+			return;
 		}
+		Thread starter = new Thread(() -> {
+			try {
+				localstack.start();
+				credentialsProvider = StaticCredentialsProvider
+						.create(AwsBasicCredentials.create(localstack.getAccessKey(), localstack.getSecretKey()));
+				STARTED.complete(null);
+			}
+			catch (Throwable t) {
+				STARTED.completeExceptionally(t);
+			}
+		}, "localstack-starter");
+		starter.setDaemon(true);
+		starter.start();
+	}
+
+	@BeforeAll
+	static void beforeAll() {
+		STARTED.join();
 	}
 
 	@DynamicPropertySource
