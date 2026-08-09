@@ -62,7 +62,7 @@ class SnsAsyncTemplateIntegrationTest {
 
 	@Container
 	static LocalStackContainer localstack = new LocalStackContainer(
-			DockerImageName.parse("localstack/localstack:4.4.0"));
+			DockerImageName.parse("localstack/localstack:4.14.0"));
 
 	private static SnsAsyncClient snsAsyncClient;
 	private static SqsClient sqsClient;

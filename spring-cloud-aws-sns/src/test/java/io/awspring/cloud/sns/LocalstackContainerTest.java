@@ -42,7 +42,7 @@ public interface LocalstackContainerTest {
 
 	@Container
 	LocalStackContainer LOCAL_STACK_CONTAINER = new LocalStackContainer(
-			DockerImageName.parse("localstack/localstack:4.4.0"));
+			DockerImageName.parse("localstack/localstack:4.14.0"));
 
 	static SnsClient snsClient() {
 		return applyAwsClientOptions(SnsClient.builder());

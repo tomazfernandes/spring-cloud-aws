@@ -41,7 +41,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 public interface LocalstackContainerTest {
 
 	LocalStackContainer LOCAL_STACK_CONTAINER = new LocalStackContainer(
-			DockerImageName.parse("localstack/localstack:4.4.0")).withEnv("S3_SKIP_SIGNATURE_VALIDATION", "0");
+			DockerImageName.parse("localstack/localstack:4.14.0")).withEnv("S3_SKIP_SIGNATURE_VALIDATION", "0");
 
 	@BeforeAll
 	static void startContainer() {
