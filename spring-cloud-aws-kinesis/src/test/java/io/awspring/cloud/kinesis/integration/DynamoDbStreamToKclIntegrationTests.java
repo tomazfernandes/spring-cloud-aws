@@ -169,7 +169,7 @@ class DynamoDbStreamToKclIntegrationTests implements LocalstackContainerTest {
 			adapter.setMetricsLevel(MetricsLevel.NONE);
 			adapter.setLeaseManagementConfigCustomizer(
 					leaseManagementConfig -> leaseManagementConfig.maxLeasesForWorker(10).shardSyncIntervalMillis(0)
-							.failoverTimeMillis(1000).leaseAssignmentIntervalMillis(1000L).epsilonMillis(10)
+							.failoverTimeMillis(1000).leaseAssignmentIntervalMillis(1000L)
 							.workerUtilizationAwareAssignmentConfig().disableWorkerMetrics(true));
 			adapter.setLifecycleConfigCustomizer(lifecycleConfig -> lifecycleConfig.taskBackoffTimeMillis(100L));
 			adapter.setCoordinatorConfigCustomizer(
