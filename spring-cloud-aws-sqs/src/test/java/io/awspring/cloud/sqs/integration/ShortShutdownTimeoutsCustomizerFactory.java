@@ -40,6 +40,10 @@ public class ShortShutdownTimeoutsCustomizerFactory implements ContextCustomizer
 	// above zero is spent waiting for permits that in-flight polls only release when they return.
 	private static final Duration SHUTDOWN_TIMEOUT = Duration.ZERO;
 
+	// The suite's queues are served by one Localstack, so a long poll parks a request on it for its whole
+	// duration. Shorten it so containers give the poll back and pick redelivered messages up sooner.
+	private static final Duration POLL_TIMEOUT = Duration.ofSeconds(2);
+
 	@Override
 	public ContextCustomizer createContextCustomizer(Class<?> testClass,
 			List<ContextConfigurationAttributes> configAttributes) {
@@ -56,7 +60,7 @@ public class ShortShutdownTimeoutsCustomizerFactory implements ContextCustomizer
 					if (bean instanceof SqsMessageListenerContainerFactory<?> factory) {
 						factory.configure(options -> options.listenerShutdownTimeout(SHUTDOWN_TIMEOUT)
 								.acknowledgementShutdownTimeout(SHUTDOWN_TIMEOUT).acknowledgementInterval(Duration.ZERO)
-								.acknowledgementThreshold(0));
+								.acknowledgementThreshold(0).pollTimeout(POLL_TIMEOUT));
 					}
 					return bean;
 				}
