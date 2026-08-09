@@ -23,6 +23,7 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 import com.amazon.sqs.javamessaging.AmazonSQSExtendedAsyncClient;
 import io.awspring.cloud.autoconfigure.AwsSyncClientCustomizer;
 import io.awspring.cloud.autoconfigure.ConfiguredAwsClient;
+import io.awspring.cloud.autoconfigure.LocalstackContainerTest;
 import io.awspring.cloud.autoconfigure.s3.S3ClientCustomizer;
 import java.io.IOException;
 import java.time.Duration;
@@ -41,12 +42,9 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.io.DefaultResourceLoader;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.localstack.LocalStackContainer;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
-import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.client.builder.SdkDefaultClientBuilder;
@@ -64,9 +62,8 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
  * @author Matej Nedic
  */
 
-@Testcontainers
 @ExtendWith(OutputCaptureExtension.class)
-public class S3ConfigDataLoaderIntegrationTests {
+public class S3ConfigDataLoaderIntegrationTests implements LocalstackContainerTest {
 	private static final String YAML_TYPE = "application/x-yaml";
 	private static final String YAML_TYPE_ALTERNATIVE = "text/yaml";
 	private static final String TEXT_TYPE = "text/plain";
@@ -74,9 +71,7 @@ public class S3ConfigDataLoaderIntegrationTests {
 	private static String BUCKET = "test-bucket";
 
 	private static final String NEW_LINE_CHAR = System.lineSeparator();
-	@Container
-	static LocalStackContainer localstack = new LocalStackContainer(
-			DockerImageName.parse("localstack/localstack:4.4.0")).withReuse(true);
+	static final LocalStackContainer localstack = LocalstackContainerTest.LOCAL_STACK_CONTAINER;
 
 	@BeforeAll
 	static void beforeAll() {
