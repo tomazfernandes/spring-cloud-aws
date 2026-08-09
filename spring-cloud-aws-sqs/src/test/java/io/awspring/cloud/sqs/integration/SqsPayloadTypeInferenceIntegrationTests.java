@@ -671,7 +671,9 @@ class SqsPayloadTypeInferenceIntegrationTests extends BaseSqsIntegrationTest {
 				AckCallbackPayloadTypeCollector ackCallbackPayloadTypeCollector) {
 			return SqsMessageListenerContainerFactory.builder()
 					.sqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient)
-					.configure(options -> options.maxDelayBetweenPolls(Duration.ofSeconds(1))
+					.configure(options -> options.listenerShutdownTimeout(Duration.ZERO)
+							.acknowledgementShutdownTimeout(Duration.ZERO).acknowledgementInterval(Duration.ZERO)
+							.acknowledgementThreshold(0).maxDelayBetweenPolls(Duration.ofSeconds(1))
 							.pollTimeout(Duration.ofSeconds(3)))
 					.messageInterceptor(createPayloadTypeRecordingInterceptor(interceptorPayloadTypeCollector))
 					.errorHandler(createErrorHandler(errorHandlerPayloadTypeCollector))
@@ -685,7 +687,9 @@ class SqsPayloadTypeInferenceIntegrationTests extends BaseSqsIntegrationTest {
 				AckCallbackPayloadTypeCollector ackCallbackPayloadTypeCollector) {
 			return SqsMessageListenerContainerFactory.builder()
 					.sqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient)
-					.configure(options -> options.acknowledgementMode(AcknowledgementMode.MANUAL)
+					.configure(options -> options.listenerShutdownTimeout(Duration.ZERO)
+							.acknowledgementShutdownTimeout(Duration.ZERO).acknowledgementInterval(Duration.ZERO)
+							.acknowledgementThreshold(0).acknowledgementMode(AcknowledgementMode.MANUAL)
 							.maxDelayBetweenPolls(Duration.ofSeconds(1)).pollTimeout(Duration.ofSeconds(3))
 							.queueAttributeNames(Collections.singletonList(QueueAttributeName.QUEUE_ARN)))
 					.messageInterceptor(createPayloadTypeRecordingInterceptor(interceptorPayloadTypeCollector))
@@ -715,7 +719,9 @@ class SqsPayloadTypeInferenceIntegrationTests extends BaseSqsIntegrationTest {
 
 			return SqsMessageListenerContainerFactory.builder()
 					.sqsAsyncClientSupplier(BaseSqsIntegrationTest::createAsyncClient)
-					.configure(options -> options.maxDelayBetweenPolls(Duration.ofSeconds(1))
+					.configure(options -> options.listenerShutdownTimeout(Duration.ZERO)
+							.acknowledgementShutdownTimeout(Duration.ZERO).acknowledgementInterval(Duration.ZERO)
+							.acknowledgementThreshold(0).maxDelayBetweenPolls(Duration.ofSeconds(1))
 							.pollTimeout(Duration.ofSeconds(3)).messageConverter(customConverter))
 					.messageInterceptor(createPayloadTypeRecordingInterceptor(interceptorPayloadTypeCollector))
 					.errorHandler(createErrorHandler(errorHandlerPayloadTypeCollector))
