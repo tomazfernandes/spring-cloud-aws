@@ -29,7 +29,9 @@ public class ContainerClassesLastOrderer implements ClassOrderer {
 
 	@Override
 	public void orderClasses(ClassOrdererContext context) {
-		BaseSqsIntegrationTest.startAsync();
+		if (context.getClassDescriptors().stream().anyMatch(descriptor -> needsContainer(descriptor) == 1)) {
+			BaseSqsIntegrationTest.startAsync();
+		}
 		context.getClassDescriptors().sort(Comparator.comparingInt(ContainerClassesLastOrderer::needsContainer));
 	}
 
