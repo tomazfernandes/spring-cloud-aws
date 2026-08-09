@@ -21,13 +21,16 @@ import io.awspring.cloud.kinesis.stream.binder.properties.KinesisConsumerPropert
 import io.awspring.cloud.kinesis.stream.binder.properties.KinesisProducerProperties;
 import io.awspring.cloud.kinesis.stream.binder.provisioning.KinesisStreamProvisioner;
 import java.time.Duration;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.cloud.stream.binder.AbstractTestBinder;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
 import org.springframework.cloud.stream.binder.PartitionTestSupport;
 import org.springframework.cloud.stream.provisioning.ConsumerDestination;
+import org.springframework.cloud.stream.provisioning.ProducerDestination;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -54,6 +57,8 @@ public class KinesisTestBinder extends
 
 	private final GenericApplicationContext applicationContext;
 
+	private final Set<String> provisionedStreams = ConcurrentHashMap.newKeySet();
+
 	public KinesisTestBinder(KinesisAsyncClient amazonKinesis, DynamoDbAsyncClient dynamoDbClient,
 			CloudWatchAsyncClient cloudWatchClient,
 			KinesisBinderConfigurationProperties kinesisBinderConfigurationProperties) {
@@ -62,8 +67,8 @@ public class KinesisTestBinder extends
 
 		this.amazonKinesis = amazonKinesis;
 
-		KinesisStreamProvisioner provisioningProvider = new KinesisStreamProvisioner(amazonKinesis,
-				kinesisBinderConfigurationProperties);
+		KinesisStreamProvisioner provisioningProvider = new RecordingProvisioner(amazonKinesis,
+				kinesisBinderConfigurationProperties, this.provisionedStreams);
 
 		KinesisMessageChannelBinder binder = new TestKinesisMessageChannelBinder(amazonKinesis, dynamoDbClient,
 				cloudWatchClient, kinesisBinderConfigurationProperties, provisioningProvider);
@@ -79,17 +84,45 @@ public class KinesisTestBinder extends
 
 	@Override
 	public void cleanup() {
-		this.amazonKinesis.listStreams()
-				.thenCompose(reply -> CompletableFuture.allOf(reply.streamNames().stream()
-						.map(streamName -> this.amazonKinesis.deleteStream(request -> request.streamName(streamName))
-								// The SDK default waiter backs off in flat 10-second steps, so every
-								// stream deletion costs at least 10 seconds. Poll once per second.
-								.thenCompose(result -> this.amazonKinesis.waiter().waitUntilStreamNotExists(
-										request -> request.streamName(streamName),
-										waiter -> waiter.maxAttempts(60).backoffStrategyV2(
-												BackoffStrategy.fixedDelayWithoutJitter(Duration.ofSeconds(1))))))
-						.toArray(CompletableFuture[]::new)))
-				.join();
+		// Delete only the streams this binder provisioned. Listing the account and deleting everything
+		// removes streams that other test classes are still using, which is invisible while the classes run
+		// one at a time and fails them with ResourceNotFoundException as soon as they do not.
+		CompletableFuture.allOf(this.provisionedStreams.stream().map(streamName -> this.amazonKinesis
+				.deleteStream(request -> request.streamName(streamName))
+				// The SDK default waiter backs off in flat 10-second steps, so every
+				// stream deletion costs at least 10 seconds. Poll once per second.
+				.thenCompose(result -> this.amazonKinesis.waiter().waitUntilStreamNotExists(
+						request -> request.streamName(streamName),
+						waiter -> waiter.maxAttempts(60)
+								.backoffStrategyV2(BackoffStrategy.fixedDelayWithoutJitter(Duration.ofSeconds(1)))))
+				.exceptionally(throwable -> null)).toArray(CompletableFuture[]::new)).join();
+		this.provisionedStreams.clear();
+	}
+
+	private static final class RecordingProvisioner extends KinesisStreamProvisioner {
+
+		private final Set<String> provisionedStreams;
+
+		RecordingProvisioner(KinesisAsyncClient amazonKinesis,
+				KinesisBinderConfigurationProperties configurationProperties, Set<String> provisionedStreams) {
+			super(amazonKinesis, configurationProperties);
+			this.provisionedStreams = provisionedStreams;
+		}
+
+		@Override
+		public ProducerDestination provisionProducerDestination(String name,
+				ExtendedProducerProperties<KinesisProducerProperties> properties) {
+			this.provisionedStreams.add(name);
+			return super.provisionProducerDestination(name, properties);
+		}
+
+		@Override
+		public ConsumerDestination provisionConsumerDestination(String name, String group,
+				ExtendedConsumerProperties<KinesisConsumerProperties> properties) {
+			this.provisionedStreams.add(name);
+			return super.provisionConsumerDestination(name, group, properties);
+		}
+
 	}
 
 	/**
