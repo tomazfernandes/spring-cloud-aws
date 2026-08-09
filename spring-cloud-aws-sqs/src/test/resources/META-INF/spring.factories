@@ -1,2 +1,0 @@
-org.springframework.test.context.ContextCustomizerFactory = \
-  io.awspring.cloud.sqs.integration.ShortShutdownTimeoutsCustomizerFactory
