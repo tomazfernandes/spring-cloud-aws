@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [ 17.0.12, 21.0.4, 24 ]
+        version: [ 17, 21, 24 ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -42,7 +42,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 17.0.12
+          java-version: 17
           cache: maven
       - name: Validate AsciiDoc
         run: ./mvnw -V -B verify -Pdocs-classic -DskipTests
@@ -57,7 +57,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 17.0.12
+          java-version: 17
           cache: maven
       - name: Cache SonarCloud packages
         uses: actions/cache@v5
