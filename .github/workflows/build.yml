@@ -18,6 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - name: Pull the test images in the background
+        run: |
+          grep -rhoE --exclude-dir=target --exclude-dir=.git \
+            '(localstack/localstack|floci/floci):[0-9][A-Za-z0-9._-]*' \
+            --include='*.java' --include='*.yaml' --include='*.yml' . | sort -u | while read -r image; do
+              docker pull "$image" > /dev/null 2>&1 &
+            done
       - name: Set up JDK ${{ matrix.version }}
         uses: actions/setup-java@v5
         with:
@@ -25,7 +32,7 @@ jobs:
           java-version: ${{ matrix.version }}
           cache: maven
       - name: Build with Maven
-        run: ./mvnw -V -B -T 1C verify -Pspring
+        run: ./mvnw -V -B -T 3 verify -Pspring
   docs:
     name: Validate Docs
     runs-on: ubuntu-latest
